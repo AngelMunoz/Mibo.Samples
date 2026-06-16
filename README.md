@@ -4,6 +4,23 @@ Sample projects demonstrating [Mibo.Raylib](https://github.com/AngelMunoz/Mibo) 
 
 For framework documentation and setup instructions, see the [Mibo.Raylib README](Mibo/README.md).
 
+## Getting Started
+
+Clone the repo with submodules:
+
+```bash
+git clone --recurse-submodules https://github.com/AngelMunoz/Mibo.Samples.git
+cd Mibo.Samples
+```
+
+If you already cloned without submodules:
+
+```bash
+git submodule update --init --recursive
+```
+
+The `Mibo/` directory contains the [Mibo.Raylib](https://github.com/AngelMunoz/Mibo) framework as a git submodule on the `vnext` branch.
+
 ## Prerequisites
 
 - .NET SDK 10 or later
