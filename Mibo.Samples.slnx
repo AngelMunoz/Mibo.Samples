@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/Mibo/" />
+  <Folder Name="/Mibo/src/">
+    <Project Path="Mibo/src/Mibo.Core/Mibo.Core.fsproj" />
+    <Project Path="Mibo/src/Mibo.Raylib/Mibo.Raylib.fsproj" />
+  </Folder>
+  <Folder Name="/PingPong/">
+    <Project Path="PingPong/Client/Client.fsproj" />
+    <Project Path="PingPong/Server/Server.fsproj" />
+    <Project Path="PingPong/Shared/Shared.fsproj" />
+  </Folder>
+  <Project Path="PlatformerSample/PlatformerSample.fsproj" />
+  <Project Path="SpaceBattle/SpaceBattle.fsproj" />
+  <Project Path="ThreeDSample/ThreeDSample.fsproj" />
+</Solution>
