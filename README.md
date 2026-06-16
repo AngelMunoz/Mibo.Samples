@@ -9,7 +9,7 @@ For framework documentation and setup instructions, see the [Mibo.Raylib README]
 Clone the repo with submodules:
 
 ```bash
-git clone --recurse-submodules https://github.com/AngelMunoz/Mibo.Samples.git
+git clone --recurse-submodules git@github.com:AngelMunoz/Mibo.Samples.git
 cd Mibo.Samples
 ```
 
