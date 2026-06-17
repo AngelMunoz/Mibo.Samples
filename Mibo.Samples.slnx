@@ -8,6 +8,7 @@
     <Project Path="PingPong/Client/Client.fsproj" />
     <Project Path="PingPong/Server/Server.fsproj" />
     <Project Path="PingPong/Shared/Shared.fsproj" />
+    <Project Path="PingPong/MonoClient/MonoClient.fsproj" />
   </Folder>
   <Project Path="PlatformerSample/PlatformerSample.fsproj" />
   <Project Path="SpaceBattle/SpaceBattle.fsproj" />

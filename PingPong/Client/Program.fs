@@ -83,7 +83,6 @@ let update env msg model : struct (Model * Cmd<_>) =
     match model.AssignedPaddle with
     | ValueSome side ->
       let clampedY = clampPaddle model.LocalState.Height mouseY
-
       let localState =
         match side with
         | Left -> {
@@ -121,6 +120,7 @@ let subscribe
         match state with
         | Connected ->
           let struct (peerId, side) = getHandshake()
+          printfn $"PeerId: [{peerId}],  Side: [{side}]"
           ConnectionChanged(Connected, peerId, side)
         | other -> ConnectionChanged(other, 0<peerId>, ValueNone))
     )
