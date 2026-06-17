@@ -10,7 +10,7 @@ open Mibo.Input
 open ThreeDSample.Constants
 open ThreeDSample.WorldGen
 open ThreeDSample.Physics
-open Mibo.Elmish.Next.Graphics2D
+open Mibo.Elmish.Graphics2D
 open Raylib_cs
 open ThreeDSample.Types
 

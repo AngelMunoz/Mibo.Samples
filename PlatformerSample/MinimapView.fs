@@ -10,7 +10,7 @@ open Mibo.Elmish
 open Mibo.Layout
 open PlatformerSample.Constants
 open PlatformerSample.DayNight
-open Mibo.Elmish.Next.Graphics2D
+open Mibo.Elmish.Graphics2D
 open Raylib_cs
 open PlatformerSample.Types
 

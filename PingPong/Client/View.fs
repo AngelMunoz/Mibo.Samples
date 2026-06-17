@@ -3,7 +3,7 @@ module PingPong.Client.View
 open System.Numerics
 open Raylib_cs
 open Mibo.Elmish
-open Mibo.Elmish.Next.Graphics2D
+open Mibo.Elmish.Graphics2D
 open PingPong.Shared.Types
 
 let view (_ctx: GameContext) (model: GameState) (buffer: RenderBuffer2D) =

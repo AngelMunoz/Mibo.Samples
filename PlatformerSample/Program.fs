@@ -9,7 +9,7 @@ open Mibo.Animation
 open Mibo.Layout
 open PlatformerSample.Constants
 open PlatformerSample.WorldGen
-open Mibo.Elmish.Next.Graphics2D
+open Mibo.Elmish.Graphics2D
 open Raylib_cs
 open PlatformerSample.Types
 

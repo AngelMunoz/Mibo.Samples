@@ -2,7 +2,7 @@ module PingPong.Client.Program
 
 open System
 open Mibo.Elmish
-open Mibo.Elmish.Next.Graphics2D
+open Mibo.Elmish.Graphics2D
 open PingPong.Shared.Types
 open PingPong.Shared.Physics
 open PingPong.Shared.Serialization
@@ -83,6 +83,7 @@ let update env msg model : struct (Model * Cmd<_>) =
     match model.AssignedPaddle with
     | ValueSome side ->
       let clampedY = clampPaddle model.LocalState.Height mouseY
+
       let localState =
         match side with
         | Left -> {

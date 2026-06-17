@@ -11,7 +11,7 @@ open PlatformerSample.Constants
 open PlatformerSample.DayNight
 open PlatformerSample.WorldGen
 open PlatformerSample.Minimap
-open Mibo.Elmish.Next.Graphics2D
+open Mibo.Elmish.Graphics2D
 open Raylib_cs
 open PlatformerSample.Types
 

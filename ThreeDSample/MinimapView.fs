@@ -8,7 +8,7 @@ open System.Numerics
 open FSharp.NativeInterop
 open Mibo.Elmish
 open ThreeDSample.Constants
-open Mibo.Elmish.Next.Graphics2D
+open Mibo.Elmish.Graphics2D
 open Raylib_cs
 open Mibo.Layout3D
 open ThreeDSample.Types

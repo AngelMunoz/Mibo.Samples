@@ -5,7 +5,7 @@ open Mibo.Animation
 open Mibo.Elmish
 open Mibo.Elmish.Graphics2D.Lighting
 open Mibo.Layout
-open Mibo.Elmish.Next.Graphics2D
+open Mibo.Elmish.Graphics2D
 open Raylib_cs
 open SpaceBattle.Types
 open SpaceBattle.Units

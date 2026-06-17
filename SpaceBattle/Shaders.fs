@@ -4,7 +4,7 @@ open System.Diagnostics
 open System.Numerics
 open Microsoft.FSharp.NativeInterop
 open Mibo.Elmish
-open Mibo.Elmish.Next.Graphics2D
+open Mibo.Elmish.Graphics2D
 open Raylib_cs
 
 #nowarn "9"

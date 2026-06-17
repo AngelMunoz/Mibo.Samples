@@ -2,7 +2,7 @@ module ThreeDSample.Diagnostics
 
 open System.Numerics
 open Mibo.Elmish
-open Mibo.Elmish.Next.Graphics2D
+open Mibo.Elmish.Graphics2D
 open Raylib_cs
 open ThreeDSample.Types
 

@@ -150,7 +150,7 @@ module Input =
 
   module Debug =
 
-    open Mibo.Elmish.Next.Graphics2D
+    open Mibo.Elmish.Graphics2D
     open Raylib_cs
 
     let inline view
