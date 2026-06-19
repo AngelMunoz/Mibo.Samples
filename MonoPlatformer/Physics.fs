@@ -8,14 +8,17 @@ open MonoPlatformer.Types
 // Player Bounds & Collision
 // -------------------------------------------------------------
 
-let inline playerBounds(pos: Vector2) =
-  Rectangle(int pos.X, int pos.Y, int playerWidth, int playerHeight)
+let inline checkCollision (pos: Vector2) (rect: Rectangle) =
+  let aLeft = pos.X
+  let aRight = pos.X + playerWidth
+  let aTop = pos.Y
+  let aBottom = pos.Y + playerHeight
+  let bLeft = float32 rect.X
+  let bRight = float32 rect.X + float32 rect.Width
+  let bTop = float32 rect.Y
+  let bBottom = float32 rect.Y + float32 rect.Height
 
-let inline checkCollision (a: Rectangle) (b: Rectangle) =
-  a.X < b.X + b.Width
-  && a.X + a.Width > b.X
-  && a.Y < b.Y + b.Height
-  && a.Y + a.Height > b.Y
+  aLeft < bRight && aRight > bLeft && aTop < bBottom && aBottom > bTop
 
 let resolvePlatformCollision
   (prevPos: Vector2)
@@ -30,7 +33,7 @@ let resolvePlatformCollision
   for i = 0 to platforms.Count - 1 do
     let pb = platforms[i]
 
-    if checkCollision (playerBounds pos) pb then
+    if checkCollision pos pb then
       let prevFeetY = prevPos.Y + playerHeight
       let currFeetY = pos.Y + playerHeight
       let platformTop = float32 pb.Y

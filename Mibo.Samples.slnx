@@ -10,6 +10,7 @@
     <Project Path="PingPong/Shared/Shared.fsproj" />
     <Project Path="PingPong/MonoClient/MonoClient.fsproj" />
   </Folder>
+  <Project Path="MonoPlatformer/MonoPlatformer.fsproj" />
   <Project Path="PlatformerSample/PlatformerSample.fsproj" />
   <Project Path="SpaceBattle/SpaceBattle.fsproj" />
   <Project Path="ThreeDSample/ThreeDSample.fsproj" />

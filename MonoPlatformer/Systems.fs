@@ -35,26 +35,21 @@ let confettiColors = [|
 |]
 
 // Camera helpers (inlined because MonoGame backend lacks them)
-let inline smoothFollow
-  (camera: byref<Camera2D>)
-  (target: Vector2)
-  (speed: float32)
-  =
-  camera <- {
-    camera with
-        Position = Vector2.Lerp(camera.Position, target, speed)
-  }
+let inline smoothFollow (target: Vector2) (speed: float32) (camera: Camera2D) = {
+  camera with
+      Position = Vector2.Lerp(camera.Position, target, speed)
+}
 
 let inline clampTarget
-  (camera: byref<Camera2D>)
   (minX: float32)
   (minY: float32)
   (maxX: float32)
   (maxY: float32)
+  (camera: Camera2D)
   =
   let x = MathF.Max(minX, MathF.Min(camera.Position.X, maxX))
   let y = MathF.Max(minY, MathF.Min(camera.Position.Y, maxY))
-  camera <- { camera with Position = Vector2(x, y) }
+  { camera with Position = Vector2(x, y) }
 
 // -------------------------------------------------------------
 // System: Input -> Movement Intent
@@ -108,7 +103,7 @@ let private spawnConfetti(model: Model) =
       pc <- pc + 1
 
   model.ParticleCount <- pc
-  model.Assets.JumpSound.Play()
+  model.Assets.JumpSound.Play() |> ignore
 
 let physicsSystem (dt: float32) (model: Model) : struct (Model * Cmd<Msg>) =
   let canJump = model.IsGrounded
@@ -150,10 +145,8 @@ let physicsSystem (dt: float32) (model: Model) : struct (Model * Cmd<Msg>) =
   let mutable isGrounded = isGrounded
 
   // Spike collision → respawn
-  let playerRect = playerBounds finalPos
-
   for i = 0 to nearbySpikes.Count - 1 do
-    if checkCollision playerRect nearbySpikes[i] then
+    if checkCollision finalPos nearbySpikes[i] then
       finalPos <- Vector2(spawnX, groundSurface - playerHeight)
       finalVel <- Vector2.Zero
       isGrounded <- true
@@ -162,7 +155,7 @@ let physicsSystem (dt: float32) (model: Model) : struct (Model * Cmd<Msg>) =
   collectedCoins.Clear()
 
   for i = 0 to nearbyCoins.Count - 1 do
-    if checkCollision playerRect nearbyCoins[i] then
+    if checkCollision finalPos nearbyCoins[i] then
       model.Score <- model.Score + 1
       collectedCoins.Add nearbyCoins[i]
 
@@ -223,10 +216,10 @@ let physicsSystem (dt: float32) (model: Model) : struct (Model * Cmd<Msg>) =
   model.PlayerFacing <- newFacing
 
   // Smooth camera follow
-  let mutable cam = model.Camera
-  smoothFollow &cam finalPos 0.1f
-  clampTarget &cam -999999.0f -500.0f 999999.0f 2000.0f
-  model.Camera <- cam
+  model.Camera <-
+    model.Camera
+    |> smoothFollow finalPos 0.1f
+    |> clampTarget -999999.0f -500.0f 999999.0f 2000.0f
 
   // Track chunk coordinate
   model.PlayerChunk <- struct (pcx, pcy)
