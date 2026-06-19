@@ -1,0 +1,47 @@
+#----------------------------- Global Properties ----------------------------#
+
+/outputDir:Content
+/intermediateDir:obj
+/platform:DesktopGL
+/config:
+/profile:HiDef
+/compress:False
+
+#-------------------------------- References --------------------------------#
+
+#---------------------------------- Content ---------------------------------#
+
+#begin ../../PlatformerSample/assets/kenney_platformer/Spritesheets/spritesheet-characters-default.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/build:../../PlatformerSample/assets/kenney_platformer/Spritesheets/spritesheet-characters-default.png;Spritesheets/Characters
+
+#begin ../../PlatformerSample/assets/kenney_platformer/Spritesheets/spritesheet-tiles-default.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/build:../../PlatformerSample/assets/kenney_platformer/Spritesheets/spritesheet-tiles-default.png;Spritesheets/Tiles
+
+#begin ../../PlatformerSample/assets/kenney_platformer/Spritesheets/spritesheet-backgrounds-default.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/build:../../PlatformerSample/assets/kenney_platformer/Spritesheets/spritesheet-backgrounds-default.png;Spritesheets/Backgrounds
+
+#begin ../../PlatformerSample/assets/kenney_platformer/Spritesheets/spritesheet-enemies-default.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/build:../../PlatformerSample/assets/kenney_platformer/Spritesheets/spritesheet-enemies-default.png;Spritesheets/Enemies
+
+#begin ../../PlatformerSample/assets/NormalMap.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/build:../../PlatformerSample/assets/NormalMap.png;NormalMap
+
+#begin Fonts/Monogram.spritefont
+/importer:FontDescriptionImporter
+/processor:FontDescriptionProcessor
+/build:Fonts/Monogram.spritefont;Fonts/Monogram
+
+#begin ../../PlatformerSample/assets/sfx_jump.ogg
+/importer:OggImporter
+/processor:SoundEffectProcessor
+/build:../../PlatformerSample/assets/sfx_jump.ogg;Sounds/Jump

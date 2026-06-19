@@ -6,7 +6,6 @@ open System.Collections.Generic
 open Microsoft.Xna.Framework
 open Microsoft.Xna.Framework.Graphics
 open Microsoft.Xna.Framework.Audio
-open System.Numerics
 open Mibo.Elmish
 open Mibo.Elmish.Graphics2D.Lighting
 open Mibo.Input

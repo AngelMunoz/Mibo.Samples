@@ -4,7 +4,6 @@ open System
 open System.Collections.Concurrent
 open System.Collections.Generic
 open Microsoft.Xna.Framework
-open System.Numerics
 open Mibo.Layout
 open Mibo.Elmish.Graphics2D.Lighting
 open MonoPlatformer.Constants
@@ -118,7 +117,12 @@ let extractTorches (grid: CellGrid2D<TileType>) (rng: Random) : TorchLight[] =
 
 let generateChunk (cx: int) (cy: int) (worldSeed: int) : Chunk =
   let rng = Random(chunkSeed cx cy worldSeed)
-  let origin = Vector2(float32 cx * chunkWorldSize, float32 cy * chunkWorldSize)
+
+  let origin =
+    System.Numerics.Vector2(
+      float32 cx * chunkWorldSize,
+      float32 cy * chunkWorldSize
+    )
 
   let grid =
     CellGrid2D.create
@@ -528,7 +532,7 @@ let generateChunk (cx: int) (cy: int) (worldSeed: int) : Chunk =
   }
 
 let loadChunks
-  (playerPos: System.Numerics.Vector2)
+  (playerPos: Vector2)
   (chunks: ConcurrentDictionary<struct (int * int), Chunk>)
   (seed: int)
   =
@@ -543,7 +547,7 @@ let loadChunks
         chunks[key] <- generateChunk x y seed
 
 let evictDistantChunks
-  (playerPos: System.Numerics.Vector2)
+  (playerPos: Vector2)
   (chunks: ConcurrentDictionary<struct (int * int), Chunk>)
   (keysToRemove: ResizeArray<struct (int * int)>)
   =

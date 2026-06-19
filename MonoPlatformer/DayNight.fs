@@ -1,7 +1,6 @@
 module MonoPlatformer.DayNight
 
 open System
-open System.Numerics
 open Microsoft.Xna.Framework
 open MonoPlatformer.Constants
 
