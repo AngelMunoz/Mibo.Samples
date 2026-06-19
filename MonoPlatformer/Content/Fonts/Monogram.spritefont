@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <XnaContent xmlns:Graphics="Microsoft.Xna.Framework.Content.Pipeline.Graphics">
   <Asset Type="Graphics:FontDescription">
-    <FontName>monogram</FontName>
-    <Size>16</Size>
+    <FontName>monogram.ttf</FontName>
+    <Size>22</Size>
     <Spacing>0</Spacing>
-    <UseKerning>false</UseKerning>
+    <UseKerning>true</UseKerning>
     <Style>Regular</Style>
     <CharacterRegions>
       <CharacterRegion>

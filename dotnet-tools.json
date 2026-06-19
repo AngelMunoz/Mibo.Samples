@@ -8,6 +8,20 @@
         "fantomas"
       ],
       "rollForward": false
+    },
+    "dotnet-mgcb": {
+      "version": "3.8.4.1",
+      "commands": [
+        "mgcb"
+      ],
+      "rollForward": false
+    },
+    "dotnet-mgfxc": {
+      "version": "3.8.4.1",
+      "commands": [
+        "mgfxc"
+      ],
+      "rollForward": false
     }
   }
 }

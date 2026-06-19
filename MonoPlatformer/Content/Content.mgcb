@@ -2,7 +2,7 @@
 
 /outputDir:Content
 /intermediateDir:obj
-/platform:DesktopGL
+/platform:Windows
 /config:
 /profile:HiDef
 /compress:False

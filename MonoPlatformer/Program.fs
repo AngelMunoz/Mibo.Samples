@@ -145,5 +145,6 @@ let main _ =
 
   let game = new MiboGame<Model, Msg>(program)
   game.Content.RootDirectory <- "Content"
+
   game.Run()
   0

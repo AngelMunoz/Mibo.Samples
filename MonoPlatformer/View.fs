@@ -57,7 +57,16 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
   // Sky background and day/night ambient
   let time = model.DayNightTimeOfDay
 
+  let dayNight = {
+    TimeOfDay = model.DayNightTimeOfDay
+    DayDuration = model.DayNightDuration
+  }
+
   let skyTop, skyBot = DayNight.getSkyColors time
+  let ambient = DayNight.getAmbientColor time
+  let sunIntensity = DayNight.getSunIntensity time
+  let moonIntensity = DayNight.getMoonIntensity time
+  let sunPos, moonPos = DayNight.orbitalPositions playerCenterX dayNight
 
   let viewBounds =
     viewportBounds camera (float32 ctx.WindowWidth) (float32 ctx.WindowHeight)
@@ -67,13 +76,49 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
     (-1000<RenderLayer>)
     (0, 0, ctx.WindowWidth, ctx.WindowHeight, skyTop, skyBot)
   |> Draw.beginCamera 0<RenderLayer> camera
+  |> LightDraw.setAmbient model.Lighting (5<RenderLayer>, { Color = ambient })
   |> Draw.drop
 
-  // Collect torches from nearby chunks (still needed for torch sprites)
+  // Sun directional light
+  if sunIntensity > 0.0f then
+    let sunDir =
+      Vector2.Normalize(Vector2(playerCenterX, groundLevel - 200.0f) - sunPos)
+
+    buffer
+    |> LightDraw.addDirectionalLight model.Lighting 6<RenderLayer> {
+      Direction = sunDir
+      Color = Color(255, 245, 220)
+      Intensity = sunIntensity * 1.5f
+      CastsShadows = true
+    }
+    |> Draw.drop
+
+  // Moon directional light
+  if moonIntensity > 0.0f then
+    let moonDir =
+      Vector2.Normalize(Vector2(playerCenterX, groundLevel - 200.0f) - moonPos)
+
+    buffer
+    |> LightDraw.addDirectionalLight model.Lighting 6<RenderLayer> {
+      Direction = moonDir
+      Color = Color(180, 200, 255)
+      Intensity = moonIntensity * 0.8f
+      CastsShadows = true
+    }
+    |> Draw.drop
+
+  // Collect occluders and torches from nearby chunks
   let pcx = int(Math.Floor(float model.PlayerPosition.X / float chunkWorldSize))
   let pcy = int(Math.Floor(float model.PlayerPosition.Y / float chunkWorldSize))
 
+  nearbyOccluders.Clear()
   nearbyTorches.Clear()
+
+  // Max distance for occluders to cast shadows (1.5x viewport diagonal)
+  let maxOccluderDistSq =
+    let vw = float32 ctx.WindowWidth
+    let vh = float32 ctx.WindowHeight
+    (vw * 1.5f) * (vw * 1.5f) + (vh * 1.5f) * (vh * 1.5f)
 
   let playerPos = model.PlayerPosition
 
@@ -81,25 +126,71 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
     let struct (cx, cy) = key
 
     if abs(cx - pcx) <= chunkLoadRadius && abs(cy - pcy) <= chunkLoadRadius then
+      // Filter occluders by distance — only near ones cast shadows
+      for o in chunk.Occluders do
+        let mx = (o.P1.X + o.P2.X) * 0.5f
+        let my = (o.P1.Y + o.P2.Y) * 0.5f
+        let dx = mx - playerPos.X
+        let dy = my - playerPos.Y
+
+        if dx * dx + dy * dy <= maxOccluderDistSq then
+          nearbyOccluders.Add o
+
       for t in chunk.Torches do
         nearbyTorches.Add t
 
+  // Sort by distance and take nearest N (avoid Seq allocation)
+  let ocCount = min nearbyOccluders.Count maxOccluders
+
+  if nearbyOccluders.Count > 1 then
+    nearbyOccluders.Sort(fun a b ->
+      let ax = (a.P1.X + a.P2.X) * 0.5f - playerPos.X
+      let ay = (a.P1.Y + a.P2.Y) * 0.5f - playerPos.Y
+      let bx = (b.P1.X + b.P2.X) * 0.5f - playerPos.X
+      let by = (b.P1.Y + b.P2.Y) * 0.5f - playerPos.Y
+      compare (ax * ax + ay * ay) (bx * bx + by * by))
+
   let torchCount = min nearbyTorches.Count maxTorchLights
 
-  // Draw torch sprites (unlit)
+  if nearbyTorches.Count > 1 then
+    nearbyTorches.Sort(fun a b ->
+      let ax = a.Position.X - playerPos.X
+      let ay = a.Position.Y - playerPos.Y
+      let bx = b.Position.X - playerPos.X
+      let by = b.Position.Y - playerPos.Y
+      compare (ax * ax + ay * ay) (bx * bx + by * by))
+
+  // Add torches as point lights and draw sprites
   let torchSrc = AnimatedSprite.currentSource model.TorchSprite
 
   for i = 0 to torchCount - 1 do
     let torch = nearbyTorches[i]
 
+    buffer
+    |> LightDraw.addPointLight model.Lighting 7<RenderLayer> {
+      Position = torch.Position
+      Color = torch.Color
+      Intensity = 1.2f
+      Radius = torch.Radius
+      Falloff = 1.5f
+      CastsShadows = false
+    }
+    |> Draw.drop
+
     let torchDest =
       r (int torch.Position.X - 16) (int torch.Position.Y - 32) 32 32
 
     buffer
-    |> Draw.sprite(
-      SpriteState.create(model.Assets.TorchSheet.Texture, torchDest, torchSrc)
-      |> SpriteState.withLayer 7<RenderLayer>
-    )
+    |> LightDraw.litSprite
+      model.Lighting
+      (SpriteState.create(model.Assets.TorchSheet.Texture, torchDest, torchSrc)
+       |> SpriteState.withLayer 7<RenderLayer>)
+    |> Draw.drop
+
+  // Add occluders
+  for i = 0 to ocCount - 1 do
+    buffer
+    |> LightDraw.addOccluder model.Lighting 8<RenderLayer> nearbyOccluders[i]
     |> Draw.drop
 
   // Render visible tiles from nearby chunks only
@@ -141,33 +232,33 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
               let dest = Rectangle(int wx, int wy, int tileSize, int tileSize)
 
               let sprite =
-                SpriteState.create(
-                  model.Assets.TileTexture,
-                  dest,
-                  tileSpriteSrc chunkBiome tile
-                )
-                |> SpriteState.withLayer 10<RenderLayer>
+                let sprite =
+                  SpriteState.create(
+                    model.Assets.TileTexture,
+                    dest,
+                    tileSpriteSrc chunkBiome tile
+                  )
+                  |> SpriteState.withLayer 10<RenderLayer>
 
-              buffer |> Draw.sprite sprite |> Draw.drop)
+                if tile = TileType.Coin then
+                  sprite
+                  |> SpriteState.withNormalMap model.Assets.CoinNormalMap
+                else
+                  sprite
+
+              buffer |> LightDraw.litSprite model.Lighting sprite |> Draw.drop)
           chunk.Grid
 
-  // Player sprite (unlit)
+  // Lit player sprite
   let playerDrawY = int(model.PlayerPosition.Y + playerHeight - 64.0f)
   let playerDest = r (int model.PlayerPosition.X) playerDrawY 64 64
 
-  let playerSrc = AnimatedSprite.currentSource model.PlayerSprite
-
-  let playerSrc =
-    if model.PlayerSprite.FlipX then
-      Rectangle(playerSrc.X, playerSrc.Y, -playerSrc.Width, playerSrc.Height)
-    else
-      playerSrc
-
   buffer
-  |> Draw.sprite(
-    SpriteState.create(model.Assets.PlayerSheet.Texture, playerDest, playerSrc)
-    |> SpriteState.withLayer 20<RenderLayer>
-  )
+  |> LightDraw.litAnimatedSprite
+    model.Lighting
+    20<RenderLayer>
+    playerDest
+    model.PlayerSprite
   |> Draw.drop
 
   // Particles
@@ -178,6 +269,8 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
     model.ParticleCount
     3<RenderLayer>
 
+  // End lighting
+  |> LightDraw.endLighting model.Lighting 999<RenderLayer>
   // End camera
   |> Draw.endCamera 1000<RenderLayer>
   // UI
