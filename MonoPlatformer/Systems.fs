@@ -345,8 +345,11 @@ let minimapSystem (dt: float32) (model: Model) : struct (Model * Cmd<Msg>) =
 
   if needsUpdate then
     minimap.LastPlayerPos <- model.PlayerPosition
-    let gd = model.GraphicsDevice
 
+    // Only generate CPU pixel data off-thread. The GPU Texture2D is created/
+    // updated in the MinimapReady handler on the game thread (see
+    // Minimap.uploadTexture) — creating it here (on the async continuation)
+    // would produce an uninitialised texture that renders as white.
     let cmd =
       Cmd.ofAsync
         (async {
@@ -356,14 +359,8 @@ let minimapSystem (dt: float32) (model: Model) : struct (Model * Cmd<Msg>) =
               model.DayNightTimeOfDay
               model.PlayerPosition
         })
-        (fun struct (colors, w, h) ->
-          let tex = new Texture2D(gd, w, h)
-          tex.SetData(colors)
-          MinimapReady tex)
-        (fun _ex ->
-          let tex = new Texture2D(gd, 1, 1)
-          tex.SetData([| Color.Black |])
-          MinimapReady tex)
+        (fun struct (colors, w, h) -> MinimapReady(colors, w, h))
+        (fun _ex -> MinimapReady([| Color.Black |], 1, 1))
 
     model, cmd
   else
@@ -389,14 +386,14 @@ let update (msg: Msg) (model: Model) : struct (Model * Cmd<Msg>) =
     model.PendingChunks.Remove(key) |> ignore
     model, Cmd.none
 
-  | MinimapReady texture ->
-    let oldTex = model.Minimap.Texture
+  | MinimapReady(colors, w, h) ->
+    MonoPlatformer.Minimap.uploadTexture
+      model.GraphicsDevice
+      colors
+      w
+      h
+      model.Minimap
 
-    if oldTex <> Unchecked.defaultof<_> then
-      oldTex.Dispose()
-
-    model.Minimap.Texture <- texture
-    model.Minimap.TexReady <- true
     model, Cmd.none
 
   | Tick gt ->

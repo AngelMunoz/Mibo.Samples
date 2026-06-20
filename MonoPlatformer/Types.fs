@@ -145,4 +145,4 @@ type Msg =
   | Tick of tick: GameTime
   | InputMapped of inputs: ActionState<GameAction>
   | ChunkCreated of key: struct (int * int) * chunk: Chunk
-  | MinimapReady of texture: Microsoft.Xna.Framework.Graphics.Texture2D
+  | MinimapReady of colors: Color[] * width: int * height: int

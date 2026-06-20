@@ -1,8 +1,10 @@
 module MonoPlatformer.Minimap
 
+open System.Buffers
 open System.Collections.Concurrent
 open System.Collections.Generic
 open Microsoft.Xna.Framework
+open Microsoft.Xna.Framework.Graphics
 open Mibo.Elmish
 open Mibo.Layout
 open MonoPlatformer.Constants
@@ -91,7 +93,17 @@ let generateMinimapData
   let pixelSize = tileSize * scale + 1.0f
   let pixelSizeI = max 1 (int pixelSize)
 
-  let colors = Array.create (texSize * texSize) skyTop
+  // Rent the pixel buffer from the ArrayPool instead of allocating a fresh
+  // ~40k-element array every update (this runs each frame while moving).
+  // The array travels to the MinimapReady handler on the game thread, which
+  // SetData's it and returns it to the pool. The pool may hand back an array
+  // larger than pixelCount; we only fill/use the first pixelCount entries and
+  // SetData uploads exactly that many, so the unused tail is never sampled.
+  let pixelCount = texSize * texSize
+  let colors = ArrayPool<Color>.Shared.Rent(pixelCount)
+
+  for i = 0 to pixelCount - 1 do
+    colors[i] <- skyTop
 
   for KeyValue(struct (wx, wz), struct (_, tile, biome)) in blocks do
     let relX = (float32 wx - playerPos.X) * scale
@@ -107,6 +119,49 @@ let generateMinimapData
             colors[py * texSize + px] <- color
 
   struct (colors, texSize, texSize)
+
+/// <summary>
+/// Creates or updates the minimap GPU texture from CPU pixel data, on the game
+/// thread, then returns the rented <paramref name="colors"/> buffer to the
+/// ArrayPool. Mirrors <c>PlatformerSample.Minimap.uploadTexture</c>.
+/// </summary>
+/// <remarks>
+/// <para>The GPU <c>Texture2D</c> must be created/touched on the thread that
+/// owns the <c>GraphicsDevice</c>, so this is called from the
+/// <c>MinimapReady</c> message handler (not the async continuation). The
+/// texture is reused across updates (re-<c>SetData</c>'d in place) and only
+/// recreated when its size changes.</para>
+/// <para><paramref name="colors"/> is an ArrayPool-rented buffer (see
+/// <c>generateMinimapData</c>) and may be larger than
+/// <c>width * height</c>; the count-based <c>SetData</c> uploads exactly
+/// <c>width * height</c> elements. The buffer is returned to the pool in a
+/// <c>try/finally</c> so it isn't leaked even if <c>SetData</c> throws.</para>
+/// </remarks>
+let uploadTexture
+  (gd: GraphicsDevice)
+  (colors: Color[])
+  (width: int)
+  (height: int)
+  (minimap: MinimapModel)
+  =
+  let pixelCount = width * height
+
+  try
+    let needsCreate =
+      not minimap.TexReady
+      || minimap.Texture.Width <> width
+      || minimap.Texture.Height <> height
+
+    if needsCreate then
+      if minimap.TexReady then
+        minimap.Texture.Dispose()
+
+      minimap.Texture <- new Texture2D(gd, width, height)
+      minimap.TexReady <- true
+
+    minimap.Texture.SetData(colors, 0, pixelCount)
+  finally
+    ArrayPool<Color>.Shared.Return(colors)
 
 // ── View ──
 
