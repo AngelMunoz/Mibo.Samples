@@ -1,4 +1,4 @@
 [submodule "Mibo"]
 	path = Mibo
 	url = https://github.com/AngelMunoz/Mibo.git
-	branch = vnext
+	branch = main
