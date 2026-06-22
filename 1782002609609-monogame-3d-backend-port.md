@@ -154,6 +154,17 @@ If a sample phase uncovers a backend bug:
 
 > If you find yourself creating a type that duplicates a native one, STOP and use native. Add a Mibo-level struct **only** when it is pure ergonomics with no native equivalent (e.g. `Camera3D` config, light/material PBR param carriers, command DUs).
 
+#### 4.1 Material model — `Effect` is the native-first material; `Material3D` is PBR-only
+
+This is the single biggest structural divergence from raylib and it drives the command shapes in B2/B6. **Read before porting any draw command.**
+
+- **raylib `Mesh` is effectless** — the shader lives on the `Material` (`Material.Shader`). So raylib collapses mesh / skinned / instanced drawing into one `DrawMesh(mesh, material, transform)` call that swaps shader variants. That shape is coherent **in raylib**.
+- **MonoGame `ModelMeshPart` already owns its `Effect`** (`part.Effect`). Pairing a `ModelMeshPart` with a `Material3D` therefore means **two materials for one draw** — the part's native `BasicEffect`/`SkinnedEffect`/etc. AND a PBR param struct that only the custom-PBR shader can read. The pipeline would have to silently decide which one wins. **This conflation is exactly what PR #40's implementer hit.**
+- **Resolution (carry into every later phase):**
+  - `Effect` is the native-first material carrier — the honest analog of raylib's `Material.Shader`. Native rendering binds `part.Effect`, or a user-supplied `Effect`.
+  - `Material3D` is **only** a PBR-param carrier for the custom-PBR path (B9), and it pairs **only** with effectless geometry (`PrimitiveMesh`, B6) — never with a `ModelMeshPart`.
+  - In one sentence: `ModelMeshPart` → native `Effect` path; `PrimitiveMesh` → `Material3D` PBR path. Do not cross the two in a single command.
+
 ---
 
 ## 5. System.Numerics ↔ XNA Boundary (`Conversions`)
@@ -229,7 +240,13 @@ Target dir: `Mibo/src/Mibo.MonoGame/Graphics3D/` (+ `Layout3D/`, and root-level 
 
 Port canonical: `RenderBuffer3D.fs` (ArrayPool), `Command3D.fs` (closed DU + factory), `Draw3D.fs` (pipe DSL), `RenderPipeline3D.fs` (`IRenderPipeline3D`), `Renderer3D.fs` (`Renderer3D<'Model>` + `Renderer3DConfig`).
 
-- **`Graphics3D/Command3D.fs`** — port the `Command3D` DU. Fields use **native types**: `ModelMesh`/`ModelMeshPart` (not raylib `Mesh`/`Model`), `Effect` or `Material3D`, `Texture2D`, `Matrix`, `Vector3`/`Vector2`, `Color`. Keep all command variants for parity: DrawMesh/DrawModel/DrawBillboard/DrawLine3D/DrawSkinnedMesh/DrawMeshInstanced/DrawBillboardBatch/BeginCamera/BeginCameraConfig/EndCamera/SetShadowOrigin/SetAmbientLight/AddDirectionalLight/AddPointLight/AddSpotLight/EnableShadows/DisableShadows/DrawImmediate. (Skinned/Instanced/Billboard dispatch wired in their phases; DU present now.)
+- **`Graphics3D/Command3D.fs`** — port the `Command3D` DU, **but re-type the three "draw mesh" cases per §4.1** (do NOT copy raylib's `Mesh + Material3D` pairing onto MonoGame). The native/Effect-bearing cases are:
+  - `DrawMesh(ModelMeshPart, Matrix)` — binds `part.Effect` (the native-first path; `BasicEffect`/`SkinnedEffect`/etc. win). **No `Material3D` field.**
+  - `DrawMeshEffect(ModelMeshPart, Matrix, Effect)` — native-first override: user supplies the `Effect`; pipeline sets `World`/`View`/`Projection` from the active camera + transform, applies the current technique pass, calls `part.Draw()`. User owns the lighting/material params on their own `Effect`.
+  - `DrawSkinnedMesh(ModelMeshPart, Matrix, Matrix[] bones)` — bones array stays; pipeline selects `SkinnedEffect` (native) vs PBR-skinned (B9). **No `Material3D` field.**
+  - `DrawMeshInstanced(...)` — **deferred to B6 (`PrimitiveMesh`)** and therefore **not present in the DU today**: a `ModelMeshPart` has no instance vertex stream and its effect declares no instance semantics, so typing it on `ModelMeshPart` is a category error. B6 reintroduces the case on `PrimitiveMesh`. (PR #40 originally shipped a `ModelMeshPart + Material3D` placeholder; it was removed in the §4.1 correction pass.)
+  - Everything else ports 1:1 with native types: `DrawModel(Model, Matrix)`, `DrawBillboard`/`DrawBillboardBatch`/`DrawLine3D` (`Texture2D`, `Vector3`/`Vector2`, `Color`), camera commands (`BeginCamera`/`BeginCameraConfig`/`EndCamera`), `SetShadowOrigin`, the four light-add commands, `EnableShadows`/`DisableShadows`, and `DrawImmediate(unit -> unit)`.
+  - **Status:** the re-typing landed directly in PR #40 (`monogame3d/b1-types`) as the "B2 corrections" commit, so B5 inherits the corrected DU and does **not** need to re-type anything. (Original plan was to defer to B5; correcting #40 in-place was cheaper and avoided a breaking signature change between B2 and B5.)
 - **`Graphics3D/RenderBuffer3D.fs`** — copy `RenderBuffer3D` (ArrayPool<Command3D>) nearly verbatim.
 - **`Graphics3D/Draw3D.fs`** — copy the DSL wrappers, retyping to native.
 - **`Graphics3D/RenderPipeline3D.fs`** — copy `IRenderPipeline3D` interface (`Initialize`/`Execute`/`Shutdown`).
@@ -258,7 +275,7 @@ Port canonical `Mibo.Raylib/Graphics3D/Pipelines/ForwardPbrPipeline.fs` _dispatc
 - **`Graphics3D/Pipelines/ForwardPipeline.fs`** implementing `IRenderPipeline3D`:
   - Pre-scan buffer for active camera(s), ambient, directional, point, spot lights, shadow origin.
   - Execute loop pattern-matches `Command3D` (mirrors raylib Step 1–5 structure: prescan → shadow pass (stubbed here) → forward pass → post-process).
-  - **Drawing**: DrawMesh/DrawModel bind each `ModelMeshPart.Effect` (native `BasicEffect` etc.): set `World`/`View`/`Projection`, lights, fog off; `mesh.Draw()` or manual `DrawIndexedPrimitives`. DrawLine3D + DrawBillboard stubbed to a simple fallback (full impl in B7/B8). DrawImmediate inline.
+  - **Drawing**: DrawMesh/DrawModel bind each `ModelMeshPart.Effect` (native `BasicEffect` etc.): set `World`/`View`/`Projection`, lights, fog off; `mesh.Draw()` or manual `DrawIndexedPrimitives`. DrawMeshEffect binds the user-supplied `Effect` (native-first override per §4.1) — same World/View/Projection wiring, then `effect.CurrentTechnique.Passes[0].Apply()` + `part.Draw()`. DrawLine3D + DrawBillboard stubbed to a simple fallback (full impl in B7/B8). DrawImmediate inline. (The corrected DU from §B2 — `DrawMesh`/`DrawSkinnedMesh` without `Material3D`, plus `DrawMeshEffect` — is already in place from PR #40, so B5 just dispatches against it.)
   - **Lighting**: ambient + 1 directional + N point + M spot translated to `BasicEffect`'s `AmbientLightColor`/`DirectionalLight0..2`/`EnableDefaultLighting` where applicable; document the limitations (Blinn-Phong, no PBR, limited light count) — these are the _native floor_, upgraded in B9.
 - **`Graphics3D/Pipelines/PostProcess3D.fs`** — port canonical (post-process chain scaffold); may be empty pass-through now.
 - **Validation:** render a lit `Model` + primitives lit by a directional light (BasicEffect path). Visible on screen.
@@ -267,7 +284,10 @@ Port canonical `Mibo.Raylib/Graphics3D/Pipelines/ForwardPbrPipeline.fs` _dispatc
 
 Port canonical `Mibo.Raylib/Graphics3D/Primitive3D.fs`.
 
-- **`Graphics3D/Primitive3D.fs`** — generate native meshes once at init: `cube`/`sphere`/`cylinder`/`plane`/`torus`/`cone` as small wrappers holding a `VertexBuffer`+`IndexBuffer` (or a tiny `PrimitiveMesh` type with a `Draw(gd, effect)` helper). There is no native generator, so write minimal vertex builders (this is the MonoGame analog of `GenMeshCube`, not redundant type bloat).
+- **`Graphics3D/Primitive3D.fs`** — generate native meshes once at init: `cube`/`sphere`/`cylinder`/`plane`/`torus`/`cone` as a **`PrimitiveMesh` value** wrapping a `VertexBuffer` + `IndexBuffer` (+ primitive count / vertex offset), with a `Draw(gd, effect)` helper. There is no native generator, so write minimal vertex builders (this is the MonoGame analog of `GenMeshCube`, not redundant type bloat).
+- **Promote `PrimitiveMesh` to a DU citizen (per §4.1), not just a side module.** It is the unit the PBR path (`DrawMeshPBR`, added here or in B9) and `DrawMeshInstanced` operate on. Rationale: it is effectless geometry — the honest analog of raylib's universal `Mesh` — which is exactly the only thing `Material3D` is allowed to pair with.
+  - Add `DrawMeshPBR(PrimitiveMesh, Matrix, Material3D)` here if B9's PBR shader isn't ready yet, the pipeline can fall back to a `BasicEffect` bind; once B9 lands, this case dispatches to the PBR `Effect`.
+  - Finalize `DrawMeshInstanced(PrimitiveMesh, Matrix[], Material3D, instanceCount)` — B2 omitted this case entirely (it can't be typed until `PrimitiveMesh` exists); B6 introduces both the type and the case together (instance vertex stream is part of `PrimitiveMesh`'s contract).
 - **Validation:** draw a lit cube/sphere via the pipeline.
 
 ### B7 — Native instancing + `Layout3D` cell-grid renderer
@@ -290,8 +310,8 @@ MonoGame ships **no PBR effect**, so faithful parity needs custom HLSL. Translat
 - **Read §6 first and obey it.** Specifically: (a) matrix upload via plain `float4x4` + `SetValue` directly + `mul(position, matrix)` (vector LEFT); (b) re-derive normal-map TBN / cross products in **right-handed** convention, don't copy raylib's left-handed GLSL math; (c) the **OpenGL SM3.0 cap (§6.3)** — raylib's `Shaders.fs` is GLSL `#version 330` and uses SM4+ features that have **no SM3.0 equivalent** (notably `dFdx`/`dFdy` for slope-scale shadow bias, and `textureSize`). For each such feature, provide an SM3.0-compatible fallback (e.g., uniform-passed texel size + manual bias instead of derivative-based) or, if truly impossible on OGL, flag it for the DX-only/defer decision. Copy the `#if OPENGL` profile split from `LitSprite.fx` into every new `.fx`.
 - Build via the **existing pattern**: extend `Mibo.MonoGame/Shaders/script.fsx` (`ShaderList`) to compile each `.fx` with `/Profile:OpenGL` **and** `/Profile:DirectX_11` → embed `.dx.mgfx`/`.ogl.mgfx` as `<EmbeddedResource>` in the fsproj.
 - **`Graphics3D/ShaderLoader3D.fs`** — reuse the `ShaderLoader` pattern (`ShaderLoader.fs`) to load embedded `.mgfx` by backend.
-- Upgrade `ForwardPipeline` to bind the PBR `Effect` when a `Material3D`/PBR path is requested (material cache keyed by map IDs + scalars, mirroring raylib `MaterialKey`). Keep native `Effect` path available.
-- **`PostProcess.fs`**: extend the post-process pass selection used by `Camera3DConfig.PostProcessPasses`.
+- Upgrade `ForwardPipeline` to bind the PBR `Effect` when a `Material3D`/PBR path is requested (material cache keyed by mapIDs + scalars, mirroring raylib `MaterialKey`). Keep native `Effect` path available. Per §4.1, the PBR `Effect` binds **only** on `PrimitiveMesh` (effectless) draws — never on `ModelMeshPart` (which keeps its own native `Effect`).
+- **`PostProcess.fs`**: extend the post-process pass selection used by `Camera3DConfig.PostProcessPasses`. When porting `PostProcess3D.fs`, the raylib `PostProcessPass3D.Shader: Shader` becomes `PostProcessPass3D.Effect: Effect` (the compiled `.mgfx`) — not a new command, just a type swap driven by the same §4.1 logic (`Effect` is the native-first shader carrier).
 - **Validation:** same scene as B5 now lit with PBR (compare look to raylib `ThreeDSample`).
 
 ### B10 — Directional shadow atlas
@@ -378,7 +398,7 @@ Once B12 resolves: port the player `Animation3DState` (idle/walk/jump + blend), 
 3. **Native instancing parity (B7)** — likely fine via `DrawInstancedPrimitives` (HiDef), but verify scale (thousands of instances) in-phase; defer if it can't deliver.
 4. **OpenGL SM3.0 shader cap (§6.3) — concrete blocker for faithful PBR/shadow parity.** raylib's `Shaders.fs` is GLSL `#version 330` and uses `dFdx`/`dFdy` (slope-scale shadow bias) and `textureSize` (PCF texel step), neither of which exists in MonoGame's OpenGL SM3.0 profile. Each must get an SM3.0 fallback (uniform texel size + manual bias) or become DX-only. Validate every shader on both profiles; this is the single most likely source of "feature can't reach parity on the OpenGL floor."
 5. **Matrix convention / RT flip / half-texel / handedness** — follow §6 (repo precedent: `mul(position, matrix)`, plain `float4x4`, no transpose; re-derive math RH not LH). Validate per-shader, especially shadow + post-process under OpenGL. Document decisions.
-6. **`Material3D` scope** — keep minimal (PBR-param carrier + `fromEffect`); prefer binding native `Effect`. Confirm importer exposes PBR maps; if not, author/fallback materials.
+6. **`Material3D` scope — refined by §4.1.** `Effect` is the native-first material carrier (the honest analog of raylib `Material.Shader`); `Material3D` is **PBR-only** and pairs only with effectless geometry (`PrimitiveMesh`, B6). Concretely: never carry `Material3D` against a `ModelMeshPart`; native rendering binds `part.Effect`, PBR rendering binds the pipeline's PBR `Effect` on a `PrimitiveMesh`. PR #40's original `DrawMesh`/`DrawSkinnedMesh`/`DrawMeshInstanced` carried `ModelMeshPart + Material3D` — that conflation was corrected in-place in PR #40 (the `monogame3d/b1-types` "B2 corrections" commit), not deferred. Confirm importer exposes PBR maps; if not, author/fallback materials.
 7. **System.Numerics↔XNA** — only at the Core boundary via `Conversions` (§5); keep internals XNA.
 8. **Content pipeline for glTF** — `OpenAssetImporter` (Assimp) at 3.8.4.1 supports it; verify in S0 that the specific Kenney models round-trip (materials, transforms).
 
