@@ -61,6 +61,14 @@ the pipeline swaps to PBR.
 
 ## 3. Core Principle
 
+**Canonical reference:** `Mibo.Raylib` is the source of truth. We are doing our *own* MonoGame
+implementation here, but when in doubt — about a shader formula, a lighting term, a shadow
+convention, a data shape — pull the reference from `Mibo/src/Mibo.Raylib/` (the GLSL in
+`Graphics3D/Pipelines/Shaders.fs`, the pipeline dispatch in `ForwardPbrPipeline.fs`, the 3D
+animation in `Animation3D.fs`) and adapt to MonoGame per the §6 conventions of the port plan
+(plain `float4x4`, `mul(position, matrix)` vector-LEFT, right-handed math, SM3.0 OpenGL cap). Do
+not re-derive from first principles when raylib already has the working reference.
+
 **Every model and primitive draw auto-binds the custom PBR effect.** The linchpin that makes this
 possible is a missing helper, specced in plan B1 but never written:
 
