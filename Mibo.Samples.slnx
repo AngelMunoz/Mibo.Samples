@@ -14,4 +14,5 @@
   <Project Path="PlatformerSample/PlatformerSample.fsproj" />
   <Project Path="SpaceBattle/SpaceBattle.fsproj" />
   <Project Path="ThreeDSample/ThreeDSample.fsproj" />
+  <Project Path="MonoThreeD/MonoThreeD.fsproj" />
 </Solution>

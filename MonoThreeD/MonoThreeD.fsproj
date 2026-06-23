@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RollForward>Major</RollForward>
+    <PublishReadyToRun>false</PublishReadyToRun>
+    <TieredCompilation>false</TieredCompilation>
+    <UseWindowsForms>true</UseWindowsForms>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Mibo\src\Mibo.MonoGame\Mibo.MonoGame.fsproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="MonoGame.Framework.WindowsDX" Version="3.8.4.1" />
+    <PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.4.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <MonoGameContentReference Include="Content\Content.mgcb" />
+  </ItemGroup>
+  <!--
+    AssimpNetter loads animation clips + skeleton from the raw .glb at runtime
+    (the MonoGame content pipeline does not preserve animation data in XNB).
+    Copy the raw model to a separate 'animations' directory under the output
+    dir, away from the content pipeline's 'Content' output (which also contains
+    the .glb sources and would otherwise be overwritten/recompiled by MGCB).
+    Path passed to AssetsService.ModelAnimations / AnimatedMesh is relative to
+    the working/output directory: "animations/character-oobi.glb".
+  -->
+  <ItemGroup>
+    <Content Include="Content\kenney_platformer-kit\Models\character-oobi.glb">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>animations\character-oobi.glb</Link>
+    </Content>
+  </ItemGroup>
+</Project>
