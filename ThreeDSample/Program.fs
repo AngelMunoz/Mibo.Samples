@@ -97,8 +97,6 @@ let main _ =
     |> Program.withSubscription subscribe
     |> Program.withTick Tick
     |> Program.withRenderer(fun () ->
-      Renderer2D.createWith ValueNone overlayView)
-    |> Program.withRenderer(fun () ->
       let pipeline =
         ForwardPbrPipeline(
           shadowBiasConfig = {
@@ -116,6 +114,8 @@ let main _ =
         )
 
       Renderer3D.create pipeline View.view)
+    |> Program.withRenderer(fun () ->
+      Renderer2D.createWith Renderer2DConfig.noClear overlayView)
 
   let game = new RaylibGame<GameModel, Msg>(program)
   game.Run()
