@@ -4,6 +4,7 @@ open System
 open Microsoft.Xna.Framework
 open Microsoft.Xna.Framework.Graphics
 open Mibo.Elmish
+open Mibo.Elmish.Graphics2D
 open Mibo.Elmish.Graphics3D
 open Mibo.Elmish.Graphics3D.Pipelines
 open Mibo.Animation
@@ -39,6 +40,9 @@ type Model = {
   PlayerModel: XnaModel
   ColormapTexture: Texture2D
   Cube: PrimitiveMesh
+  // A custom (toon) effect, loaded once. Used via Draw3D.beginEffect/endEffect to prove a
+  // user effect can inherit scene data (camera + lights + bones + shadows) by declaration.
+  ToonEffect: Effect
 }
 
 [<Struct>]
@@ -78,6 +82,20 @@ let view (_ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) : unit =
   |> Draw3D.drawAnimatedModel model.AnimatedPlayer Matrix.Identity
   |> Draw3D.drop
 
+  // Toon-shaded copy of the same animated character, offset to -X and drawn through a
+  // beginEffect/endEffect scope. This exercises use case 2: a custom effect (Toon.fx)
+  // inherits the scene's camera, directional + ambient lights, the bone palette
+  // (VS_Skinned), and the albedo material — all by uniform-name declaration, sampled and
+  // uploaded via SceneUpload. The toon shading (banded N·L + rim) reads clearly next to
+  // the PBR original for comparison.
+  buffer
+  |> Draw3D.beginEffect model.ToonEffect
+  |> Draw3D.drawAnimatedModel
+    model.AnimatedPlayer
+    (Matrix.CreateTranslation(-2.0f, 0.0f, 0.0f))
+  |> Draw3D.endEffect
+  |> Draw3D.drop
+
   // Reference: the same model drawn static, offset to the side, to compare colour.
   buffer
   |> Draw3D.drawModel
@@ -114,11 +132,25 @@ let init(ctx: GameContext) : struct (Model * Cmd<Msg>) =
   let colormapTexture =
     assets.Texture "kenney_platformer-kit/Models/Textures/colormap_0"
 
+  // Load the custom toon effect from the framework's embedded .mgfx resources. If the
+  // resource is missing (e.g. the framework wasn't rebuilt), fall back to the PBR effect
+  // so the toon-scoped draw still renders (as PBR) rather than crashing — the scope itself
+  // is what's under test.
+  let toonEffect =
+    match ShaderLoader.loadEffect gd "Toon" with
+    | ValueSome e -> e
+    | ValueNone ->
+      match ShaderLoader.loadEffect gd "ForwardPbr" with
+      | ValueSome e -> e
+      | ValueNone ->
+        failwith "Neither Toon nor ForwardPbr effect resources are present."
+
   {
     AnimatedPlayer = animatedPlayer
     PlayerModel = playerModel
     ColormapTexture = colormapTexture
     Cube = primitives.Cube
+    ToonEffect = toonEffect
   },
   Cmd.none
 
