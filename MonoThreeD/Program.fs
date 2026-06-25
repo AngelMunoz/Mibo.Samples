@@ -69,7 +69,7 @@ let view (_ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) : unit =
   |> Draw3D.addDirectionalLight {
     Direction = Vector3.Normalize(Vector3(-0.5f, -1.0f, -0.3f))
     Color = Color.GhostWhite
-    Intensity = 2.0f
+    Intensity = 0.5f
     CastsShadows = false
   }
   |> Draw3D.drop
