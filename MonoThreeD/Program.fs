@@ -4,7 +4,6 @@ open System
 open Microsoft.Xna.Framework
 open Microsoft.Xna.Framework.Graphics
 open Mibo.Elmish
-open Mibo.Elmish.Graphics2D
 open Mibo.Elmish.Graphics3D
 open Mibo.Elmish.Graphics3D.Pipelines
 open Mibo.Animation
@@ -65,12 +64,12 @@ let view (_ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) : unit =
   |> Draw3D.beginCameraWith config
   |> Draw3D.setAmbientLight {
     Color = Color.LightCyan
-    Intensity = 0.5f
+    Intensity = 0.7f
   }
   |> Draw3D.addDirectionalLight {
     Direction = Vector3.Normalize(Vector3(-0.5f, -1.0f, -0.3f))
-    Color = Color.WhiteSmoke
-    Intensity = 1.0f
+    Color = Color.GhostWhite
+    Intensity = 2.0f
     CastsShadows = false
   }
   |> Draw3D.drop
@@ -132,18 +131,11 @@ let init(ctx: GameContext) : struct (Model * Cmd<Msg>) =
   let colormapTexture =
     assets.Texture "kenney_platformer-kit/Models/Textures/colormap_0"
 
-  // Load the custom toon effect from the framework's embedded .mgfx resources. If the
-  // resource is missing (e.g. the framework wasn't rebuilt), fall back to the PBR effect
-  // so the toon-scoped draw still renders (as PBR) rather than crashing — the scope itself
-  // is what's under test.
-  let toonEffect =
-    match ShaderLoader.loadEffect gd "Toon" with
-    | ValueSome e -> e
-    | ValueNone ->
-      match ShaderLoader.loadEffect gd "ForwardPbr" with
-      | ValueSome e -> e
-      | ValueNone ->
-        failwith "Neither Toon nor ForwardPbr effect resources are present."
+  // Load the custom toon effect from the sample's own content pipeline (Content/Toon.fx,
+  // compiled to Toon.xnb by MGCB on build). This is a sample-specific shader — it lives in the
+  // sample, not the framework — and is loaded the normal way (assets.Effect), the same path any
+  // user-supplied effect would take.
+  let toonEffect = assets.Effect "Toon"
 
   {
     AnimatedPlayer = animatedPlayer

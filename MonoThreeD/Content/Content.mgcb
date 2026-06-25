@@ -2929,3 +2929,8 @@
 /processorParam:Quality=Best
 /build:sfx_jump.ogg
 
+#begin Toon.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/build:Toon.fx;Toon
+
