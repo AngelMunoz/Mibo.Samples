@@ -4,29 +4,21 @@ open System
 open Microsoft.Xna.Framework
 open Microsoft.Xna.Framework.Graphics
 open Mibo.Elmish
+open Mibo.Elmish.Graphics2D
 open Mibo.Elmish.Graphics3D
 open Mibo.Elmish.Graphics3D.Pipelines
 open Mibo.Animation
+open Mibo.Input
+open Mibo.Layout3D
+open MonoThreeD.Constants
+open MonoThreeD.WorldGen
+open MonoThreeD.Physics
+open MonoThreeD.Systems
+open MonoThreeD.Types
 
-// S0 — scaffold + content pipeline + render + animate a model on screen.
-//
-// Renders the Kenney character model with the ForwardPipeline and plays
-// the "walk" animation clip in a loop, to verify:
-//   - the content pipeline (.glb -> XNB -> Model) round-trips
-//   - the 3D renderer draws skinned geometry
-//   - AssimpNetter loads animation clips from the raw .glb (copied to the
-//     output directory; the content pipeline does not preserve animation data)
-//   - GPU skinning via Draw3D.drawAnimatedModel + AnimatedModel works
-//
-// The camera uses the full window — the backend now recomputes the projection
-// aspect from the active viewport. The static reference model + the PBR cube
-// are drawn alongside the animated character to compare directly.
-
-type XnaModel = Microsoft.Xna.Framework.Graphics.Model
-
-// Path to the raw .glb (copied to output dir via fsproj <Content>). Assimp
-// loads clips + skeleton from this; the XNB Model is loaded separately via the
-// content pipeline for the mesh/texture data.
+// Path to the raw .glb (copied to the output dir via the fsproj <Content> entry).
+// Assimp loads animation clips + skeleton from this; the XNB Model is loaded
+// separately via the content pipeline for the mesh/texture data.
 let private rawModelPath =
   System.IO.Path.Combine(
     AppContext.BaseDirectory,
@@ -34,124 +26,81 @@ let private rawModelPath =
     "character-oobi.glb"
   )
 
-type Model = {
-  AnimatedPlayer: AnimatedModel
-  PlayerModel: XnaModel
-  ColormapTexture: Texture2D
-  Cube: PrimitiveMesh
-  // A custom (toon) effect, loaded once. Used via Draw3D.beginEffect/endEffect to prove a
-  // user effect can inherit scene data (camera + lights + bones + shadows) by declaration.
-  ToonEffect: Effect
-}
+let loadInitialChunks(model: GameModel) =
+  let spawnPos = spawnPosition
 
-[<Struct>]
-type Msg = Tick of GameTime
+  let numericsSpawn =
+    System.Numerics.Vector3(spawnPos.X, spawnPos.Y, spawnPos.Z)
 
-let view (_ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) : unit =
-  let camera: Camera3D = {
-    Position = Vector3(3.0f, 3.0f, 5.0f)
-    Target = Vector3.Zero
-    Up = Vector3.Up
-    FovY = MathHelper.ToRadians(55.0f)
-    NearPlane = 0.1f
-    FarPlane = 1000.0f
-    Projection = CameraProjection.Perspective
-  }
+  let pcx = int(Math.Floor(float spawnPos.X / float chunkWorldWidth))
+  let pcz = int(Math.Floor(float spawnPos.Z / float chunkWorldDepth))
 
-  let config = Camera3D.render camera |> Camera3D.withClear Color.CornflowerBlue
+  for x in pcx - chunkLoadRadius .. pcx + chunkLoadRadius do
+    for z in pcz - chunkLoadRadius .. pcz + chunkLoadRadius do
+      let key = struct (x, z)
 
-  buffer
-  |> Draw3D.beginCameraWith config
-  |> Draw3D.setAmbientLight {
-    Color = Color.LightCyan
-    Intensity = 0.7f
-  }
-  |> Draw3D.addDirectionalLight {
-    Direction = Vector3.Normalize(Vector3(-0.5f, -1.0f, -0.3f))
-    Color = Color.GhostWhite
-    Intensity = 0.5f
-    CastsShadows = false
-  }
-  |> Draw3D.drop
+      if not(model.Chunks.ContainsKey key) then
+        model.Chunks[key] <- generateChunk x z model.Seed
 
-  // The animated character. drawAnimatedModel computes the bone palette from
-  // the AnimatedModel's state internally and routes through the PBR Skinned
-  // technique — no Matrix[] handled here.
-  buffer
-  |> Draw3D.drawAnimatedModel model.AnimatedPlayer Matrix.Identity
-  |> Draw3D.drop
+let init(ctx: GameContext) =
+  let inputMap: InputMap<GameAction> =
+    InputMap.empty
+    |> InputMap.key GameAction.MoveLeft KeyCode.A
+    |> InputMap.key GameAction.MoveLeft KeyCode.Left
+    |> InputMap.key GameAction.MoveRight KeyCode.D
+    |> InputMap.key GameAction.MoveRight KeyCode.Right
+    |> InputMap.key GameAction.MoveForward KeyCode.W
+    |> InputMap.key GameAction.MoveForward KeyCode.Up
+    |> InputMap.key GameAction.MoveBackward KeyCode.S
+    |> InputMap.key GameAction.MoveBackward KeyCode.Down
+    |> InputMap.key GameAction.Jump KeyCode.Space
+    |> InputMap.key GameAction.Respawn KeyCode.R
+    |> InputMap.key GameAction.RotateCameraLeft KeyCode.Q
+    |> InputMap.key GameAction.RotateCameraRight KeyCode.E
+    |> InputMap.key GameAction.RotateCameraUp KeyCode.PageUp
+    |> InputMap.key GameAction.RotateCameraDown KeyCode.PageDown
 
-  // Toon-shaded copy of the same animated character, offset to -X and drawn through a
-  // beginEffect/endEffect scope. This exercises use case 2: a custom effect (Toon.fx)
-  // inherits the scene's camera, directional + ambient lights, the bone palette
-  // (VS_Skinned), and the albedo material — all by uniform-name declaration, sampled and
-  // uploaded via SceneUpload. The toon shading (banded N·L + rim) reads clearly next to
-  // the PBR original for comparison.
-  buffer
-  |> Draw3D.beginEffect model.ToonEffect
-  |> Draw3D.drawAnimatedModel
-    model.AnimatedPlayer
-    (Matrix.CreateTranslation(-2.0f, 0.0f, 0.0f))
-  |> Draw3D.endEffect
-  |> Draw3D.drop
+  let model = GameModel()
+  model.InputMap <- inputMap
+  model.Seed <- Random.Shared.Next()
+  loadInitialChunks model
 
-  // Reference: the same model drawn static, offset to the side, to compare colour.
-  buffer
-  |> Draw3D.drawModel
-    model.PlayerModel
-    (Matrix.CreateTranslation(2.0f, 0.0f, 0.0f))
-  |> Draw3D.drop
+  // Particle texture: a 1×1 white Texture2D (MonoGame has no raylib GenImageColor).
+  let gd = MonoGameGameContext.getGraphicsDevice ctx
+  let particleTex = new Texture2D(gd, 1, 1, false, SurfaceFormat.Color)
+  particleTex.SetData([| Color.White |])
+  model.Particles.Texture <- particleTex
 
-  // Reference: a PBR cube with the colormap texture, to verify the texture
-  // itself renders colour (isolates texture/UV from the model).
-  let cubeMat =
-    Material3D.defaults |> Material3D.withAlbedoMap model.ColormapTexture
-
-  buffer
-  |> Draw3D.drawPrimitive
-    model.Cube
-    (Matrix.CreateTranslation(-2.0f, 0.0f, 0.0f))
-    cubeMat
-  |> Draw3D.drop
-
-  buffer |> Draw3D.endCamera |> Draw3D.drop
-
-let init(ctx: GameContext) : struct (Model * Cmd<Msg>) =
   let assets = GameContext.getService<IAssets> ctx
-  let playerModel = assets.Model "kenney_platformer-kit/Models/character-oobi"
+  model.JumpSound <- assets.Sound "sfx_jump"
+
+  // Diagnostics font (MonoGame has no default font; loaded from content pipeline).
+  model.Diagnostics.Font <- assets.Font "diagnostics"
+
+  let playerModel = assets.Model(KenneyModels.characterOobi)
+
+  // Skeleton + clips come from the raw .glb via Assimp (the content pipeline
+  // drops animation data in XNB). AnimatedModel bundles Model+Mesh+State.
   let animatedMesh = assets.AnimatedMesh rawModelPath
   let clips = assets.ModelAnimations rawModelPath
 
-  let animatedPlayer =
-    AnimatedModel.create playerModel animatedMesh clips "walk" 60.0f
+  model.PlayerAnim <-
+    AnimatedModel.create playerModel animatedMesh clips "idle" 60.0f
 
-  let gd = MonoGameGameContext.getGraphicsDevice ctx
-  let primitives = Primitive3D.create gd
+  let target = spawnPosition + Vector3(0.0f, playerHeight * 0.5f, 0.0f)
+  model.CameraTarget <- target
 
-  let colormapTexture =
-    assets.Texture "kenney_platformer-kit/Models/Textures/colormap_0"
+  model.CameraPosition <-
+    computeCameraPosition target model.CameraYaw model.CameraPitch
 
-  // Load the custom toon effect from the sample's own content pipeline (Content/Toon.fx,
-  // compiled to Toon.xnb by MGCB on build). This is a sample-specific shader — it lives in the
-  // sample, not the framework — and is loaded the normal way (assets.Effect), the same path any
-  // user-supplied effect would take.
-  let toonEffect = assets.Effect "Toon"
+  struct (model, Cmd.none)
 
-  {
-    AnimatedPlayer = animatedPlayer
-    PlayerModel = playerModel
-    ColormapTexture = colormapTexture
-    Cube = primitives.Cube
-    ToonEffect = toonEffect
-  },
-  Cmd.none
+let subscribe (ctx: GameContext) (model: GameModel) =
+  InputMapper.subscribeStatic model.InputMap InputMapped ctx
 
-let update (msg: Msg) (model: Model) : struct (Model * Cmd<Msg>) =
-  match msg with
-  | Tick gt ->
-    let dt = float32 gt.ElapsedGameTime.TotalSeconds
-    let next = model.AnimatedPlayer |> AnimatedModel.update dt
-    struct ({ model with AnimatedPlayer = next }, Cmd.none)
+let overlayView (ctx: GameContext) (model: GameModel) (buffer: RenderBuffer2D) =
+  Minimap.view ctx model buffer
+  Diagnostics.view ctx model buffer
 
 [<EntryPoint>]
 let main _ =
@@ -161,15 +110,28 @@ let main _ =
       cfg with
           Width = 1280
           Height = 720
-          Title = "Mibo MonoGame 3D (MonoThreeD)"
+          Title = "Mibo MonoGame 3D Platformer (MonoThreeD)"
           TargetFPS = 120
     })
     |> Program.withInput
+    |> Program.withSubscription subscribe
     |> Program.withTick Tick
     |> Program.withRenderer(fun () ->
-      Renderer3D.create (ForwardPipeline()) view)
+      let pipeline =
+        ForwardPipeline(
+          shadowBias = ShadowBiasConfig.defaults,
+          shadowAtlas = {
+            ShadowAtlasConfig.defaults with
+                Resolution = 1024 * 4
+                GridSnapSize = 16.0f
+          }
+        )
 
-  let game = new MiboGame<Model, Msg>(program)
+      Renderer3D.create pipeline View.view)
+    |> Program.withRenderer(fun () ->
+      Renderer2D.createWith Renderer2DConfig.noClear overlayView)
+
+  let game = new MiboGame<GameModel, Msg>(program)
   game.Content.RootDirectory <- "Content"
   game.Run()
   0

@@ -2925,7 +2925,7 @@
 
 #begin sfx_jump.ogg
 /importer:OggImporter
-/processor:SongProcessor
+/processor:SoundEffectProcessor
 /processorParam:Quality=Best
 /build:sfx_jump.ogg
 
@@ -2934,3 +2934,9 @@
 /processor:EffectProcessor
 /build:Toon.fx;Toon
 
+#begin diagnostics.spritefont
+/importer:FontDescriptionImporter
+/processor:FontDescriptionProcessor
+/processorParam:PremultiplyAlpha=True
+/processorParam:TextureFormat=Compressed
+/build:diagnostics.spritefont;diagnostics
