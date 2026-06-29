@@ -54,8 +54,14 @@ let private resolveMeshesAndMaterial(blockType: BlockType) =
           for mi = 0 to m.MeshCount - 1 do
             let mesh = NativePtr.get m.Meshes mi
             let matIdx = NativePtr.get m.MeshMaterial mi
-            let raylibMat = NativePtr.get m.Materials matIdx
-            struct (mesh, Material3D.fromRaylibMaterial raylibMat)
+            let raylibMat: Material = NativePtr.get m.Materials matIdx
+
+            let material3d: Material3D = {
+              Material3D.fromRaylibMaterial raylibMat with
+                  Roughness = 0.65f
+            }
+
+            struct (mesh, material3d)
         |]
       else
         Array.empty
@@ -122,7 +128,7 @@ let view (ctx: GameContext) (model: GameModel) (buffer: RenderBuffer3D) =
     Draw3D.addPointLight light buffer |> Draw3D.drop
 
   let camPos = model.CameraPosition
-  let maxChunkDistSq = 2500.0f
+  let maxChunkDistSq = 3000.0f
 
   for KeyValue(struct (cx, cz), chunk) in model.Chunks do
     let chunkCenter =

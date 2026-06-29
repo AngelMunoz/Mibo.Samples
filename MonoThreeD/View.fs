@@ -56,7 +56,12 @@ let private resolveMeshesAndMaterial(blockType: BlockType) =
         [|
           for mesh in m.Meshes do
             for part in mesh.MeshParts do
-              let mat = Material3D.fromModelMeshPart part
+              let mat = {
+                Material3D.fromModelMeshPart part with
+                    Roughness = 0.65f
+                    Metallic = 0.2f
+              }
+
               struct (wrapPartAsPrimitive part, mat)
         |]
       else
