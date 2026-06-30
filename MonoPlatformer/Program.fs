@@ -142,6 +142,7 @@ let main _ =
     |> Program.withSubscription subscribe
     |> Program.withTick Tick
     |> Program.withRenderer(fun () -> Renderer2D.create View.view)
+    |> MonoGameProgram.ofProgram
 
   let game = new MiboGame<Model, Msg>(program)
   game.Content.RootDirectory <- "Content"

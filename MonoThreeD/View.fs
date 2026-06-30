@@ -4,6 +4,7 @@ open System
 open System.Collections.Generic
 open Microsoft.Xna.Framework
 open Microsoft.Xna.Framework.Graphics
+open Mibo
 open Mibo.Elmish
 open Mibo.Elmish.Graphics3D
 open Mibo.Elmish.Graphics3D.Pipelines
@@ -120,12 +121,12 @@ let view (ctx: GameContext) (model: GameModel) (buffer: RenderBuffer3D) =
     Camera3D.render camera |> Camera3D.withClear l.SkyColor
   )
   |> Draw3D.setAmbientLight {
-    Color = l.AmbientColor
+    Color = l.AmbientColor.ToMiboColor()
     Intensity = l.AmbientIntensity
   }
   |> Draw3D.addDirectionalLight {
-    Direction = l.LightDirection
-    Color = l.LightColor
+    Direction = l.LightDirection.ToNumerics()
+    Color = l.LightColor.ToMiboColor()
     Intensity = l.LightIntensity
     CastsShadows = true
   }

@@ -169,6 +169,7 @@ let main _args =
     })
     |> Program.withRenderer(fun () ->
       Renderer2D.create(fun c m b -> view c m.LocalState b))
+    |> MonoGameProgram.ofProgram
 
   transport.Connect("ws://localhost:5000")
 

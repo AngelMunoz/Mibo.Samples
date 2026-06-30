@@ -3,6 +3,7 @@ module MonoThreeD.Systems
 open System
 open System.Collections.Concurrent
 open Microsoft.Xna.Framework
+open Mibo
 open Mibo.Elmish
 open Mibo.Elmish.Graphics3D
 open Mibo.Animation
@@ -263,7 +264,9 @@ let inline minimapSystem
         (fun pixels -> MinimapReady pixels)
         (fun _ex ->
           // Fallback: a single-pixel black buffer keeps the texture path intact.
-          MinimapReady(Array.create 1 Color.Black))
+          MinimapReady(
+            Array.create 1 (Color.Black |> MonoGameColor.toMonoGameColor)
+          ))
 
     struct (model, cmd)
   else
@@ -352,17 +355,15 @@ let private collectMushroomLights
             && lights.Count < 8
             && (worldPos - camPos).LengthSquared() <= 1600.0f
           then
-            lights.Add(
-              {
-                Position = worldPos + Vector3(0.0f, 0.5f, 0.0f)
-                Color = Color(255, 200, 120)
-                Intensity = 1.2f
-                Radius = 8.0f
-                Falloff = 1.2f
-                CastsShadows = false
-                ShadowBias = ValueNone
-              }
-            ))
+            lights.Add {
+              Position = (worldPos + Vector3(0.0f, 0.5f, 0.0f)).ToNumerics()
+              Color = Color(255, 200, 120).ToMiboColor()
+              Intensity = 1.2f
+              Radius = 8.0f
+              Falloff = 1.2f
+              CastsShadows = false
+              ShadowBias = ValueNone
+            })
 
   lights.ToArray()
 

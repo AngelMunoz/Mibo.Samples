@@ -130,6 +130,7 @@ let main _ =
       Renderer3D.create pipeline View.view)
     |> Program.withRenderer(fun () ->
       Renderer2D.createWith Renderer2DConfig.noClear overlayView)
+    |> MonoGameProgram.ofProgram
 
   let game = new MiboGame<GameModel, Msg>(program)
   game.Content.RootDirectory <- "Content"
