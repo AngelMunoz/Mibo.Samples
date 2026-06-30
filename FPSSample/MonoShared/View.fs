@@ -178,6 +178,18 @@ let view
   |> Draw3D.addDirectionalLight ViewMath.directionalLight
   |> Draw3D.drop
 
+  // ── Static torches (flickering point lights around the arena) ───────────────
+  let torches = ViewMath.torchPositions
+
+  for i = 0 to torches.Length - 1 do
+    let pos = torches[i]
+    let phase = float32 i * 1.7f
+    let flicker = MathF.Sin(model.TotalTime * 7.0f + phase) * 0.25f
+
+    buffer
+    |> Draw3D.addPointLight(ViewMath.torchLight pos flicker)
+    |> Draw3D.drop
+
   // ── Level geometry (instanced) ────────────────────────────────────────────
   currentGameContext <- ctx
   instancedCtx.ResetFrameBuffers()

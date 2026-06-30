@@ -166,3 +166,6 @@ module Types =
 
     // Time
     member val TotalTime = 0.0f with get, set
+
+    // Hit feedback: when > 0 the player has recently taken damage.
+    member val HitEffectTimer = 0.0f with get, set

@@ -47,6 +47,10 @@ module Systems =
 
     Combat.updateReload dt model
 
+    // Tick down the hit-effect desaturation timer.
+    if model.HitEffectTimer > 0.0f then
+      model.HitEffectTimer <- Math.Max(0.0f, model.HitEffectTimer - dt)
+
   // ── Pickups System ─────────────────────────────────────────────────────────
 
   /// Handles player proximity to active pickups and respawn timers for consumed ones.
@@ -101,8 +105,40 @@ module Systems =
 
     if damage > 0.0f then
       model.PlayerHealth <- Math.Max(0.0f, model.PlayerHealth - damage)
+      // Trigger the hit-feedback flash.
+      model.HitEffectTimer <- Constants.HitEffectDuration
 
   // ── Main Update ────────────────────────────────────────────────────────────
+
+  /// Resets an existing GameModel back to its initial state (used by the
+  /// "Press R to restart" game-over flow). Mutates the model in place.
+  let restartModel(model: GameModel) : unit =
+    let level = Level.LevelData.createDefault()
+    model.Level <- level
+    model.Colliders <- Level.LevelData.extractColliders level
+    model.PlayerPosition <- level.PlayerSpawn
+    model.PlayerVelocity <- Vector3.Zero
+    model.PlayerYaw <- 0.0f
+    model.PlayerPitch <- 0.0f
+    model.PlayerHealth <- Constants.PlayerMaxHealth
+    model.IsGrounded <- true
+    model.Score <- 0
+    model.Ammo <- Constants.MaxAmmo
+    model.FireCooldown <- 0.0f
+    model.IsReloading <- false
+    model.ReloadTimer <- 0.0f
+    model.MuzzleFlash <- MuzzleFlash.empty
+
+    for i = 0 to model.Tracers.Length - 1 do
+      model.Tracers[i] <- Tracer.empty
+
+    model.Enemies <-
+      level.EnemySpawns |> Array.map(fun s -> Enemy.create s.Position)
+
+    model.Pickups <-
+      level.PickupSpawns |> Array.map(fun s -> Pickup.create s.Kind s.Position)
+
+    model.HitEffectTimer <- 0.0f
 
   /// Handles all Msg cases. Tick composes the full system pipeline.
   /// The animation service from the env is called after the enemy system
@@ -135,7 +171,11 @@ module Systems =
       struct (model, Cmd.none)
 
     | Msg.Reload ->
-      Combat.startReload model
+      if HudLayout.isGameOver model then
+        restartModel model
+      else
+        Combat.startReload model
+
       struct (model, Cmd.none)
 
     | Msg.Tick gt ->
@@ -147,5 +187,13 @@ module Systems =
       weaponSystem dt model
       enemySystem dt model
       pickupSystem dt model
+
+      // R key: restart on game over, otherwise reload the weapon.
+      if model.Actions.Started.Contains(GameAction.Reload) then
+        if HudLayout.isGameOver model then
+          restartModel model
+        else
+          Combat.startReload model
+
       env.Animation.Update(dt, model.Enemies)
       struct (model, Cmd.none)

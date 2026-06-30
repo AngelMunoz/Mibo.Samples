@@ -9,6 +9,15 @@ open FPSSample
 open FPSSample.Types
 open FPSSample.Systems
 
+/// No-op animation service for tests (avoids raylib/asset dependencies).
+type private NoopAnimationService() =
+  interface IEnemyAnimationService with
+    member _.Init(_, _) = ()
+    member _.Update(_, _) = ()
+
+/// A test env with a no-op animation service.
+let private testEnv: Env = { Animation = NoopAnimationService() }
+
 /// Creates a GameModel with an empty level (no colliders) for testing.
 let private createTestModel() : GameModel =
   let model = GameModel()
@@ -31,7 +40,10 @@ let tests =
       <| fun _ ->
         let model = createTestModel()
         let actions: ActionState<GameAction> = ActionState.empty
-        let struct (m, _) = Systems.update (Msg.InputMapped actions) model
+
+        let struct (m, _) =
+          Systems.update testEnv (Msg.InputMapped actions) model
+
         Expect.equal m.Actions actions "Actions stored"
     ]
 
@@ -42,7 +54,8 @@ let tests =
         let initialYaw = model.PlayerYaw
         let initialPitch = model.PlayerPitch
 
-        let struct (m, _) = Systems.update (Msg.MouseLook(100.0f, 50.0f)) model
+        let struct (m, _) =
+          Systems.update testEnv (Msg.MouseLook(100.0f, 50.0f)) model
 
         Expect.isLessThan m.PlayerYaw initialYaw "Yaw decreased"
 
@@ -58,7 +71,7 @@ let tests =
 
         for _ in 0..1000 do
           let struct (model, _) =
-            Systems.update (Msg.MouseLook(0.0f, 1000.0f)) m
+            Systems.update testEnv (Msg.MouseLook(0.0f, 1000.0f)) m
 
           m <- model
 
@@ -72,7 +85,9 @@ let tests =
       testCase "Tick increments total time"
       <| fun _ ->
         let model = createTestModel()
-        let struct (m, _) = Systems.update (Msg.Tick(gameTime 0.5f)) model
+
+        let struct (m, _) =
+          Systems.update testEnv (Msg.Tick(gameTime 0.5f)) model
 
         Expect.floatClose
           Accuracy.veryHigh
@@ -84,7 +99,9 @@ let tests =
       <| fun _ ->
         let model = createTestModel()
         model.FireCooldown <- 0.3f
-        let struct (m, _) = Systems.update (Msg.Tick(gameTime 0.1f)) model
+
+        let struct (m, _) =
+          Systems.update testEnv (Msg.Tick(gameTime 0.1f)) model
 
         Expect.floatClose
           Accuracy.low
@@ -96,7 +113,10 @@ let tests =
       <| fun _ ->
         let model = createTestModel()
         model.MuzzleFlash <- { Timer = 0.05f; Active = true }
-        let struct (m, _) = Systems.update (Msg.Tick(gameTime 0.1f)) model
+
+        let struct (m, _) =
+          Systems.update testEnv (Msg.Tick(gameTime 0.1f)) model
+
         Expect.isFalse m.MuzzleFlash.Active "Muzzle flash expired"
     ]
 
@@ -105,7 +125,7 @@ let tests =
       <| fun _ ->
         let model = createTestModel()
         model.Ammo <- 10
-        let struct (m, _) = Systems.update Msg.Shoot model
+        let struct (m, _) = Systems.update testEnv Msg.Shoot model
         Expect.equal m.Ammo 9 "Ammo consumed"
         Expect.isTrue m.MuzzleFlash.Active "Muzzle flash active"
     ]
@@ -115,7 +135,7 @@ let tests =
       <| fun _ ->
         let model = createTestModel()
         model.Ammo <- 5
-        let struct (m, _) = Systems.update Msg.Reload model
+        let struct (m, _) = Systems.update testEnv Msg.Reload model
         Expect.isTrue m.IsReloading "Is reloading"
 
       testCase "Reload completes after time"
@@ -125,7 +145,8 @@ let tests =
         model.IsReloading <- true
         model.ReloadTimer <- 0.1f
 
-        let struct (m, _) = Systems.update (Msg.Tick(gameTime 0.2f)) model
+        let struct (m, _) =
+          Systems.update testEnv (Msg.Tick(gameTime 0.2f)) model
 
         Expect.isFalse m.IsReloading "Reload finished"
         Expect.equal m.Ammo Constants.MaxAmmo "Ammo refilled"
@@ -147,7 +168,8 @@ let tests =
           }
         |]
 
-        let struct (m, _) = Systems.update (Msg.Tick(gameTime 0.1f)) model
+        let struct (m, _) =
+          Systems.update testEnv (Msg.Tick(gameTime 0.1f)) model
 
         Expect.isGreaterThan m.PlayerHealth 50.0f "Player healed"
         Expect.isFalse m.Pickups[0].IsActive "Pickup consumed"
@@ -165,7 +187,8 @@ let tests =
 
         model.Pickups <- [| pickup |]
 
-        let struct (m, _) = Systems.update (Msg.Tick(gameTime 0.2f)) model
+        let struct (m, _) =
+          Systems.update testEnv (Msg.Tick(gameTime 0.2f)) model
 
         Expect.isTrue m.Pickups[0].IsActive "Pickup respawned"
     ]

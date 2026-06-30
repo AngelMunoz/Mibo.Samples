@@ -56,23 +56,24 @@ module ViewMath =
     playerPos + forward * 0.5f
 
   // ── Scene lighting constants (identical across backends) ─────────────────────
+  // Night-time atmosphere: dim moonlit ambient, cool moonlight directional.
 
-  /// Ambient light for the FPS scene.
+  /// Ambient light for the FPS scene (dim moonlit blue).
   let ambientLight: AmbientLight3D = {
-    Color = Mibo.Color.rgb 60uy 60uy 80uy
-    Intensity = 0.4f
+    Color = Mibo.Color.rgb 20uy 25uy 45uy
+    Intensity = 0.12f
   }
 
-  /// Directional light for the FPS scene.
+  /// Directional light posing as the moon (cool, low intensity).
   let directionalLight: DirectionalLight3D = {
-    Direction = Vector3.Normalize(Vector3(0.3f, -1.0f, 0.2f))
-    Color = Mibo.Color.rgb 255uy 245uy 220uy
-    Intensity = 0.8f
+    Direction = Vector3.Normalize(Vector3(-0.4f, -1.0f, 0.3f))
+    Color = Mibo.Color.rgb 150uy 170uy 230uy
+    Intensity = 0.35f
     CastsShadows = true
   }
 
-  /// Sky clear color.
-  let clearColor: Mibo.Color = Mibo.Color.rgb 135uy 180uy 220uy
+  /// Sky clear color (dark night sky).
+  let clearColor: Mibo.Color = Mibo.Color.rgb 8uy 10uy 22uy
 
   /// Creates a muzzle flash point light at the given position.
   let muzzleFlashLight(pos: Vector3) : PointLight3D = {
@@ -81,6 +82,32 @@ module ViewMath =
     Intensity = 3.0f
     Radius = 5.0f
     Falloff = 2.0f
+    CastsShadows = false
+    ShadowBias = ValueNone
+  }
+
+  // ── Torch (point light) positions ───────────────────────────────────────────
+  // Static torches scattered around the arena for atmosphere. Placed near
+  // cover, crates, and corners so the player has lit areas to navigate by.
+
+  /// Static torch positions in world space (placed around the arena).
+  let torchPositions: Vector3[] = [|
+    Vector3(-8.0f, 1.5f, -8.0f) // near health pickup (NW)
+    Vector3(8.0f, 1.5f, -4.0f) // near health pickup (NE)
+    Vector3(0.0f, 1.5f, 0.0f) // central pillar area
+    Vector3(-12.0f, 1.5f, 5.0f) // near enemy spawn (SW)
+    Vector3(10.0f, 1.5f, 8.0f) // SE corner
+  |]
+
+  /// Creates a warm torch point light at the given position, with a flicker
+  /// offset applied to intensity (caller passes a per-torch phase so each
+  /// torch flickers independently).
+  let torchLight (pos: Vector3) (flicker: float32) : PointLight3D = {
+    Position = pos
+    Color = Mibo.Color.rgb 255uy 160uy 60uy
+    Intensity = 2.0f + flicker
+    Radius = 7.0f
+    Falloff = 1.8f
     CastsShadows = false
     ShadowBias = ValueNone
   }

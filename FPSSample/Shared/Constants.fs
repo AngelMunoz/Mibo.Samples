@@ -70,6 +70,13 @@ module Constants =
   [<Literal>]
   let MuzzleFlashDuration = 0.05f
 
+  // ── Hit feedback ───────────────────────────────────────────────────────────
+
+  /// How long (seconds) the hit-feedback effect lasts after the player takes
+  /// damage.
+  [<Literal>]
+  let HitEffectDuration = 0.4f
+
   // ── Enemy ──────────────────────────────────────────────────────────────────
 
   [<Literal>]

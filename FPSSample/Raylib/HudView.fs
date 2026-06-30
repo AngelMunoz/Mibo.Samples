@@ -79,6 +79,15 @@ let view (ctx: GameContext) (model: GameModel) (buffer: RenderBuffer2D) =
   }
   |> ignore
 
+  // ── Hit feedback gray flash ───────────────────────────────────────────────
+  if HudLayout.isHitFlash model then
+    buffer
+    |> Draw.fillRect
+      (0<RenderLayer>,
+       Mibo.RaylibColor.toRaylibColor(HudLayout.hitFlashColor model))
+      (Rectangle(0.0f, 0.0f, screenW, screenH))
+    |> ignore
+
   // ── Game over overlay ─────────────────────────────────────────────────────
   if HudLayout.isGameOver model then
     buffer

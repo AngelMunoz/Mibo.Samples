@@ -60,6 +60,57 @@ module HudLayout =
   /// Game over overlay color.
   let gameOverOverlayColor: Mibo.Color = Mibo.Color.create 200uy 0uy 0uy 80uy
 
+  // ── Hit feedback overlay ──────────────────────────────────────────────────
+  // On hit the screen snaps to near-opaque black, then fades down to a dark-gray
+  // tint and holds there until the HitEffectTimer expires, at which point the
+  // overlay is removed entirely. While active the opacity never drops below the
+  // floor, so the player always sees at least the dark-gray tint.
+
+  /// Peak opacity (0-1) right after taking damage ("sees almost nothing").
+  let hitFlashPeakAlpha = 0.80f
+
+  /// Floor opacity (0-1) the fade settles on and holds at until removal.
+  let hitFlashFloorAlpha = 0.30f
+
+  /// Dark-gray tint the fade settles on (RGB).
+  let hitFlashDarkGray: struct (byte * byte * byte) = struct (40uy, 40uy, 45uy)
+
+  /// Remaining-timer fraction (0-1) at which the fade finishes and the overlay
+  /// starts holding at the floor until the timer removes it. 0.5 = fade over the
+  /// first half of the duration, hold over the second half.
+  let hitFlashHoldAtPct = 0.5f
+
+  /// Hit-feedback overlay color. Drives the snap → fade → hold → remove sequence
+  /// from the remaining HitEffectTimer.
+  let inline hitFlashColor(model: GameModel) : Mibo.Color =
+    let pct =
+      Math.Clamp(model.HitEffectTimer / Constants.HitEffectDuration, 0.0f, 1.0f)
+
+    // fadeProgress: 1 at the peak, 0 once the floor is reached (then held).
+    let fadeProgress =
+      Math.Clamp(
+        (pct - hitFlashHoldAtPct) / (1.0f - hitFlashHoldAtPct),
+        0.0f,
+        1.0f
+      )
+
+    let alphaPct =
+      hitFlashFloorAlpha
+      + (hitFlashPeakAlpha - hitFlashFloorAlpha) * fadeProgress
+
+    let alpha = alphaPct * 255.0f
+    let inv = 1.0f - fadeProgress
+    let struct (gr, gg, gb) = hitFlashDarkGray
+
+    Mibo.Color.create
+      (byte(float32 gr * inv))
+      (byte(float32 gg * inv))
+      (byte(float32 gb * inv))
+      (byte alpha)
+
+  /// Whether the hit-feedback overlay should render.
+  let inline isHitFlash(model: GameModel) : bool = model.HitEffectTimer > 0.0f
+
   /// Tracer line color (constant RGBA).
   let tracerLineColor: Mibo.Color = Mibo.Color.rgb 255uy 230uy 100uy
 

@@ -83,6 +83,15 @@ let view
   }
   |> ignore
 
+  // ── Hit feedback gray flash ───────────────────────────────────────────────
+  if HudLayout.isHitFlash model then
+    buffer
+    |> Draw.fillRect
+      (0<RenderLayer>,
+       Mibo.MonoGameColor.toMonoGameColor(HudLayout.hitFlashColor model))
+      (Rectangle(0, 0, int screenW, int screenH))
+    |> ignore
+
   // ── Game over overlay ─────────────────────────────────────────────────────
   if HudLayout.isGameOver model then
     buffer
