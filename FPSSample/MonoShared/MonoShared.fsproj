@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="View.fs" />
+    <Compile Include="HudView.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Shared\Shared.fsproj" />
+    <ProjectReference Include="..\..\Mibo\src\Mibo.MonoGame\Mibo.MonoGame.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MonoGame.Framework.Native" Version="3.8.4.1" PrivateAssets="all"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <MonoGameContentReference Include="Content/Content.mgcb" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Content\kenney_platformer-kit\Models\character-oobi.glb">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>animations\character-oobi.glb</Link>
+    </Content>
+    <Content Include="Content\kenney_platformer-kit\Models\character-oodi.glb">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>animations\character-oodi.glb</Link>
+    </Content>
+    <Content Include="Content\kenney_platformer-kit\Models\character-ooli.glb">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>animations\character-ooli.glb</Link>
+    </Content>
+    <Content Include="Content\kenney_platformer-kit\Models\character-oopi.glb">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>animations\character-oopi.glb</Link>
+    </Content>
+    <Content Include="Content\kenney_platformer-kit\Models\character-oozi.glb">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>animations\character-oozi.glb</Link>
+    </Content>
+  </ItemGroup>
+
+</Project>

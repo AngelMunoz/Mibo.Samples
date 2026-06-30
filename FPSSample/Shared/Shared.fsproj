@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Constants.fs" />
+    <Compile Include="Assets.fs" />
+    <Compile Include="Level.fs" />
+    <Compile Include="Types.fs" />
+    <Compile Include="IEnemyAnimationService.fs" />
+    <Compile Include="ViewMath.fs" />
+    <Compile Include="HudLayout.fs" />
+    <Compile Include="Physics.fs" />
+    <Compile Include="Combat.fs" />
+    <Compile Include="EnemyAi.fs" />
+    <Compile Include="Systems.fs" />
+    <Compile Include="Game.fs" />
+    <Compile Include="GameLoop.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Mibo\src\Mibo.Core\Mibo.Core.fsproj" />
+  </ItemGroup>
+
+</Project>

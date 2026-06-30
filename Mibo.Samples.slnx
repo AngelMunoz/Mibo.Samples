@@ -3,12 +3,21 @@
   <Folder Name="/Mibo/src/">
     <Project Path="Mibo/src/Mibo.Core/Mibo.Core.fsproj" />
     <Project Path="Mibo/src/Mibo.Raylib/Mibo.Raylib.fsproj" />
+    <Project Path="Mibo/src/Mibo.MonoGame/Mibo.MonoGame.fsproj" />
   </Folder>
   <Folder Name="/PingPong/">
     <Project Path="PingPong/Client/Client.fsproj" />
     <Project Path="PingPong/Server/Server.fsproj" />
     <Project Path="PingPong/Shared/Shared.fsproj" />
     <Project Path="PingPong/MonoClient/MonoClient.fsproj" />
+  </Folder>
+  <Folder Name="/FPSSample/">
+    <Project Path="FPSSample/Shared/Shared.fsproj" />
+    <Project Path="FPSSample/Shared.Tests/Shared.Tests.fsproj" />
+    <Project Path="FPSSample/Raylib/Raylib.fsproj" />
+    <Project Path="FPSSample/MonoShared/MonoShared.fsproj" />
+    <Project Path="FPSSample/MonoDesktop/MonoDesktop.fsproj" />
+    <Project Path="FPSSample/MonoWindowsDX/MonoWindowsDX.fsproj" />
   </Folder>
   <Project Path="MonoPlatformer/MonoPlatformer.fsproj" />
   <Project Path="PlatformerSample/PlatformerSample.fsproj" />
