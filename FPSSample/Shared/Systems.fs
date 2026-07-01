@@ -308,7 +308,7 @@ module Systems =
         model, Cmd.none
       else
         let events = Combat.startReload model.Weapon
-        let cmd = events |> Seq.map translateWeaponEvent |> Cmd.batch
+        let cmd = Cmd.batch [| for e in events -> translateWeaponEvent e |]
         model, cmd
 
     | Msg.Tick gt ->
