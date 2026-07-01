@@ -111,8 +111,5 @@ module HudLayout =
   /// Whether the hit-feedback overlay should render.
   let inline isHitFlash(model: GameModel) : bool = model.HitEffectTimer > 0.0f
 
-  /// Tracer line color (constant RGBA).
-  let tracerLineColor: Mibo.Color = Mibo.Color.rgb 255uy 230uy 100uy
-
   /// Whether the game over overlay should show.
   let inline isGameOver(model: GameModel) : bool = model.PlayerHealth <= 0.0f

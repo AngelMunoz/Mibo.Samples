@@ -207,9 +207,7 @@ void main() {
 
     let scale = 500.0f
 
-    let transform =
-      Matrix4x4.CreateScale(scale)
-      |> fun s -> Matrix4x4.Multiply(s, Matrix4x4.CreateTranslation(cameraPos))
+    let transform = Matrix4x4.CreateScale(scale)
 
     buffer
     |> Draw3D.drawImmediate(fun scene ->
@@ -217,7 +215,7 @@ void main() {
       Rlgl.DisableBackfaceCulling()
       Rlgl.DisableDepthTest()
 
-      let vp = Matrix4x4.Multiply(scene.View, scene.Projection)
+      let vp = Raymath.MatrixMultiply(scene.View, scene.Projection)
 
       Raylib.SetShaderValueMatrix(
         sky.Shader,
