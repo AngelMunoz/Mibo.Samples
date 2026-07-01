@@ -21,13 +21,18 @@ module Program =
 
   // ── Composition Root ────────────────────────────────────────────────────────
   let animService = EnemyAnimationService()
+  let audioService = AudioService()
 
-  let env: Env = { Animation = animService }
+  let env: Env = {
+    Animation = animService
+    Audio = audioService
+  }
 
   let private init =
     GameLoop.createInit env (fun ctx ->
       // Capture the mouse for FPS-style look (re-center after poll)
-      Input.getService(ctx).SetMouseCapture(MouseCapture.Captured))
+      Input.getService(ctx).SetMouseCapture(MouseCapture.Captured)
+      env.Audio.Init ctx)
 
   let private update = GameLoop.createUpdate env
 

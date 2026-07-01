@@ -14,13 +14,18 @@ open Mibo.Input
 // ── Composition Root ──────────────────────────────────────────────────────────
 // Create the env with backend-specific services, then wire init/update/subscribe.
 let animService = View.EnemyAnimationService()
+let audioService = AudioService()
 
-let env: Env = { Animation = animService }
+let env: Env = {
+  Animation = animService
+  Audio = audioService
+}
 
 let init =
   GameLoop.createInit env (fun ctx ->
     // Capture the mouse for FPS-style look (native raylib DisableCursor)
-    Input.getService(ctx).SetMouseCapture(MouseCapture.Captured))
+    Input.getService(ctx).SetMouseCapture(MouseCapture.Captured)
+    (audioService :> IAudioService).Init(ctx))
 
 let update = GameLoop.createUpdate env
 

@@ -26,34 +26,46 @@ module ViewMath =
   let inline pickupBob(totalTime: float32) : float32 =
     MathF.Sin(totalTime * 3.0f) * 0.2f
 
-  /// Tracer travel progress [0..1] based on remaining timer.
-  let inline tracerProgress(tracer: Tracer) : float32 =
-    1.0f - tracer.Timer / Tracer.duration
-
-  /// Tracer alpha for the faint line overlay.
-  let inline tracerAlpha(tracer: Tracer) : float32 =
-    MathF.Max(0.0f, tracer.Timer / Tracer.duration) * 0.5f
-
   /// Enemy transform components: facing rotation angle and position.
   /// The backend builds its own matrix from these (Raymath vs Matrix.Create).
   let inline enemyTransform(enemy: Enemy) : struct (float32 * Vector3) =
     struct (enemy.Facing, enemy.Position)
 
-  /// Weapon viewmodel position relative to player.
+  /// Weapon viewmodel position relative to player. Adds pitch and recoil offsets
+  /// so the nozzle tracks the crosshair and kicks back after each shot.
   let inline weaponPosition
     (playerPos: Vector3)
     (forward: Vector3)
+    (pitch: float32)
     (yaw: float32)
+    (recoil: float32)
     : Vector3 =
     let right = cameraRight yaw
-    playerPos + forward * 0.8f + right * 0.4f + Vector3(0.0f, -0.3f, 0.0f)
+
+    let basePos =
+      playerPos + forward * 0.8f + right * 0.4f + Vector3(0.0f, -0.3f, 0.0f)
+    // Pull the weapon back and down slightly with pitch so the nozzle stays
+    // aligned with the camera look direction.
+    let pitchOffset = -MathF.Sin(pitch) * 0.15f
+    let recoilOffset = -recoil
+    basePos + Vector3(0.0f, pitchOffset, recoilOffset)
 
   /// Muzzle flash light position.
   let inline muzzleFlashPosition
     (playerPos: Vector3)
     (forward: Vector3)
     : Vector3 =
-    playerPos + forward * 0.5f
+    playerPos + forward * 0.6f
+
+  /// World-space position of the gun nozzle. This matches the visual viewmodel
+  /// so effects like smoke and the muzzle flash spawn at the actual barrel exit.
+  let inline muzzleWorldPosition
+    (playerPos: Vector3)
+    (forward: Vector3)
+    (pitch: float32)
+    (yaw: float32)
+    : Vector3 =
+    weaponPosition playerPos forward pitch yaw 0.0f + forward * 0.55f
 
   // ── Scene lighting constants (identical across backends) ─────────────────────
   // Night-time atmosphere: dim moonlit ambient, cool moonlight directional.
@@ -74,6 +86,12 @@ module ViewMath =
 
   /// Sky clear color (dark night sky).
   let clearColor: Mibo.Color = Mibo.Color.rgb 8uy 10uy 22uy
+
+  /// Horizon tint for the procedural starry sky.
+  let skyHorizonColor: Mibo.Color = Mibo.Color.rgb 15uy 18uy 35uy
+
+  /// Zenith tint for the procedural starry sky.
+  let skyZenithColor: Mibo.Color = Mibo.Color.rgb 5uy 7uy 18uy
 
   /// Creates a muzzle flash point light at the given position.
   let muzzleFlashLight(pos: Vector3) : PointLight3D = {

@@ -3692,3 +3692,95 @@
 
 
 
+
+#begin Skybox.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/build:Skybox.fx;Skybox
+
+#begin gun_sounds/7.62x39/762x39 Single MP3.mp3
+/importer:Mp3Importer
+/processor:SoundEffectProcessor
+/build:gun_sounds/7.62x39/762x39 Single MP3.mp3;gun_sounds/7.62x39/762x39 Single MP3
+
+#begin gun_sounds/7.62x39/762x39 Double Tap MP3.mp3
+/importer:Mp3Importer
+/processor:SoundEffectProcessor
+/build:gun_sounds/7.62x39/762x39 Double Tap MP3.mp3;gun_sounds/7.62x39/762x39 Double Tap MP3
+
+#begin gun_sounds/7.62x39/762x39 Burst MP3.mp3
+/importer:Mp3Importer
+/processor:SoundEffectProcessor
+/build:gun_sounds/7.62x39/762x39 Burst MP3.mp3;gun_sounds/7.62x39/762x39 Burst MP3
+
+#begin gun_sounds/7.62x39/762x39 Spray MP3.mp3
+/importer:Mp3Importer
+/processor:SoundEffectProcessor
+/build:gun_sounds/7.62x39/762x39 Spray MP3.mp3;gun_sounds/7.62x39/762x39 Spray MP3
+
+#begin gun_sounds/reloads/reload-fast.mp3
+/importer:Mp3Importer
+/processor:SoundEffectProcessor
+/build:gun_sounds/reloads/reload-fast.mp3;gun_sounds/reloads/reload-fast
+
+#begin gun_sounds/reloads/reload-rifle.mp3
+/importer:Mp3Importer
+/processor:SoundEffectProcessor
+/build:gun_sounds/reloads/reload-rifle.mp3;gun_sounds/reloads/reload-rifle
+
+#begin gun_sounds/reloads/reload-heavy.mp3
+/importer:Mp3Importer
+/processor:SoundEffectProcessor
+/build:gun_sounds/reloads/reload-heavy.mp3;gun_sounds/reloads/reload-heavy
+
+#begin horror_sfx/Bite.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:horror_sfx/Bite.wav;horror_sfx/Bite
+#begin horror_sfx/Child laugh.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:horror_sfx/Child laugh.wav;horror_sfx/Child laugh
+#begin horror_sfx/Footsteps_ running.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:horror_sfx/Footsteps_ running.wav;horror_sfx/Footsteps_ running
+#begin horror_sfx/Footsteps_walking.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:horror_sfx/Footsteps_walking.wav;horror_sfx/Footsteps_walking
+#begin horror_sfx/Gasp_3.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:horror_sfx/Gasp_3.wav;horror_sfx/Gasp_3
+#begin horror_sfx/Injured.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:horror_sfx/Injured.wav;horror_sfx/Injured
+#begin horror_sfx/Robotic_bass.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:horror_sfx/Robotic_bass.wav;horror_sfx/Robotic_bass
+#begin horror_sfx/robotic_groan_3.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:horror_sfx/robotic_groan_3.wav;horror_sfx/robotic_groan_3
+#begin horror_sfx/robotic_hiss.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:horror_sfx/robotic_hiss.wav;horror_sfx/robotic_hiss
+#begin horror_sfx/Scream_Robotic.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:horror_sfx/Scream_Robotic.wav;horror_sfx/Scream_Robotic
+
+#begin horror_sfx/Breathing_fast.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:horror_sfx/Breathing_fast.wav;horror_sfx/Breathing_fast
+
+#begin horror_sfx/Laugh_spooky_4.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:horror_sfx/Laugh_spooky_4.wav;horror_sfx/Laugh_spooky_4

@@ -53,7 +53,7 @@ let tests =
         let enemies = [| Enemy.create(Vector3(100.0f, 0.0f, 100.0f)) |]
 
         let damage =
-          update 0.016f (Vector3(0.0f, 0.0f, 0.0f)) 100.0f enemies [||]
+          update 0.016f (Vector3(0.0f, 0.0f, 0.0f)) 100.0f (GameModel()) enemies [||]
 
         Expect.equal damage 0.0f "No damage from idle enemy"
         Expect.equal enemies[0].State EnemyState.Idle "Still idle"
@@ -62,7 +62,8 @@ let tests =
       <| fun _ ->
         let enemies = [| Enemy.create(Vector3(10.0f, 0.0f, 0.0f)) |]
 
-        let _ = update 0.016f (Vector3(0.0f, 0.0f, 0.0f)) 100.0f enemies [||]
+        let _ =
+          update 0.016f (Vector3(0.0f, 0.0f, 0.0f)) 100.0f (GameModel()) enemies [||]
 
         Expect.equal enemies[0].State EnemyState.Chasing "Started chasing"
 
@@ -71,7 +72,7 @@ let tests =
         let enemies = [| Enemy.create(Vector3(1.0f, 0.0f, 0.0f)) |]
 
         let damage =
-          update 0.016f (Vector3(0.0f, 0.0f, 0.0f)) 100.0f enemies [||]
+          update 0.016f (Vector3(0.0f, 0.0f, 0.0f)) 100.0f (GameModel()) enemies [||]
 
         Expect.equal enemies[0].State EnemyState.Attacking "In attack range"
         Expect.equal damage Constants.EnemyAttackDamage "Dealt attack damage"
@@ -83,7 +84,8 @@ let tests =
         enemy.RespawnTimer <- 0.1f
         let enemies = [| enemy |]
 
-        let _ = update 0.2f (Vector3(0.0f, 0.0f, 0.0f)) 100.0f enemies [||]
+        let _ =
+          update 0.2f (Vector3(0.0f, 0.0f, 0.0f)) 100.0f (GameModel()) enemies [||]
 
         Expect.equal enemies[0].State EnemyState.Idle "Respawned as idle"
 
@@ -100,7 +102,7 @@ let tests =
         let enemies = [| enemy |]
 
         let damage =
-          update 0.016f (Vector3(0.0f, 0.0f, 0.0f)) 100.0f enemies [||]
+          update 0.016f (Vector3(0.0f, 0.0f, 0.0f)) 100.0f (GameModel()) enemies [||]
 
         Expect.equal damage 0.0f "No damage during cooldown"
     ]
@@ -120,7 +122,13 @@ let tests =
         |]
 
         let _ =
-          update 0.016f (Vector3(100.0f, 0.0f, 0.0f)) 100.0f enemies colliders
+          update
+            0.016f
+            (Vector3(100.0f, 0.0f, 0.0f))
+            100.0f
+            (GameModel())
+            enemies
+            colliders
 
         // Enemy radius is 0.4, so it overlaps the face at X=1. Should be pushed past 1.0+radius
         Expect.isGreaterThan

@@ -3,6 +3,7 @@ module FPSSample.MonoShared.View
 open System
 open System.Collections.Generic
 open Microsoft.Xna.Framework
+open Microsoft.Xna.Framework.Audio
 open Microsoft.Xna.Framework.Graphics
 open Mibo.Elmish
 open Mibo.Elmish.Graphics3D
@@ -20,6 +21,15 @@ let loadOrGetModel (path: string) (ctx: GameContext) =
 
   let m = assets.Model(mgPath)
   m
+
+/// Converts a raylib-style asset path to a MonoGame content pipeline path.
+let mgAssetPath(path: string) =
+  path
+    .Replace("assets/", "")
+    .Replace(".glb", "")
+    .Replace(".fbx", "")
+    .Replace(".mp3", "")
+    .Replace(".wav", "")
 
 let private meshMaterialCache =
   Dictionary<string, struct (PrimitiveMesh * Material3D)[]>()
@@ -137,6 +147,26 @@ type EnemyAnimationService() =
 
           states[i] <- AnimatedModel.update dt newAm
 
+/// Converts a System.Numerics.Vector3 to an XNA Vector3.
+let inline toXnaV(v: System.Numerics.Vector3) = Vector3(v.X, v.Y, v.Z)
+
+/// Builds a rotation matrix that maps +Y to the given direction (for orienting
+/// models that point up by default along a travel vector).
+let orientAlong(dir: Vector3) : Matrix =
+  if dir.LengthSquared() > 0.001f then
+    let n = Vector3.Normalize(dir)
+    let srcForward = Vector3.Up
+    let rotAxis = Vector3.Cross(srcForward, n)
+    let dot = Math.Max(-1.0f, Math.Min(1.0f, Vector3.Dot(srcForward, n)))
+    let rotAngle = MathF.Acos(dot)
+
+    if rotAxis.LengthSquared() > 0.001f then
+      Matrix.CreateFromAxisAngle(Vector3.Normalize(rotAxis), rotAngle)
+    else
+      Matrix.Identity
+  else
+    Matrix.Identity
+
 /// Renders the 3D scene from a first-person camera.
 let view
   (animService: EnemyAnimationService)
@@ -144,17 +174,13 @@ let view
   (model: GameModel)
   (buffer: RenderBuffer3D)
   =
+  let assets = GameContext.getService<IAssets> ctx
+
   // ── First-person camera ───────────────────────────────────────────────────
   let forwardNumerics = ViewMath.cameraForward model.PlayerYaw model.PlayerPitch
-  let forward = Vector3(forwardNumerics.X, forwardNumerics.Y, forwardNumerics.Z)
+  let forward = toXnaV forwardNumerics
 
-  let pos =
-    Vector3(
-      model.PlayerPosition.X,
-      model.PlayerPosition.Y,
-      model.PlayerPosition.Z
-    )
-
+  let pos = toXnaV model.PlayerPosition
   let target = pos + forward
 
   let camera: Camera3D = {
@@ -178,16 +204,32 @@ let view
   |> Draw3D.addDirectionalLight ViewMath.directionalLight
   |> Draw3D.drop
 
+  // ── Starry skybox (drawn first inside camera so scene renders on top) ─────
+  buffer |> Skybox.render assets model.TotalTime model.PlayerPosition
+
+  // ── Muzzle flash point light ──────────────────────────────────────────────
+  if model.MuzzleFlash.Active then
+    let flashPosNumerics =
+      ViewMath.muzzleWorldPosition
+        model.PlayerPosition
+        forwardNumerics
+        model.PlayerPitch
+        model.PlayerYaw
+
+    buffer
+    |> Draw3D.addPointLight(ViewMath.muzzleFlashLight flashPosNumerics)
+    |> Draw3D.drop
+
   // ── Static torches (flickering point lights around the arena) ───────────────
   let torches = ViewMath.torchPositions
 
   for i = 0 to torches.Length - 1 do
-    let pos = torches[i]
+    let tPos = torches[i]
     let phase = float32 i * 1.7f
     let flicker = MathF.Sin(model.TotalTime * 7.0f + phase) * 0.25f
 
     buffer
-    |> Draw3D.addPointLight(ViewMath.torchLight pos flicker)
+    |> Draw3D.addPointLight(ViewMath.torchLight tPos flicker)
     |> Draw3D.drop
 
   // ── Level geometry (instanced) ────────────────────────────────────────────
@@ -227,104 +269,46 @@ let view
         let transform = Matrix.CreateTranslation(p.X, p.Y + bobY, p.Z)
         buffer |> Draw3D.drawModel mdl transform |> Draw3D.drop
 
-  // ── Shot tracers (traveling bullet model) ────────────────────────────────
-  let bulletModel = loadOrGetModel Assets.bulletFoamTip ctx
+  // ── Muzzle smoke puffs ────────────────────────────────────────────────────
+  let smokeModel = loadOrGetModel Assets.smoke ctx
 
-  for tracer in model.Tracers do
-    if tracer.Active then
-      let progress = ViewMath.tracerProgress tracer
+  for puff in model.SmokePuffs do
+    if puff.Active then
+      let life = 1.0f - puff.Timer / SmokePuff.duration
+      let alpha = 1.0f - life
 
-      let pos =
-        Microsoft.Xna.Framework.Vector3.Lerp(
-          Microsoft.Xna.Framework.Vector3(
-            tracer.Start.X,
-            tracer.Start.Y,
-            tracer.Start.Z
-          ),
-          Microsoft.Xna.Framework.Vector3(
-            tracer.End.X,
-            tracer.End.Y,
-            tracer.End.Z
-          ),
-          progress
-        )
+      if alpha > 0.01f then
+        let pos = toXnaV puff.Position
+        let dir = toXnaV puff.Velocity
 
-      let dir =
-        Microsoft.Xna.Framework.Vector3(
-          tracer.End.X - tracer.Start.X,
-          tracer.End.Y - tracer.Start.Y,
-          tracer.End.Z - tracer.Start.Z
-        )
+        let smokeTransform =
+          orientAlong dir
+          * Matrix.CreateScale(puff.Scale)
+          * Matrix.CreateTranslation(pos)
 
-      if not(isNull bulletModel) && bulletModel.Meshes.Count > 0 then
-        let bulletTransform =
-          if dir.LengthSquared() > 0.001f then
-            let n = Microsoft.Xna.Framework.Vector3.Normalize(dir)
-            // The bullet model points up (+Y) by default
-            let srcForward = Microsoft.Xna.Framework.Vector3.Up
-            let rotAxis = Microsoft.Xna.Framework.Vector3.Cross(srcForward, n)
-            let dot = Microsoft.Xna.Framework.Vector3.Dot(srcForward, n)
-            let rotAngle = MathF.Acos(Math.Max(-1.0f, Math.Min(1.0f, dot)))
-
-            let rot =
-              if rotAxis.LengthSquared() > 0.001f then
-                Microsoft.Xna.Framework.Matrix.CreateFromAxisAngle(
-                  Microsoft.Xna.Framework.Vector3.Normalize(rotAxis),
-                  rotAngle
-                )
-              else
-                Microsoft.Xna.Framework.Matrix.Identity
-
-            rot * Microsoft.Xna.Framework.Matrix.CreateTranslation(pos)
-          else
-            Microsoft.Xna.Framework.Matrix.CreateTranslation(pos)
-
-        buffer |> Draw3D.drawModel bulletModel bulletTransform |> Draw3D.drop
-
-      // Faint tracer line from start to current pos
-      let alpha = ViewMath.tracerAlpha tracer
-      let c = Color(255, 230, 100, int(alpha * 255.0f))
-
-      let startV =
-        Microsoft.Xna.Framework.Vector3(
-          tracer.Start.X,
-          tracer.Start.Y,
-          tracer.Start.Z
-        )
-
-      buffer |> Draw3D.drawLine3D startV pos c |> Draw3D.drop
+        if not(isNull smokeModel) && smokeModel.Meshes.Count > 0 then
+          buffer |> Draw3D.drawModel smokeModel smokeTransform |> Draw3D.drop
 
   // ── Weapon viewmodel (blaster) ────────────────────────────────────────────
-  let blasterModel = loadOrGetModel Assets.blasterA ctx
+  let blasterModel = loadOrGetModel model.EquippedWeapon ctx
 
   if not(isNull blasterModel) && blasterModel.Meshes.Count > 0 then
     let weaponPosNumerics =
       ViewMath.weaponPosition
         model.PlayerPosition
         forwardNumerics
+        model.PlayerPitch
         model.PlayerYaw
+        model.RecoilOffset
 
-    let weaponPos =
-      Microsoft.Xna.Framework.Vector3(
-        weaponPosNumerics.X,
-        weaponPosNumerics.Y,
-        weaponPosNumerics.Z
-      )
+    let weaponPos = toXnaV weaponPosNumerics
 
     let transform =
-      let rot = Matrix.CreateRotationY(model.PlayerYaw)
+      let yawRot = Matrix.CreateRotationY(model.PlayerYaw)
+      let pitchRot = Matrix.CreateRotationX(model.PlayerPitch)
       let trans = Matrix.CreateTranslation(weaponPos)
-      rot * trans
+      pitchRot * yawRot * trans
 
     buffer |> Draw3D.drawModel blasterModel transform |> Draw3D.drop
-
-  // ── Muzzle flash point light ──────────────────────────────────────────────
-  if model.MuzzleFlash.Active then
-    let flashPosNumerics =
-      ViewMath.muzzleFlashPosition model.PlayerPosition forwardNumerics
-
-    buffer
-    |> Draw3D.addPointLight(ViewMath.muzzleFlashLight flashPosNumerics)
-    |> Draw3D.drop
 
   buffer |> Draw3D.endCamera |> Draw3D.drop

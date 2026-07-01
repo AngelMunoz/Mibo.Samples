@@ -44,6 +44,13 @@ module Types =
     mutable RespawnTimer: float32
     mutable Facing: float32
     mutable CurrentAnim: string
+    // SFX timers (count down to 0, then the system pushes a sound and resets).
+    mutable RoboticTimer: float32
+    mutable FootstepTimer: float32
+    mutable IdleLaughTimer: float32
+    // True while the enemy is actively chasing (moving) — the view uses this
+    // to manage looping footstep audio (start when true, stop when false).
+    mutable IsChasing: bool
     SpawnPoint: Vector3
   }
 
@@ -57,6 +64,10 @@ module Types =
       RespawnTimer = 0.0f
       Facing = 0.0f
       CurrentAnim = "idle"
+      RoboticTimer = Constants.RoboticSoundMaxInterval
+      FootstepTimer = Constants.EnemyFootstepInterval
+      IdleLaughTimer = Constants.ChildLaughMaxInterval
+      IsChasing = false
       SpawnPoint = spawn
     }
 
@@ -91,32 +102,50 @@ module Types =
   module MuzzleFlash =
     let empty = { Timer = 0.0f; Active = false }
 
-  // ── Shot Tracers ───────────────────────────────────────────────────────────
+  // ── Sound Events ──────────────────────────────────────────────────────────
 
-  /// A visible tracer line from a shot. Fades out over its lifetime.
+  /// A queued sound event with an optional 3D source position. Non-positional
+  /// sounds (fire, reload) use the player position; positional sounds
+  /// (footsteps, child laugh) use the emitter's world position so backends with
+  /// 3D audio (MonoGame) can apply distance attenuation + panning.
   [<Struct>]
-  type Tracer = {
-    Start: Vector3
-    mutable End: Vector3
-    mutable Timer: float32
-    mutable Active: bool
+  type SoundEvent = {
+    Path: string
+    Position: Vector3
+    IsPositional: bool
   }
 
-  module Tracer =
-    let empty: Tracer = {
-      Start = Vector3.Zero
-      End = Vector3.Zero
+  // ── Muzzle Smoke Puffs ──────────────────────────────────────────────────────
+
+  /// A small smoke model spawned at the muzzle when a shot is fired.
+  /// Carries the gun's muzzle velocity, then slows and rises like real smoke.
+  [<Struct>]
+  type SmokePuff = {
+    mutable Position: Vector3
+    mutable Velocity: Vector3
+    mutable Timer: float32
+    mutable Active: bool
+    mutable Scale: float32
+  }
+
+  module SmokePuff =
+    let empty: SmokePuff = {
+      Position = Vector3.Zero
+      Velocity = Vector3.Zero
       Timer = 0.0f
       Active = false
+      Scale = 1.0f
     }
 
-    let duration = 0.3f
+    let duration = 0.9f
 
-    let create (start: Vector3) (endPos: Vector3) = {
-      Start = start
-      End = endPos
+    let create (pos: Vector3) (dir: Vector3) (scale: float32) = {
+      Position = pos
+      // Initial burst matches bullet velocity plus a small outward spread.
+      Velocity = dir * 12.0f + Vector3(0.0f, 1.5f, 0.0f)
       Timer = duration
       Active = true
+      Scale = scale
     }
 
   // ── Messages ───────────────────────────────────────────────────────────────
@@ -150,7 +179,27 @@ module Types =
     member val IsReloading = false with get, set
     member val ReloadTimer = 0.0f with get, set
     member val MuzzleFlash = MuzzleFlash.empty with get, set
-    member val Tracers: Tracer[] = Array.zeroCreate 16 with get, set
+    member val SmokePuffs: SmokePuff[] = Array.zeroCreate 8 with get, set
+
+    // Recoil kick applied to the viewmodel after each shot.
+    member val RecoilTimer = 0.0f with get, set
+    member val RecoilOffset = 0.0f with get, set
+
+    // Active weapon model path and queued sound paths (renderer consumes them).
+    member val EquippedWeapon = Assets.blasterA with get, set
+    member val LastFireSound = "" with get, set
+    member val LastReloadSound = "" with get, set
+
+    // Sound event ring buffer — systems push SoundEvent structs directly (no
+    // Cmd round-trip, same pattern as SpaceBattle's EffectState for particles).
+    // The view drains it each frame and resets Count to 0.
+    member val SoundQueue: SoundEvent[] = Array.zeroCreate 32 with get, set
+    member val SoundQueueCount = 0 with get, set
+
+    // Movement flags for looping footstep audio. The view manages
+    // SoundEffectInstance lifecycle based on these — starts looping when
+    // true, stops when false. Avoids queue-and-forget stacking.
+    member val IsPlayerWalking = false with get, set
 
     // Input
     member val Actions: ActionState<GameAction> =
@@ -169,3 +218,34 @@ module Types =
 
     // Hit feedback: when > 0 the player has recently taken damage.
     member val HitEffectTimer = 0.0f with get, set
+
+  // ── Sound Queue helpers ────────────────────────────────────────────────────
+
+  /// Pushes a non-positional sound onto the model's sound queue. Called by
+  /// systems in the hot loop (no Cmd/Msg — direct mutation, like EffectState
+  /// in SpaceBattle). Wraps around silently when the ring buffer is full.
+  let queueSound (model: GameModel) (path: string) =
+    let i = model.SoundQueueCount % model.SoundQueue.Length
+
+    model.SoundQueue[i] <-
+      {
+        Path = path
+        Position = model.PlayerPosition
+        IsPositional = false
+      }
+
+    model.SoundQueueCount <- model.SoundQueueCount + 1
+
+  /// Pushes a positional sound — the backend applies distance attenuation and
+  /// stereo panning based on the emitter's world position relative to the player.
+  let queueSoundAt (model: GameModel) (path: string) (pos: Vector3) =
+    let i = model.SoundQueueCount % model.SoundQueue.Length
+
+    model.SoundQueue[i] <-
+      {
+        Path = path
+        Position = pos
+        IsPositional = true
+      }
+
+    model.SoundQueueCount <- model.SoundQueueCount + 1

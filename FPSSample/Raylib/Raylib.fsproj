@@ -8,8 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="View.fs" />
     <Compile Include="HudView.fs" />
+    <Compile Include="Skybox.fs" />
+    <Compile Include="AudioService.fs" />
+    <Compile Include="View.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

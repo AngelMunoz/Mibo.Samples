@@ -15,8 +15,17 @@ type private NoopAnimationService() =
     member _.Init(_, _) = ()
     member _.Update(_, _) = ()
 
-/// A test env with a no-op animation service.
-let private testEnv: Env = { Animation = NoopAnimationService() }
+/// No-op audio service for tests.
+type private NoopAudioService() =
+  interface IAudioService with
+    member _.Init(_) = ()
+    member _.Update(_, _) = ()
+
+/// A test env with no-op services.
+let private testEnv: Env = {
+  Animation = NoopAnimationService()
+  Audio = NoopAudioService()
+}
 
 /// Creates a GameModel with an empty level (no colliders) for testing.
 let private createTestModel() : GameModel =

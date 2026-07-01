@@ -99,6 +99,8 @@ module Combat =
     closest
 
   /// Finds the distance to the closest collider hit by a ray (for occlusion).
+  /// Ignores hits very close to the origin so the shot doesn't clip the
+  /// player's own nearby geometry.
   let closestColliderHit
     (origin: Vector3)
     (dir: Vector3)
@@ -108,18 +110,25 @@ module Combat =
 
     for bounds in colliders do
       match rayVsAABB origin dir bounds with
-      | ValueSome t ->
+      | ValueSome t when t >= 0.35f ->
         match closest with
         | ValueSome ct when t >= ct -> ()
         | _ -> closest <- ValueSome t
-      | ValueNone -> ()
+      | _ -> ()
 
     closest
 
   /// Handles the Shoot message: consumes ammo, fires a raycast, applies damage
-  /// to the closest unoccluded enemy, updates score, and triggers muzzle flash.
+  /// to the closest unoccluded enemy, updates score, and triggers muzzle flash,
+  /// smoke puffs, recoil, and the weapon-class-matched fire sound.
   let handleShoot(model: GameModel) : unit =
-    if model.Ammo <= 0 || model.FireCooldown > 0.0f || model.IsReloading then
+    let wc = Assets.weaponClass model.EquippedWeapon
+
+    if model.Ammo <= 0 || model.IsReloading then
+      ()
+    elif model.FireCooldown > 0.0f then
+      // Fast-firing weapons ignore the exact per-shot cooldown window and fire
+      // as soon as their class cooldown has elapsed.
       ()
     else
       let origin = model.PlayerPosition
@@ -147,41 +156,37 @@ module Combat =
           model.Score <- model.Score + 100
 
         model.Enemies[idx] <- e
+        queueSound model Assets.injured
       | ValueNone -> ()
 
-      // Compute tracer end point (where the ray actually hit)
-      let wallDist =
-        match wallHit with
-        | ValueSome d -> d
-        | ValueNone -> Single.MaxValue
+      // Spawn a smoke puff at the muzzle, tilted along the shot direction.
+      let mutable sSlot = -1
 
-      let enemyDist =
-        match enemyHit with
-        | ValueSome struct (_, d) -> d
-        | ValueNone -> Single.MaxValue
+      for i = 0 to model.SmokePuffs.Length - 1 do
+        if sSlot < 0 && not model.SmokePuffs[i].Active then
+          sSlot <- i
 
-      let tracerEnd =
-        if wallDist < enemyDist && wallDist < Single.MaxValue then
-          origin + dir * wallDist
-        elif enemyDist < Single.MaxValue then
-          origin + dir * enemyDist
-        else
-          origin + dir * Constants.WeaponRange
+      if sSlot < 0 then
+        sSlot <- 0
 
-      // Find a free tracer slot (ring buffer)
-      let mutable slot = -1
+      let muzzlePos =
+        ViewMath.muzzleWorldPosition
+          model.PlayerPosition
+          dir
+          model.PlayerPitch
+          model.PlayerYaw
 
-      for i = 0 to model.Tracers.Length - 1 do
-        if slot < 0 && not model.Tracers[i].Active then
-          slot <- i
+      model.SmokePuffs[sSlot] <- SmokePuff.create muzzlePos dir 1.0f
 
-      if slot < 0 then
-        slot <- 0 // overwrite oldest
+      // Kick recoil and play fire sound matched to the equipped weapon class.
+      let wc = Assets.weaponClass model.EquippedWeapon
 
-      model.Tracers[slot] <- Tracer.create origin tracerEnd
+      model.RecoilTimer <- 0.12f
+      model.RecoilOffset <- 0.08f
+      model.LastFireSound <- Assets.gunSound wc
 
       model.Ammo <- model.Ammo - 1
-      model.FireCooldown <- Constants.WeaponFireCooldown
+      model.FireCooldown <- Assets.fireCooldown wc
 
       model.MuzzleFlash <- {
         Timer = Constants.MuzzleFlashDuration
@@ -189,10 +194,13 @@ module Combat =
       }
 
   /// Starts a reload if ammo is not full and not already reloading.
+  /// Queues the class-appropriate reload sound.
   let startReload(model: GameModel) : unit =
     if model.Ammo < Constants.MaxAmmo && not model.IsReloading then
+      let wc = Assets.weaponClass model.EquippedWeapon
       model.IsReloading <- true
       model.ReloadTimer <- Constants.ReloadTime
+      model.LastReloadSound <- Assets.reloadSound wc
 
   /// Progresses reload timer; completes reload when timer elapses.
   let updateReload (dt: float32) (model: GameModel) : unit =

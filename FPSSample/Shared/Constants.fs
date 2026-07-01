@@ -120,6 +120,26 @@ module Constants =
   [<Literal>]
   let PickupRespawnTime = 15.0f
 
+  // ── Horror SFX timing ──────────────────────────────────────────────────────
+
+  [<Literal>]
+  let RoboticSoundMinInterval = 4.0f
+
+  [<Literal>]
+  let RoboticSoundMaxInterval = 8.0f
+
+  [<Literal>]
+  let EnemyFootstepInterval = 0.4f
+
+  [<Literal>]
+  let PlayerFootstepInterval = 0.35f
+
+  [<Literal>]
+  let ChildLaughMinInterval = 8.0f
+
+  [<Literal>]
+  let ChildLaughMaxInterval = 15.0f
+
   // ── Level ──────────────────────────────────────────────────────────────────
 
   [<Literal>]

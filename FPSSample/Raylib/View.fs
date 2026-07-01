@@ -39,6 +39,9 @@ let mutable private currentModelCache = persistentModelCache
 
 let mutable private currentGameContext = Unchecked.defaultof<GameContext>
 
+/// Shared starry skybox instance.
+let skybox = Skybox.create()
+
 let private resolveMeshesAndMaterial(cell: Level.Cell) =
   let path = Level.Cell.modelPath cell
 
@@ -153,14 +156,26 @@ let view
   |> Draw3D.addDirectionalLight ViewMath.directionalLight
   |> Draw3D.drop
 
+  // ── Starry skybox (drawn first inside camera so scene renders on top) ─────
+  buffer
+  |> FPSSample.Raylib.Skybox.render
+    skybox
+    ViewMath.skyHorizonColor
+    ViewMath.skyZenithColor
+    model.PlayerPosition
+
   // ── Muzzle flash point light (added before geometry so pipeline picks it up) ──
   if model.MuzzleFlash.Active then
-    let flashPos = ViewMath.muzzleFlashPosition model.PlayerPosition forward
+    let flashPos =
+      ViewMath.muzzleWorldPosition
+        model.PlayerPosition
+        forward
+        model.PlayerPitch
+        model.PlayerYaw
 
     buffer
     |> Draw3D.addPointLight(ViewMath.muzzleFlashLight flashPos)
     |> Draw3D.drop
-
   // ── Static torches (flickering point lights around the arena) ───────────────
   let torches = ViewMath.torchPositions
 
@@ -213,55 +228,79 @@ let view
       let transform = Raymath.MatrixTranslate(pos.X, pos.Y + bobY, pos.Z)
       buffer |> Draw3D.drawModel mdl transform |> Draw3D.drop
 
-  // ── Shot tracers (traveling bullet model) ─────────────────────────────────
-  let bulletModel = loadOrGetModel currentModelCache Assets.bulletFoamTip ctx
+  // ── Muzzle smoke puffs ────────────────────────────────────────────────────
+  let smokeModel = loadOrGetModel currentModelCache Assets.smoke ctx
 
-  for tracer in model.Tracers do
-    if tracer.Active then
-      let progress = ViewMath.tracerProgress tracer
-      let pos = Vector3.Lerp(tracer.Start, tracer.End, progress)
-      let dir = tracer.End - tracer.Start
+  for puff in model.SmokePuffs do
+    if puff.Active then
+      let life = 1.0f - puff.Timer / SmokePuff.duration
+      let alpha = 1.0f - life
 
-      // Orient the bullet along the travel direction. The bullet model points
-      // up (+Y) by default, so we build a rotation that maps +Y to the travel direction.
-      let bulletTransform =
-        if dir.LengthSquared() > 0.001f then
-          let n = Vector3.Normalize(dir)
-          let srcForward = Vector3.UnitY
-          let rotAxis = Vector3.Cross(srcForward, n)
+      if alpha > 0.01f then
+        let pos = puff.Position
+        // Keep the smoke model oriented along its velocity so it appears to
+        // carry momentum from the shot.
+        let dir = puff.Velocity
 
-          let rotAngle =
-            MathF.Acos(Math.Clamp(Vector3.Dot(srcForward, n), -1.0f, 1.0f))
+        // Orient the smoke cone along the velocity direction. The smoke model
+        // points up (+Y) by default, so we map +Y to the travel direction.
+        let smokeTransform =
+          if dir.LengthSquared() > 0.001f then
+            let n = Vector3.Normalize(dir)
+            let srcForward = Vector3.UnitY
+            let rotAxis = Vector3.Cross(srcForward, n)
 
-          if rotAxis.LengthSquared() > 0.001f then
-            let axisN = Vector3.Normalize(rotAxis)
-            let rot = Raymath.MatrixRotate(axisN, rotAngle)
-            let trans = Raymath.MatrixTranslate(pos.X, pos.Y, pos.Z)
-            Raymath.MatrixMultiply(rot, trans)
+            let rotAngle =
+              MathF.Acos(Math.Clamp(Vector3.Dot(srcForward, n), -1.0f, 1.0f))
+
+            if rotAxis.LengthSquared() > 0.001f then
+              let axisN = Vector3.Normalize(rotAxis)
+
+              let scaleMat =
+                Raymath.MatrixScale(puff.Scale, puff.Scale, puff.Scale)
+
+              let rot = Raymath.MatrixRotate(axisN, rotAngle)
+              let trans = Raymath.MatrixTranslate(pos.X, pos.Y, pos.Z)
+
+              Raymath.MatrixMultiply(
+                Raymath.MatrixMultiply(scaleMat, rot),
+                trans
+              )
+            else
+              let scaleMat =
+                Raymath.MatrixScale(puff.Scale, puff.Scale, puff.Scale)
+
+              let trans = Raymath.MatrixTranslate(pos.X, pos.Y, pos.Z)
+              Raymath.MatrixMultiply(scaleMat, trans)
           else
-            Raymath.MatrixTranslate(pos.X, pos.Y, pos.Z)
-        else
-          Raymath.MatrixTranslate(pos.X, pos.Y, pos.Z)
+            let scaleMat =
+              Raymath.MatrixScale(puff.Scale, puff.Scale, puff.Scale)
 
-      if bulletModel.MeshCount > 0 then
-        buffer |> Draw3D.drawModel bulletModel bulletTransform |> Draw3D.drop
+            let trans = Raymath.MatrixTranslate(pos.X, pos.Y, pos.Z)
+            Raymath.MatrixMultiply(scaleMat, trans)
 
-      // Faint tracer line
-      let alpha = ViewMath.tracerAlpha tracer
-      let c = Color(255uy, 230uy, 100uy, byte(alpha * 255.0f))
-      buffer |> Draw3D.drawLine3D tracer.Start pos c |> Draw3D.drop
+        if smokeModel.MeshCount > 0 then
+          buffer |> Draw3D.drawModel smokeModel smokeTransform |> Draw3D.drop
 
   // ── Weapon viewmodel (blaster) ────────────────────────────────────────────
-  let blasterModel = loadOrGetModel currentModelCache Assets.blasterA ctx
+  let blasterModel = loadOrGetModel currentModelCache model.EquippedWeapon ctx
 
   if blasterModel.MeshCount > 0 then
+    let recoilZ = model.RecoilOffset
+
     let weaponPos =
-      ViewMath.weaponPosition model.PlayerPosition forward model.PlayerYaw
+      ViewMath.weaponPosition
+        model.PlayerPosition
+        forward
+        model.PlayerPitch
+        model.PlayerYaw
+        recoilZ
 
     let weaponTransform =
-      let rot = Raymath.MatrixRotateY(model.PlayerYaw)
+      let yawRot = Raymath.MatrixRotateY(model.PlayerYaw)
+      let pitchRot = Raymath.MatrixRotateX(model.PlayerPitch)
       let trans = Raymath.MatrixTranslate(weaponPos.X, weaponPos.Y, weaponPos.Z)
-      Raymath.MatrixMultiply(rot, trans)
+      Raymath.MatrixMultiply(Raymath.MatrixMultiply(pitchRot, yawRot), trans)
 
     buffer |> Draw3D.drawModel blasterModel weaponTransform |> Draw3D.drop
 

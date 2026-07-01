@@ -20,7 +20,8 @@ module Systems =
 
   // ── Weapon Cooldown System ─────────────────────────────────────────────────
 
-  /// Ticks down weapon fire cooldown, muzzle flash timer, and tracers.
+  /// Ticks down weapon fire cooldown, muzzle flash timer, tracers, smoke puffs,
+  /// and recoil recovery.
   let weaponSystem (dt: float32) (model: GameModel) : unit =
     if model.FireCooldown > 0.0f then
       model.FireCooldown <- model.FireCooldown - dt
@@ -34,16 +35,30 @@ module Systems =
       else
         model.MuzzleFlash <- mf
 
-    // Update tracers
-    for i = 0 to model.Tracers.Length - 1 do
-      if model.Tracers[i].Active then
-        let mutable t = model.Tracers[i]
-        t.Timer <- t.Timer - dt
+    // Update smoke puffs
+    for i = 0 to model.SmokePuffs.Length - 1 do
+      if model.SmokePuffs[i].Active then
+        let mutable p = model.SmokePuffs[i]
+        p.Timer <- p.Timer - dt
 
-        if t.Timer <= 0.0f then
-          t.Active <- false
+        if p.Timer <= 0.0f then
+          p.Active <- false
+        else
+          // Real smoke physics: initial muzzle velocity, then drag + buoyancy.
+          let drag = MathF.Exp(-2.0f * dt)
+          p.Velocity <- p.Velocity * drag + Vector3(0.0f, 1.2f, 0.0f) * dt
+          p.Position <- p.Position + p.Velocity * dt
 
-        model.Tracers[i] <- t
+          let life = 1.0f - p.Timer / SmokePuff.duration
+          p.Scale <- 1.0f + life * 2.0f
+
+        model.SmokePuffs[i] <- p
+
+    // Recover recoil back to zero.
+    if model.RecoilTimer > 0.0f then
+      model.RecoilTimer <- Math.Max(0.0f, model.RecoilTimer - dt)
+      let t = 1.0f - model.RecoilTimer / 0.12f
+      model.RecoilOffset <- 0.08f * (1.0f - t * t)
 
     Combat.updateReload dt model
 
@@ -100,13 +115,15 @@ module Systems =
         dt
         model.PlayerPosition
         model.PlayerHealth
+        model
         model.Enemies
         model.Colliders
 
     if damage > 0.0f then
       model.PlayerHealth <- Math.Max(0.0f, model.PlayerHealth - damage)
-      // Trigger the hit-feedback flash.
+      // Trigger the hit-feedback flash + gasp sound.
       model.HitEffectTimer <- Constants.HitEffectDuration
+      queueSound model Assets.gasp
 
   // ── Main Update ────────────────────────────────────────────────────────────
 
@@ -129,8 +146,16 @@ module Systems =
     model.ReloadTimer <- 0.0f
     model.MuzzleFlash <- MuzzleFlash.empty
 
-    for i = 0 to model.Tracers.Length - 1 do
-      model.Tracers[i] <- Tracer.empty
+    for i = 0 to model.SmokePuffs.Length - 1 do
+      model.SmokePuffs[i] <- SmokePuff.empty
+
+    model.RecoilTimer <- 0.0f
+    model.RecoilOffset <- 0.0f
+    model.LastFireSound <- ""
+    model.LastReloadSound <- ""
+    model.EquippedWeapon <- Assets.blasterA
+    model.SoundQueueCount <- 0
+    model.IsPlayerWalking <- false
 
     model.Enemies <-
       level.EnemySpawns |> Array.map(fun s -> Enemy.create s.Position)
@@ -196,4 +221,5 @@ module Systems =
           Combat.startReload model
 
       env.Animation.Update(dt, model.Enemies)
+      env.Audio.Update(dt, model)
       struct (model, Cmd.none)

@@ -173,3 +173,14 @@ module Physics =
 
     model.PlayerPosition <- resolvedPos
     model.IsGrounded <- grounded
+
+    // Track whether the player is walking for looping footstep audio.
+    // The view manages the SoundEffectInstance lifecycle — this flag just
+    // tells it whether to start or stop the loop.
+    let horizontalSpeed =
+      MathF.Sqrt(
+        model.PlayerVelocity.X * model.PlayerVelocity.X
+        + model.PlayerVelocity.Z * model.PlayerVelocity.Z
+      )
+
+    model.IsPlayerWalking <- grounded && horizontalSpeed > 0.5f
