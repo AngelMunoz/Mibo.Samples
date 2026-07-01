@@ -83,7 +83,7 @@ module Constants =
   let EnemyMaxHealth = 100.0f
 
   [<Literal>]
-  let EnemyMoveSpeed = 3.5f
+  let EnemyMoveSpeed = 4f
 
   [<Literal>]
   let EnemyAttackRange = 1.5f
@@ -92,7 +92,7 @@ module Constants =
   let EnemyAttackDamage = 10.0f
 
   [<Literal>]
-  let EnemyAttackCooldown = 1.0f
+  let EnemyAttackCooldown = 0.85f
 
   [<Literal>]
   let EnemyActivationRange = 25.0f
@@ -101,7 +101,7 @@ module Constants =
   let EnemyRadius = 0.4f
 
   [<Literal>]
-  let EnemyHeight = 1.8f
+  let EnemyHeight = 2.5f
 
   [<Literal>]
   let EnemyRespawnTime = 5.0f
@@ -135,10 +135,10 @@ module Constants =
   let PlayerFootstepInterval = 0.35f
 
   [<Literal>]
-  let ChildLaughMinInterval = 8.0f
+  let ChildLaughMinInterval = 10.0f
 
   [<Literal>]
-  let ChildLaughMaxInterval = 15.0f
+  let ChildLaughMaxInterval = 20.0f
 
   // ── Level ──────────────────────────────────────────────────────────────────
 

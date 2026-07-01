@@ -25,10 +25,10 @@ type IEnemyAnimationService =
 
 /// <summary>
 /// Service interface for audio playback, implemented by each backend.
-/// The shared program wires this into the system pipeline (after animation)
-/// so one-shot sounds, looping footsteps, and positional 3D audio are driven
-/// the same way on every backend — only the concrete audio APIs differ
-/// (raylib's manual distance/pan vs MonoGame's native Apply3D).
+/// The shared program wires this into the system pipeline so one-shot sounds
+/// and looping footsteps are driven the same way on every backend — only the
+/// concrete audio APIs differ (raylib's manual distance/pan vs MonoGame's
+/// native Apply3D).
 /// </summary>
 type IAudioService =
 
@@ -38,13 +38,29 @@ type IAudioService =
   abstract Init: ctx: GameContext -> unit
 
   /// <summary>
-  /// Called each frame during the system pipeline (after animation) to:
-  /// - Drain the <c>SoundQueue</c> (one-shot sounds: robotic, bite, laugh, etc.)
-  /// - Manage looping footstep instances based on <c>IsPlayerWalking</c> /
-  ///   <c>IsChasing</c> flags
-  /// - Apply positional distance attenuation + stereo pan
+  /// Consumes a single one-shot audio event (fire, reload, robotic, bite,
+  /// laugh, injured, gasp). The router dispatches each <c>AudioMsg</c> emitted
+  /// via <c>Cmd</c> here. <c>AudioMsg</c> carries everything the backend
+  /// needs to play with positional attenuation + pan (path, emitter world
+  /// position, isPositional). The service owns its own internal state (sound
+  /// instances, loop handles) entirely outside Elmish.
   /// </summary>
-  abstract Update: dt: float32 * model: GameModel -> unit
+  abstract Consume: audioMsg: AudioMsg -> unit
+
+  /// <summary>
+  /// Called each frame during the system pipeline (after the snapshot) to:
+  /// <list type="bullet">
+  /// <item>Manage looping footstep instances based on player/enemy velocity
+  /// and <c>IsChasing</c> (read from the snapshot, not from model flags)</item>
+  /// <item>Apply per-frame positional 3D updates (MonoGame <c>Apply3D</c>,
+  /// raylib distance/pan)</item>
+  /// </list>
+  /// The service computes loop intent from the snapshot and idempotently
+  /// starts/stops looping instances against its native instance state
+  /// (<c>Raylib.IsSoundPlaying</c>, <c>SoundEffectInstance.State</c>) — no
+  /// transition/edge detection in the systems and no audio flags in Elmish.
+  /// </summary>
+  abstract Update: dt: float32 * snapshot: Snapshot -> unit
 
 /// <summary>
 /// The environment (composition root) carrying all backend-specific services.

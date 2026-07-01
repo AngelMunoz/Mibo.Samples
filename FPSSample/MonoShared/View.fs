@@ -177,10 +177,12 @@ let view
   let assets = GameContext.getService<IAssets> ctx
 
   // ── First-person camera ───────────────────────────────────────────────────
-  let forwardNumerics = ViewMath.cameraForward model.PlayerYaw model.PlayerPitch
+  let forwardNumerics =
+    ViewMath.cameraForward model.Player.Yaw model.Player.Pitch
+
   let forward = toXnaV forwardNumerics
 
-  let pos = toXnaV model.PlayerPosition
+  let pos = toXnaV model.Player.Position
   let target = pos + forward
 
   let camera: Camera3D = {
@@ -205,16 +207,16 @@ let view
   |> Draw3D.drop
 
   // ── Starry skybox (drawn first inside camera so scene renders on top) ─────
-  buffer |> Skybox.render assets model.TotalTime model.PlayerPosition
+  buffer |> Skybox.render assets model.TotalTime model.Player.Position
 
   // ── Muzzle flash point light ──────────────────────────────────────────────
-  if model.MuzzleFlash.Active then
+  if model.Weapon.MuzzleFlash.Active then
     let flashPosNumerics =
       ViewMath.muzzleWorldPosition
-        model.PlayerPosition
+        model.Player.Position
         forwardNumerics
-        model.PlayerPitch
-        model.PlayerYaw
+        model.Player.Pitch
+        model.Player.Yaw
 
     buffer
     |> Draw3D.addPointLight(ViewMath.muzzleFlashLight flashPosNumerics)
@@ -239,8 +241,8 @@ let view
   CellGridRenderer3D.renderInstanced instancedCtx model.Level.Grid buffer
 
   // ── Enemies (animated models) ─────────────────────────────────────────────
-  for i = 0 to model.Enemies.Length - 1 do
-    let enemy = model.Enemies[i]
+  for i = 0 to model.Enemy.Enemies.Length - 1 do
+    let enemy = model.Enemy.Enemies[i]
 
     if enemy.State <> EnemyState.Dead && i < animService.States.Count then
       let am = animService.States[i]
@@ -257,7 +259,7 @@ let view
   let healthModel = loadOrGetModel Assets.heart ctx
   let ammoModel = loadOrGetModel Assets.coinGold ctx
 
-  for pickup in model.Pickups do
+  for pickup in model.Pickup.Pickups do
     if pickup.IsActive then
       let mdl, p =
         match pickup.Kind with
@@ -272,7 +274,7 @@ let view
   // ── Muzzle smoke puffs ────────────────────────────────────────────────────
   let smokeModel = loadOrGetModel Assets.smoke ctx
 
-  for puff in model.SmokePuffs do
+  for puff in model.Effect.SmokePuffs do
     if puff.Active then
       let life = 1.0f - puff.Timer / SmokePuff.duration
       let alpha = 1.0f - life
@@ -290,22 +292,22 @@ let view
           buffer |> Draw3D.drawModel smokeModel smokeTransform |> Draw3D.drop
 
   // ── Weapon viewmodel (blaster) ────────────────────────────────────────────
-  let blasterModel = loadOrGetModel model.EquippedWeapon ctx
+  let blasterModel = loadOrGetModel model.Weapon.EquippedWeapon ctx
 
   if not(isNull blasterModel) && blasterModel.Meshes.Count > 0 then
     let weaponPosNumerics =
       ViewMath.weaponPosition
-        model.PlayerPosition
+        model.Player.Position
         forwardNumerics
-        model.PlayerPitch
-        model.PlayerYaw
-        model.RecoilOffset
+        model.Player.Pitch
+        model.Player.Yaw
+        model.Weapon.RecoilOffset
 
     let weaponPos = toXnaV weaponPosNumerics
 
     let transform =
-      let yawRot = Matrix.CreateRotationY(model.PlayerYaw)
-      let pitchRot = Matrix.CreateRotationX(model.PlayerPitch)
+      let yawRot = Matrix.CreateRotationY(model.Player.Yaw)
+      let pitchRot = Matrix.CreateRotationX(model.Player.Pitch)
       let trans = Matrix.CreateTranslation(weaponPos)
       pitchRot * yawRot * trans
 

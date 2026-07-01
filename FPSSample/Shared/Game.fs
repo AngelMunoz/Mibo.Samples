@@ -27,17 +27,22 @@ module Game =
     |> InputMap.key GameAction.Sprint KeyCode.LeftShift
     |> InputMap.key GameAction.Reload KeyCode.R
 
-  /// Creates the initial GameModel from a level definition.
+  /// Creates the initial GameModel from a level definition. Sub-models are
+  /// constructed by the GameModel default constructor; this seeds the enemy and
+  /// pickup arrays from the level and shares the colliders array with the
+  /// enemy model (used for enemy-vs-wall resolution).
   let initModel(level: Level.LevelData) : GameModel =
     let model = GameModel()
     model.Level <- level
-    model.Colliders <- Level.LevelData.extractColliders level
-    model.PlayerPosition <- level.PlayerSpawn
+    let colliders = Level.LevelData.extractColliders level
+    model.Colliders <- colliders
+    model.Enemy.Colliders <- colliders
+    model.Player.Position <- level.PlayerSpawn
 
-    model.Enemies <-
+    model.Enemy.Enemies <-
       level.EnemySpawns |> Array.map(fun s -> Enemy.create s.Position)
 
-    model.Pickups <-
+    model.Pickup.Pickups <-
       level.PickupSpawns |> Array.map(fun s -> Pickup.create s.Kind s.Position)
 
     model
@@ -47,7 +52,7 @@ module Game =
   let init (env: Env) (ctx: GameContext) : struct (GameModel * Cmd<Msg>) =
     let level = Level.LevelData.createDefault()
     let model = initModel level
-    env.Animation.Init(ctx, model.Enemies.Length)
+    env.Animation.Init(ctx, model.Enemy.Enemies.Length)
     struct (model, Cmd.none)
 
   /// Backend-neutral subscription for mouse look (PositionDelta → yaw/pitch).

@@ -8,9 +8,12 @@ open FPSSample
 open FPSSample.Types
 
 /// <summary>
-/// MonoGame-specific audio service. Manages one-shot sounds (fire, reload, SFX
-/// queue) and looping footstep instances. Uses MonoGame's native 3D audio via
-/// <c>SoundEffectInstance.Apply3D(listener, emitter)</c> for positional sounds.
+/// MonoGame-specific audio service. Manages one-shot sounds (fire, reload, SFX)
+/// via <c>Consume</c> and looping footstep instances via <c>Update</c>. Uses
+/// MonoGame's native 3D audio via <c>SoundEffectInstance.Apply3D(listener, emitter)</c>
+/// for positional sounds. Loop intent (player/enemy footsteps) is derived from
+/// the snapshot each frame and applied idempotently against
+/// <c>SoundEffectInstance.State</c> — no audio flags in Elmish.
 /// </summary>
 type AudioService() =
   let mutable ctx = Unchecked.defaultof<GameContext>
@@ -20,30 +23,55 @@ type AudioService() =
   let mutable playerFootstep: SoundEffectInstance = null
   let mutable enemyFootstep: SoundEffectInstance = null
 
+  // Cached listener for Consume (positional one-shots). Updated each Update.
+  let mutable cachedListener: AudioListener = AudioListener()
+
+  // Converts a raylib-style asset path to a MonoGame content pipeline path.
+  let mgPath(path: string) =
+    path
+      .Replace("assets/", "")
+      .Replace(".glb", "")
+      .Replace(".fbx", "")
+      .Replace(".mp3", "")
+      .Replace(".wav", "")
+
+  // ── Play a one-shot with optional positional attenuation ──
+  let playOneShot (assets: IAssets) (msg: AudioMsg) =
+    match msg with
+    | AudioMsg.OneShot(path, position, isPositional) ->
+      let snd = assets.Sound(mgPath path)
+
+      if isPositional then
+        let ePos = Vector3.op_Implicit position
+        let emitter = AudioEmitter(Position = ePos)
+        let instance = snd.CreateInstance()
+        instance.Apply3D(cachedListener, emitter)
+        instance.Play()
+      else
+        snd.Play() |> ignore
+
   interface IAudioService with
     member _.Init(gameCtx: GameContext) : unit =
       ctx <- gameCtx
       initialized <- true
 
-    member _.Update(_: float32, model: GameModel) : unit =
+    member _.Consume(audioMsg: AudioMsg) : unit =
+      if not initialized then
+        ()
+
+      let assets = GameContext.getService<IAssets> ctx
+      playOneShot assets audioMsg
+
+    member _.Update(_: float32, snapshot: Snapshot) : unit =
       if not initialized then
         ()
 
       let assets = GameContext.getService<IAssets> ctx
 
-      let mgPath(path: string) =
-        path
-          .Replace("assets/", "")
-          .Replace(".glb", "")
-          .Replace(".fbx", "")
-          .Replace(".mp3", "")
-          .Replace(".wav", "")
-
-      let playerPos = model.PlayerPosition
-      let pos = Vector3(playerPos.X, playerPos.Y, playerPos.Z)
+      let pos = Vector3.op_Implicit snapshot.Player.Position
 
       let forwardNumerics =
-        ViewMath.cameraForward model.PlayerYaw model.PlayerPitch
+        ViewMath.cameraForward snapshot.Player.Yaw snapshot.Player.Pitch
 
       let forward =
         Vector3(forwardNumerics.X, forwardNumerics.Y, forwardNumerics.Z)
@@ -52,43 +80,44 @@ type AudioService() =
         AudioListener(
           Position = pos,
           Forward = forward,
-          Velocity = model.PlayerVelocity
+          Velocity = Vector3.op_Implicit snapshot.Player.Velocity
         )
 
-      // ── One-shot: fire + reload (non-positional) ──
-      if model.LastFireSound <> "" then
-        assets.Sound(mgPath model.LastFireSound).Play() |> ignore
-        model.LastFireSound <- ""
+      // Cache for Consume (positional one-shots).
+      cachedListener <- listener
 
-      if model.LastReloadSound <> "" then
-        assets.Sound(mgPath model.LastReloadSound).Play() |> ignore
-        model.LastReloadSound <- ""
-
-      // ── Looping player footsteps ──
+      // ── Looping player footsteps (derived from snapshot velocity) ──
       if isNull playerFootstep then
         let snd = assets.Sound(mgPath Assets.footstepsWalking)
         playerFootstep <- snd.CreateInstance()
         playerFootstep.IsLooped <- true
 
-      if model.IsPlayerWalking then
-        if playerFootstep.State = SoundState.Stopped then
+      let horizontalSpeed =
+        MathF.Sqrt(
+          snapshot.Player.Velocity.X * snapshot.Player.Velocity.X
+          + snapshot.Player.Velocity.Z * snapshot.Player.Velocity.Z
+        )
+
+      let isWalking = snapshot.Player.IsGrounded && horizontalSpeed > 0.5f
+
+      if isWalking then
+        if
+          playerFootstep.State = SoundState.Stopped
+          || playerFootstep.State = SoundState.Paused
+        then
           playerFootstep.Volume <- 0.4f
           playerFootstep.Pan <- 0.0f
           playerFootstep.Play()
       else if playerFootstep.State = SoundState.Playing then
-        playerFootstep.Stop()
+        playerFootstep.Pause()
 
-      // ── Looping enemy footsteps (nearest chasing enemy) ──
+      // ── Looping enemy footsteps (nearest chasing enemy, from snapshot) ──
       let mutable nearestChaserPos = ValueNone
       let mutable nearestDist = Single.MaxValue
 
-      for e in model.Enemies do
+      for e in snapshot.Enemy.Enemies do
         if e.State <> EnemyState.Dead && e.IsChasing then
-          let d =
-            Vector3.Distance(
-              Vector3(e.Position.X, e.Position.Y, e.Position.Z),
-              pos
-            )
+          let d = Vector3.Distance(Vector3.op_Implicit e.Position, pos)
 
           if d < nearestDist then
             nearestDist <- d
@@ -114,22 +143,3 @@ type AudioService() =
           not(isNull enemyFootstep) && enemyFootstep.State = SoundState.Playing
         then
           enemyFootstep.Stop()
-
-      // ── One-shot SFX queue (robotic, bite, laugh, injured, gasp) ──
-      for i = 0 to model.SoundQueueCount - 1 do
-        let evt = model.SoundQueue[i % model.SoundQueue.Length]
-
-        let snd = assets.Sound(mgPath evt.Path)
-
-        if evt.IsPositional then
-          let ePos = Vector3.op_Implicit evt.Position
-
-          let emitter = AudioEmitter(Position = ePos)
-
-          let instance = snd.CreateInstance()
-          instance.Apply3D(listener, emitter)
-          instance.Play()
-        else
-          snd.Play() |> ignore
-
-      model.SoundQueueCount <- 0

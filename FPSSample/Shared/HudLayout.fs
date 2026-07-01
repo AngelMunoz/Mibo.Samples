@@ -30,7 +30,7 @@ module HudLayout =
 
   /// Health percentage [0..1].
   let inline healthPercent(model: GameModel) : float32 =
-    Math.Max(0.0f, model.PlayerHealth / Constants.PlayerMaxHealth)
+    Math.Max(0.0f, model.Player.Health / Constants.PlayerMaxHealth)
 
   /// Health bar color based on percentage (green/yellow/red).
   let inline healthColor(pct: float32) : Mibo.Color =
@@ -46,13 +46,14 @@ module HudLayout =
 
   /// Ammo text string.
   let inline ammoText(model: GameModel) : string =
-    if model.IsReloading then
+    if model.Weapon.IsReloading then
       "Reloading..."
     else
-      $"Ammo: {model.Ammo}/{Constants.MaxAmmo}"
+      $"Ammo: {model.Weapon.Ammo}/{Constants.MaxAmmo}"
 
   /// Score text string.
-  let inline scoreText(model: GameModel) : string = $"Score: {model.Score}"
+  let inline scoreText(model: GameModel) : string =
+    $"Score: {model.Player.Score}"
 
   /// Game over overlay text.
   let gameOverText: string = "GAME OVER - Press R to Restart"
@@ -81,10 +82,14 @@ module HudLayout =
   let hitFlashHoldAtPct = 0.5f
 
   /// Hit-feedback overlay color. Drives the snap → fade → hold → remove sequence
-  /// from the remaining HitEffectTimer.
+  /// from the remaining HitEffectTimer (owned by EffectModel).
   let inline hitFlashColor(model: GameModel) : Mibo.Color =
     let pct =
-      Math.Clamp(model.HitEffectTimer / Constants.HitEffectDuration, 0.0f, 1.0f)
+      Math.Clamp(
+        model.Effect.HitEffectTimer / Constants.HitEffectDuration,
+        0.0f,
+        1.0f
+      )
 
     // fadeProgress: 1 at the peak, 0 once the floor is reached (then held).
     let fadeProgress =
@@ -108,8 +113,9 @@ module HudLayout =
       (byte(float32 gb * inv))
       (byte alpha)
 
-  /// Whether the hit-feedback overlay should render.
-  let inline isHitFlash(model: GameModel) : bool = model.HitEffectTimer > 0.0f
+  /// Whether the hit-feedback overlay should render (reads EffectModel).
+  let inline isHitFlash(model: GameModel) : bool =
+    model.Effect.HitEffectTimer > 0.0f
 
-  /// Whether the game over overlay should show.
-  let inline isGameOver(model: GameModel) : bool = model.PlayerHealth <= 0.0f
+  /// Whether the game over overlay should show (reads PlayerModel).
+  let inline isGameOver(model: GameModel) : bool = model.Player.Health <= 0.0f
