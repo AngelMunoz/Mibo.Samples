@@ -94,7 +94,7 @@ module ViewMath =
   let skyZenithColor: Mibo.Color = Mibo.Color.rgb 5uy 7uy 18uy
 
   /// Creates a muzzle flash point light at the given position.
-  let muzzleFlashLight(pos: Vector3) : PointLight3D = {
+  let inline muzzleFlashLight(pos: Vector3) : PointLight3D = {
     Position = pos
     Color = Mibo.Color.rgb 255uy 220uy 120uy
     Intensity = 3.0f
@@ -120,7 +120,7 @@ module ViewMath =
   /// Creates a warm torch point light at the given position, with a flicker
   /// offset applied to intensity (caller passes a per-torch phase so each
   /// torch flickers independently).
-  let torchLight (pos: Vector3) (flicker: float32) : PointLight3D = {
+  let inline torchLight (pos: Vector3) (flicker: float32) : PointLight3D = {
     Position = pos
     Color = Mibo.Color.rgb 255uy 160uy 60uy
     Intensity = 2.0f + flicker

@@ -52,8 +52,15 @@ let tests =
       <| fun _ ->
         let enemies = [| Enemy.create(Vector3(100.0f, 0.0f, 100.0f)) |]
 
+        let events =
+          update 0.016f (Vector3(0.0f, 0.0f, 0.0f)) enemies [||] |> Seq.toList
+
         let damage =
-          update 0.016f (Vector3(0.0f, 0.0f, 0.0f)) 100.0f (GameModel()) enemies [||]
+          events
+          |> List.tryPick (function
+            | EnemyEvent.PlayerDamaged amt -> Some amt
+            | _ -> None)
+          |> Option.defaultValue 0.0f
 
         Expect.equal damage 0.0f "No damage from idle enemy"
         Expect.equal enemies[0].State EnemyState.Idle "Still idle"
@@ -63,19 +70,36 @@ let tests =
         let enemies = [| Enemy.create(Vector3(10.0f, 0.0f, 0.0f)) |]
 
         let _ =
-          update 0.016f (Vector3(0.0f, 0.0f, 0.0f)) 100.0f (GameModel()) enemies [||]
+          update 0.016f (Vector3(0.0f, 0.0f, 0.0f)) enemies [||] |> Seq.toList
 
         Expect.equal enemies[0].State EnemyState.Chasing "Started chasing"
 
-      testCase "enemy within attack range attacks"
+      testCase "enemy within attack range attacks and emits PlayerDamaged"
       <| fun _ ->
         let enemies = [| Enemy.create(Vector3(1.0f, 0.0f, 0.0f)) |]
 
-        let damage =
-          update 0.016f (Vector3(0.0f, 0.0f, 0.0f)) 100.0f (GameModel()) enemies [||]
+        let events =
+          update 0.016f (Vector3(0.0f, 0.0f, 0.0f)) enemies [||] |> Seq.toList
 
         Expect.equal enemies[0].State EnemyState.Attacking "In attack range"
+
+        let damage =
+          events
+          |> List.tryPick (function
+            | EnemyEvent.PlayerDamaged amt -> Some amt
+            | _ -> None)
+          |> Option.defaultValue 0.0f
+
         Expect.equal damage Constants.EnemyAttackDamage "Dealt attack damage"
+
+        // Should also emit an AttackBite event with the enemy position.
+        let hasBite =
+          events
+          |> List.exists (function
+            | EnemyEvent.AttackBite _ -> true
+            | _ -> false)
+
+        Expect.isTrue hasBite "AttackBite event emitted"
 
       testCase "dead enemy respawns after timer"
       <| fun _ ->
@@ -85,7 +109,7 @@ let tests =
         let enemies = [| enemy |]
 
         let _ =
-          update 0.2f (Vector3(0.0f, 0.0f, 0.0f)) 100.0f (GameModel()) enemies [||]
+          update 0.2f (Vector3(0.0f, 0.0f, 0.0f)) enemies [||] |> Seq.toList
 
         Expect.equal enemies[0].State EnemyState.Idle "Respawned as idle"
 
@@ -101,8 +125,15 @@ let tests =
         enemy.AttackCooldown <- 0.5f // still on cooldown
         let enemies = [| enemy |]
 
+        let events =
+          update 0.016f (Vector3(0.0f, 0.0f, 0.0f)) enemies [||] |> Seq.toList
+
         let damage =
-          update 0.016f (Vector3(0.0f, 0.0f, 0.0f)) 100.0f (GameModel()) enemies [||]
+          events
+          |> List.tryPick (function
+            | EnemyEvent.PlayerDamaged amt -> Some amt
+            | _ -> None)
+          |> Option.defaultValue 0.0f
 
         Expect.equal damage 0.0f "No damage during cooldown"
     ]
@@ -122,18 +153,34 @@ let tests =
         |]
 
         let _ =
-          update
-            0.016f
-            (Vector3(100.0f, 0.0f, 0.0f))
-            100.0f
-            (GameModel())
-            enemies
-            colliders
+          update 0.016f (Vector3(100.0f, 0.0f, 0.0f)) enemies colliders
+          |> Seq.toList
 
         // Enemy radius is 0.4, so it overlaps the face at X=1. Should be pushed past 1.0+radius
         Expect.isGreaterThan
           enemies[0].Position.X
           1.0f
           "Pushed past collider face"
+    ]
+
+    testList "SFX event emission" [
+      testCase "robotic timer expiry emits Robotic event"
+      <| fun _ ->
+        // Place enemy far from player so it stays idle and the robotic timer
+        // can fire. Set the timer near zero so a single tick expires it.
+        let mutable enemy = Enemy.create(Vector3(100.0f, 0.0f, 100.0f))
+        enemy.RoboticTimer <- 0.001f
+        let enemies = [| enemy |]
+
+        let events =
+          update 0.016f (Vector3(0.0f, 0.0f, 0.0f)) enemies [||] |> Seq.toList
+
+        let hasRobotic =
+          events
+          |> List.exists (function
+            | EnemyEvent.Robotic _ -> true
+            | _ -> false)
+
+        Expect.isTrue hasRobotic "Robotic event emitted when timer expires"
     ]
   ]

@@ -14,16 +14,19 @@ type private CBoolExtensions =
   static member inline AsBool(c: CBool) : bool = CBool.op_Implicit c
 
 /// <summary>
-/// Raylib-specific audio service. Manages one-shot sounds (fire, reload, SFX
-/// queue) and looping footstep instances. Raylib has no built-in 3D audio, so
-/// positional sounds use manual inverse-distance attenuation + stereo pan
-/// computed from the player's camera right vector.
+/// Raylib-specific audio service. Manages one-shot sounds (fire, reload, SFX)
+/// via <c>Consume</c> and looping footstep instances via <c>Update</c>.
+/// Raylib has no built-in 3D audio, so positional sounds use manual
+/// inverse-distance attenuation + stereo pan computed from the player's
+/// camera right vector. Loop intent (player/enemy footsteps) is derived from
+/// the snapshot each frame and applied idempotently against
+/// <c>Raylib.IsSoundPlaying</c> — no audio flags in Elmish.
 /// </summary>
 type AudioService() =
   let mutable ctx = Unchecked.defaultof<GameContext>
   let mutable initialized = false
 
-  // Looping footstep state
+  // Looping footstep state (owned by the service, not the model).
   let mutable playerFootstep: Sound = Unchecked.defaultof<_>
   let mutable playerFootstepLoaded = false
   let mutable playerFootstepPlaying = false
@@ -31,6 +34,13 @@ type AudioService() =
   let mutable enemyFootstep: Sound = Unchecked.defaultof<_>
   let mutable enemyFootstepLoaded = false
   let mutable enemyFootstepPlaying = false
+
+  // Cached player frame for Consume (positional one-shots). Consume may be
+  // called from the Elmish message queue outside of Update; these hold the most
+  // recent player position/right so positional one-shots (robotic, child laugh,
+  // bite, injured) play with correct attenuation/pan.
+  let mutable cachedPlayerPos = Vector3.Zero
+  let mutable cachedRight = Vector3.UnitX
 
   // Inverse-distance attenuation: full volume at minDist, gentle fade to 0.
   // This mirrors the curve OpenAL/MonoGame use natively.
@@ -50,34 +60,64 @@ type AudioService() =
     else
       0.0f
 
+  // ── Play a one-shot with optional positional attenuation ──
+  let playOneShot (assets: IAssets) (msg: AudioMsg) =
+    match msg with
+    | AudioMsg.OneShot(path, position, isPositional) ->
+      let snd = assets.Sound path
+
+      if isPositional then
+        let toEmitter = position - cachedPlayerPos
+        let dist = toEmitter.Length()
+        let vol = distVol dist
+        let pan = panFor toEmitter cachedRight
+
+        Raylib.SetSoundVolume(snd, vol)
+        Raylib.SetSoundPan(snd, (pan + 1.0f) * 0.5f)
+        Raylib.PlaySound(snd)
+      else
+        Raylib.SetSoundVolume(snd, 1.0f)
+        Raylib.SetSoundPan(snd, 0.5f)
+        Raylib.PlaySound(snd)
+
   interface IAudioService with
     member _.Init(gameCtx: GameContext) : unit =
       ctx <- gameCtx
       initialized <- true
 
-    member _.Update(_: float32, model: GameModel) : unit =
+    member _.Consume(audioMsg: AudioMsg) : unit =
       if not initialized then
         ()
 
       let assets = GameContext.getService<IAssets> ctx
-      let playerPos = model.PlayerPosition
-      let right = ViewMath.cameraRight model.PlayerYaw
+      playOneShot assets audioMsg
 
-      // ── One-shot: fire + reload ──
-      if model.LastFireSound <> "" then
-        Raylib.PlaySound(assets.Sound(model.LastFireSound))
-        model.LastFireSound <- ""
+    member _.Update(_: float32, snapshot: Snapshot) : unit =
+      if not initialized then
+        ()
 
-      if model.LastReloadSound <> "" then
-        Raylib.PlaySound(assets.Sound(model.LastReloadSound))
-        model.LastReloadSound <- ""
+      let assets = GameContext.getService<IAssets> ctx
+      let playerPos = snapshot.Player.Position
+      let right = ViewMath.cameraRight snapshot.Player.Yaw
 
-      // ── Looping player footsteps ──
+      // Cache for Consume (positional one-shots need this frame's player info).
+      cachedPlayerPos <- playerPos
+      cachedRight <- right
+
+      // ── Looping player footsteps (derived from snapshot velocity) ──
+      let horizontalSpeed =
+        MathF.Sqrt(
+          snapshot.Player.Velocity.X * snapshot.Player.Velocity.X
+          + snapshot.Player.Velocity.Z * snapshot.Player.Velocity.Z
+        )
+
+      let isWalking = snapshot.Player.IsGrounded && horizontalSpeed > 0.5f
+
       if not playerFootstepLoaded then
         playerFootstep <- assets.Sound(Assets.footstepsWalking)
         playerFootstepLoaded <- true
 
-      if model.IsPlayerWalking then
+      if isWalking then
         if
           not playerFootstepPlaying
           || not(Raylib.IsSoundPlaying(playerFootstep).AsBool())
@@ -90,11 +130,11 @@ type AudioService() =
         Raylib.StopSound(playerFootstep)
         playerFootstepPlaying <- false
 
-      // ── Looping enemy footsteps (nearest chasing enemy) ──
+      // ── Looping enemy footsteps (nearest chasing enemy, from snapshot) ──
       let mutable nearestChaserPos = ValueNone
       let mutable nearestDist = Single.MaxValue
 
-      for e in model.Enemies do
+      for e in snapshot.Enemy.Enemies do
         if e.State <> EnemyState.Dead && e.IsChasing then
           let d = (e.Position - playerPos).Length()
 
@@ -130,25 +170,3 @@ type AudioService() =
         if enemyFootstepPlaying then
           Raylib.StopSound(enemyFootstep)
           enemyFootstepPlaying <- false
-
-      // ── One-shot SFX queue (robotic, bite, laugh, injured, gasp) ──
-      for i = 0 to model.SoundQueueCount - 1 do
-        let evt = model.SoundQueue[i % model.SoundQueue.Length]
-
-        let snd = assets.Sound evt.Path
-
-        if evt.IsPositional then
-          let toEmitter = evt.Position - playerPos
-          let dist = toEmitter.Length()
-          let vol = distVol dist
-          let pan = panFor toEmitter right
-
-          Raylib.SetSoundVolume(snd, vol)
-          Raylib.SetSoundPan(snd, (pan + 1.0f) * 0.5f)
-          Raylib.PlaySound(snd)
-        else
-          Raylib.SetSoundVolume(snd, 1.0f)
-          Raylib.SetSoundPan(snd, 0.5f)
-          Raylib.PlaySound(snd)
-
-      model.SoundQueueCount <- 0

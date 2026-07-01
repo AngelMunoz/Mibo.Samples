@@ -13,6 +13,7 @@
     <Compile Include="CombatTests.fs" />
     <Compile Include="EnemyAiTests.fs" />
     <Compile Include="SystemsTests.fs" />
+    <Compile Include="SubSystemsTests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
 

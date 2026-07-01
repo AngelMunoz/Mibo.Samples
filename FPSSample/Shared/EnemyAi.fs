@@ -6,15 +6,20 @@ open Mibo.Layout3D
 
 /// Enemy AI: idle -> chasing -> attacking state machine.
 /// Simple seek behavior toward the player. Pure logic - no renderer dependency.
-/// Sound events are pushed directly to the model's SoundQueue (same pattern as
-/// SpaceBattle's EffectState for particles — no Cmd round-trip).
+/// SFX timers tick down and emit EnemyEvent values (Robotic / ChildLaugh /
+/// AttackBite) instead of pushing to a sound queue — the router translates
+/// those events into AudioMsg one-shots for the audio service.
 module EnemyAi =
 
   open Types
 
-  let private rng = Random(42)
+  let private rng = Random.Shared
 
-  let private randomInterval (min: float32) (max: float32) : float32 =
+  let inline private randomInterval
+    (rng: Random)
+    (min: float32)
+    (max: float32)
+    : float32 =
     let r = float32(rng.NextDouble())
     min + (max - min) * r
 
@@ -58,12 +63,13 @@ module EnemyAi =
       enemyPos
 
   /// Updates a single enemy's AI state and movement. Mutates the enemy in place.
-  /// SFX timers tick down and push sounds to the model queue when they expire.
+  /// SFX timers tick down and append EnemyEvent values to the events list when
+  /// they expire (the router translates them into AudioMsg one-shots).
   let updateEnemyByRef
     (dt: float32)
     (playerPos: Vector3)
-    (model: GameModel)
     (enemy: Enemy byref)
+    (events: EnemyEvent ResizeArray)
     : unit =
     match enemy.State with
     | EnemyState.Dead ->
@@ -79,11 +85,13 @@ module EnemyAi =
 
         enemy.RoboticTimer <-
           randomInterval
+            rng
             Constants.RoboticSoundMinInterval
             Constants.RoboticSoundMaxInterval
 
         enemy.IdleLaughTimer <-
           randomInterval
+            rng
             Constants.ChildLaughMinInterval
             Constants.ChildLaughMaxInterval
     | _ ->
@@ -100,10 +108,12 @@ module EnemyAi =
       enemy.RoboticTimer <- enemy.RoboticTimer - dt
 
       if enemy.RoboticTimer <= 0.0f then
-        queueSoundAt model (Assets.roboticSound rng) enemy.Position
+        let path = Assets.roboticSound rng
+        events.Add(EnemyEvent.Robotic(path, enemy.Position))
 
         enemy.RoboticTimer <-
           randomInterval
+            rng
             Constants.RoboticSoundMinInterval
             Constants.RoboticSoundMaxInterval
 
@@ -113,7 +123,7 @@ module EnemyAi =
         enemy.Velocity <- dir * Constants.EnemyMoveSpeed
         enemy.Position <- enemy.Position + enemy.Velocity * dt
         enemy.Facing <- MathF.Atan2(dir.X, dir.Z)
-        enemy.CurrentAnim <- "walk"
+        enemy.CurrentAnim <- "sprint"
         enemy.IsChasing <- true
       | EnemyState.Attacking ->
         enemy.Velocity <- Vector3.Zero
@@ -134,34 +144,34 @@ module EnemyAi =
         enemy.IdleLaughTimer <- enemy.IdleLaughTimer - dt
 
         if enemy.IdleLaughTimer <= 0.0f then
-          queueSoundAt model Assets.childLaugh enemy.Position
+          events.Add(EnemyEvent.ChildLaugh enemy.Position)
 
           enemy.IdleLaughTimer <-
             randomInterval
+              rng
               Constants.ChildLaughMinInterval
               Constants.ChildLaughMaxInterval
 
-  /// Updates all enemies and handles their attacks on the player.
-  /// Returns damage dealt to the player this frame (0 if none).
+  /// Updates all enemies and returns events (PlayerDamaged / AttackBite /
+  /// Robotic / ChildLaugh) for the router to translate into cross-system Cmd.
+  /// The enemy system does NOT mutate player health — that's the router's job.
   let update
     (dt: float32)
     (playerPos: Vector3)
-    (playerHealth: float32)
-    (model: GameModel)
     (enemies: Enemy[])
     (colliders: BoundingBox[])
-    : float32 =
-    let mutable totalDamage = 0.0f
+    : EnemyEvent seq =
+    let events: EnemyEvent ResizeArray = ResizeArray<EnemyEvent>()
 
     for i = 0 to enemies.Length - 1 do
       let mutable enemy = enemies[i]
-      updateEnemyByRef dt playerPos model &enemy
+      updateEnemyByRef dt playerPos &enemy events
 
       // Attacking logic — bite sound on successful attack
       if enemy.State = EnemyState.Attacking && enemy.AttackCooldown <= 0.0f then
-        totalDamage <- totalDamage + Constants.EnemyAttackDamage
+        events.Add(EnemyEvent.PlayerDamaged Constants.EnemyAttackDamage)
+        events.Add(EnemyEvent.AttackBite enemy.Position)
         enemy.AttackCooldown <- Constants.EnemyAttackCooldown
-        queueSound model Assets.bite
 
       // Collider resolution
       let mutable pos = enemy.Position
@@ -172,4 +182,4 @@ module EnemyAi =
       enemy.Position <- pos
       enemies[i] <- enemy
 
-    totalDamage
+    events

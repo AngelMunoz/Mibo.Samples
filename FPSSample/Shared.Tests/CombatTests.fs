@@ -7,6 +7,15 @@ open FPSSample
 open FPSSample.Types
 open FPSSample.Combat
 
+/// Creates a GameModel pre-wired with sub-models for combat tests. The weapon
+/// and player sub-models are the ones mutated by handleShoot/startReload.
+let private createTestModel() : GameModel =
+  let model = GameModel()
+  model.Colliders <- [||]
+  model.Enemy.Colliders <- [||]
+  model.Level <- Level.LevelData.createDefault()
+  model
+
 [<Tests>]
 let tests =
   testList "Combat" [
@@ -90,69 +99,102 @@ let tests =
     testList "handleShoot" [
       testCase "shooting with no ammo does nothing"
       <| fun _ ->
-        let model = GameModel()
-        model.Ammo <- 0
-        model.Enemies <- [||]
-        model.Colliders <- [||]
-        let scoreBefore = model.Score
+        let model = createTestModel()
+        model.Weapon.Ammo <- 0
+        let scoreBefore = model.Player.Score
 
-        handleShoot model
+        let events =
+          handleShoot
+            model.Player
+            model.Weapon
+            model.Enemy.Enemies
+            model.Enemy.Colliders
+          |> Seq.toList
 
-        Expect.equal model.Score scoreBefore "Score unchanged"
-        Expect.equal model.Ammo 0 "Ammo unchanged"
-        Expect.equal model.FireCooldown 0.0f "Cooldown not set"
+        Expect.equal model.Player.Score scoreBefore "Score unchanged"
+        Expect.equal model.Weapon.Ammo 0 "Ammo unchanged"
+        Expect.equal model.Weapon.FireCooldown 0.0f "Cooldown not set"
+        Expect.isEmpty events "No events emitted"
 
       testCase "shooting during cooldown does nothing"
       <| fun _ ->
-        let model = GameModel()
-        model.Ammo <- 10
-        model.FireCooldown <- 0.1f
-        model.Enemies <- [||]
-        model.Colliders <- [||]
+        let model = createTestModel()
+        model.Weapon.Ammo <- 10
+        model.Weapon.FireCooldown <- 0.1f
 
-        handleShoot model
+        let events =
+          handleShoot
+            model.Player
+            model.Weapon
+            model.Enemy.Enemies
+            model.Enemy.Colliders
+          |> Seq.toList
 
-        Expect.equal model.Ammo 10 "Ammo unchanged during cooldown"
+        Expect.equal model.Weapon.Ammo 10 "Ammo unchanged during cooldown"
+        Expect.isEmpty events "No events emitted"
 
-      testCase "shooting consumes ammo and sets cooldown"
+      testCase "shooting consumes ammo and sets cooldown + emits Fired event"
       <| fun _ ->
-        let model = GameModel()
-        model.Ammo <- 10
-        model.Enemies <- [||]
-        model.Colliders <- [||]
+        let model = createTestModel()
+        model.Weapon.Ammo <- 10
 
-        handleShoot model
+        let events =
+          handleShoot
+            model.Player
+            model.Weapon
+            model.Enemy.Enemies
+            model.Enemy.Colliders
+          |> Seq.toList
 
-        Expect.equal model.Ammo 9 "Ammo consumed"
-        Expect.isGreaterThan model.FireCooldown 0.0f "Cooldown set"
-        Expect.isTrue model.MuzzleFlash.Active "Muzzle flash active"
+        Expect.equal model.Weapon.Ammo 9 "Ammo consumed"
+        Expect.isGreaterThan model.Weapon.FireCooldown 0.0f "Cooldown set"
+        // Muzzle flash is applied by the router's EffectMsg.MuzzleFlash handler
+        // (not by handleShoot directly — it emits a Fired event which the router
+        // translates). The recoil kick IS applied directly here (weapon-owned).
+        Expect.isGreaterThan
+          model.Weapon.RecoilOffset
+          0.0f
+          "Recoil kick applied"
+
+        Expect.equal events.Length 1 "One Fired event emitted"
+
+        match events with
+        | [ WeaponEvent.Fired(path, _, _) ] ->
+          Expect.isTrue
+            (path.Contains("762x39"))
+            "Fired event carries a gun sound path"
+        | _ -> failwith "Expected exactly one Fired event"
 
       testCase "shooting enemy in line of sight deals damage"
       <| fun _ ->
-        let model = GameModel()
-        model.Ammo <- 10
-        model.Colliders <- [||]
-        model.PlayerPosition <- Vector3(0.0f, 0.0f, 0.0f)
-        model.PlayerYaw <- 0.0f
-        model.PlayerPitch <- 0.0f
+        let model = createTestModel()
+        model.Weapon.Ammo <- 10
+        model.Player.Position <- Vector3(0.0f, 0.0f, 0.0f)
+        model.Player.Yaw <- 0.0f
+        model.Player.Pitch <- 0.0f
 
         let enemy = Enemy.create(Vector3(0.0f, 0.0f, -5.0f))
-        model.Enemies <- [| enemy |]
+        model.Enemy.Enemies <- [| enemy |]
 
-        handleShoot model
+        let _ =
+          handleShoot
+            model.Player
+            model.Weapon
+            model.Enemy.Enemies
+            model.Enemy.Colliders
 
         Expect.isLessThan
-          model.Enemies[0].Health
+          model.Enemy.Enemies[0].Health
           Constants.EnemyMaxHealth
           "Enemy took damage"
 
       testCase "wall occludes enemy behind it"
       <| fun _ ->
-        let model = GameModel()
-        model.Ammo <- 10
-        model.PlayerPosition <- Vector3(0.0f, 0.0f, 0.0f)
-        model.PlayerYaw <- 0.0f
-        model.PlayerPitch <- 0.0f
+        let model = createTestModel()
+        model.Weapon.Ammo <- 10
+        model.Player.Position <- Vector3(0.0f, 0.0f, 0.0f)
+        model.Player.Yaw <- 0.0f
+        model.Player.Pitch <- 0.0f
 
         // Wall between player and enemy
         model.Colliders <- [|
@@ -162,59 +204,94 @@ let tests =
           }
         |]
 
-        let enemy = Enemy.create(Vector3(0.0f, 0.0f, -5.0f))
-        model.Enemies <- [| enemy |]
+        model.Enemy.Colliders <- model.Colliders
 
-        handleShoot model
+        let enemy = Enemy.create(Vector3(0.0f, 0.0f, -5.0f))
+        model.Enemy.Enemies <- [| enemy |]
+
+        let _ =
+          handleShoot
+            model.Player
+            model.Weapon
+            model.Enemy.Enemies
+            model.Enemy.Colliders
 
         Expect.equal
-          model.Enemies[0].Health
+          model.Enemy.Enemies[0].Health
           Constants.EnemyMaxHealth
           "Enemy not damaged behind wall"
 
-      testCase "killing enemy adds score and marks dead"
+      testCase "killing enemy emits EnemyKilled event"
       <| fun _ ->
-        let model = GameModel()
-        model.Ammo <- 10
-        model.Colliders <- [||]
-        model.PlayerPosition <- Vector3(0.0f, 0.0f, 0.0f)
-        model.PlayerYaw <- 0.0f
-        model.PlayerPitch <- 0.0f
+        let model = createTestModel()
+        model.Weapon.Ammo <- 10
+        model.Player.Position <- Vector3(0.0f, 0.0f, 0.0f)
+        model.Player.Yaw <- 0.0f
+        model.Player.Pitch <- 0.0f
 
         let mutable enemy = Enemy.create(Vector3(0.0f, 0.0f, -5.0f))
         enemy.Health <- 10.0f // will die in one shot
-        model.Enemies <- [| enemy |]
+        model.Enemy.Enemies <- [| enemy |]
 
-        handleShoot model
+        let events =
+          handleShoot
+            model.Player
+            model.Weapon
+            model.Enemy.Enemies
+            model.Enemy.Colliders
+          |> Seq.toList
 
-        Expect.equal model.Enemies[0].State EnemyState.Dead "Enemy is dead"
-        Expect.equal model.Enemies[0].Health 0.0f "Health is 0"
-        Expect.equal model.Score 100 "Score increased by 100"
+        Expect.equal
+          model.Enemy.Enemies[0].State
+          EnemyState.Dead
+          "Enemy is dead"
+
+        Expect.equal model.Enemy.Enemies[0].Health 0.0f "Health is 0"
+
+        // Should have both Fired and EnemyKilled events.
+        let hasKill =
+          events
+          |> List.exists (function
+            | WeaponEvent.EnemyKilled _ -> true
+            | _ -> false)
+
+        Expect.isTrue hasKill "EnemyKilled event emitted"
     ]
 
     testList "reload" [
-      testCase "startReload sets reloading state"
+      testCase "startReload sets reloading state and emits ReloadStarted"
       <| fun _ ->
-        let model = GameModel()
-        model.Ammo <- 5
-        startReload model
-        Expect.isTrue model.IsReloading "Is reloading"
-        Expect.isGreaterThan model.ReloadTimer 0.0f "Timer set"
+        let model = createTestModel()
+        model.Weapon.Ammo <- 5
+
+        let events = startReload model.Weapon |> Seq.toList
+
+        Expect.isTrue model.Weapon.IsReloading "Is reloading"
+        Expect.isGreaterThan model.Weapon.ReloadTimer 0.0f "Timer set"
+        Expect.equal events.Length 1 "One ReloadStarted event emitted"
+
+        match events with
+        | [ WeaponEvent.ReloadStarted path ] ->
+          Expect.isTrue (path.Contains("reload")) "Reload sound path"
+        | _ -> failwith "Expected exactly one ReloadStarted event"
 
       testCase "startReload does nothing when full"
       <| fun _ ->
-        let model = GameModel()
-        model.Ammo <- Constants.MaxAmmo
-        startReload model
-        Expect.isFalse model.IsReloading "Not reloading when full"
+        let model = createTestModel()
+        model.Weapon.Ammo <- Constants.MaxAmmo
+
+        let events = startReload model.Weapon |> Seq.toList
+
+        Expect.isFalse model.Weapon.IsReloading "Not reloading when full"
+        Expect.isEmpty events "No events emitted"
 
       testCase "updateReload completes after timer"
       <| fun _ ->
-        let model = GameModel()
-        model.IsReloading <- true
-        model.ReloadTimer <- 0.1f
-        updateReload 0.2f model
-        Expect.isFalse model.IsReloading "Reload finished"
-        Expect.equal model.Ammo Constants.MaxAmmo "Ammo refilled"
+        let weapon = WeaponModel()
+        weapon.IsReloading <- true
+        weapon.ReloadTimer <- 0.1f
+        updateReload 0.2f weapon
+        Expect.isFalse weapon.IsReloading "Reload finished"
+        Expect.equal weapon.Ammo Constants.MaxAmmo "Ammo refilled"
     ]
   ]

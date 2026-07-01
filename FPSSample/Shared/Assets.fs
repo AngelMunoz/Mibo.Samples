@@ -109,7 +109,7 @@ module Assets =
   |]
 
   /// Picks a random robotic sound from the pool.
-  let roboticSound(rng: Random) : string =
+  let inline roboticSound(rng: Random) : string =
     roboticSounds[rng.Next(roboticSounds.Length)]
 
   /// Weapon archetype inferred from the blaster preview shape.

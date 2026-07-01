@@ -66,6 +66,28 @@ dotnet run --project SpaceBattle
 
 Controls: **Left-click** to select/move units, **Right-click** for unit info, **Scroll** to zoom, **WASD** to pan camera, **Space** to end turn, **R** to restart.
 
+### FPSSample
+
+A horror-themed first-person shooter built with Mibo's **Composable Systems**, **Commands**, and **Service-DI** patterns. The same game logic runs on two backends — raylib-cs and MonoGame — with zero game-logic duplication. Features per-system sub-models, a router-style `update` that translates events into cross-system `Cmd`, a `System` pipeline with a readonly snapshot boundary, and a blended `IAudioService` (one-shot SFX via `Cmd` events, looping footsteps derived from the snapshot). See [FPSSample/README.md](FPSSample/README.md) for the project layout and [FPSSample/Shared/README.md](FPSSample/Shared/README.md) for the full architecture guide.
+
+```bash
+# raylib backend (any platform)
+dotnet run --project FPSSample/Raylib
+
+# MonoGame DesktopGL backend (any platform)
+dotnet run --project FPSSample/MonoDesktop
+
+# MonoGame WindowsDX backend (Windows only, DirectX)
+dotnet run --project FPSSample/MonoWindowsDX
+```
+
+Controls: **WASD/Arrows** to move, **Mouse** to look, **Left-click** to shoot, **Right-click/R** to reload (also restart on game over), **Space** to jump, **Left Shift** to sprint.
+
+```bash
+# Run the test suite
+dotnet test FPSSample/Shared.Tests
+```
+
 ### PingPong
 
 A networked multiplayer Pong game with a client-server architecture over WebSockets. The server runs game logic and broadcasts state; the client renders locally and sends input.

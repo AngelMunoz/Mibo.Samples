@@ -5,7 +5,9 @@ open System.Numerics
 open Mibo.Layout3D
 
 /// Combat logic: ray-vs-AABB intersection, shooting, reloading, damage,
-/// and score. Pure math - no renderer dependency.
+/// and score. Pure math - no renderer dependency. Operates on sub-models
+/// (PlayerModel, WeaponModel) and returns WeaponEvent lists instead of
+/// mutating global flags/queues.
 module Combat =
 
   open Types
@@ -119,23 +121,30 @@ module Combat =
     closest
 
   /// Handles the Shoot message: consumes ammo, fires a raycast, applies damage
-  /// to the closest unoccluded enemy, updates score, and triggers muzzle flash,
-  /// smoke puffs, recoil, and the weapon-class-matched fire sound.
-  let handleShoot(model: GameModel) : unit =
-    let wc = Assets.weaponClass model.EquippedWeapon
+  /// to the closest unoccluded enemy, and triggers muzzle flash, smoke puffs,
+  /// recoil, and the weapon-class-matched fire sound. Returns WeaponEvent list
+  /// (Fired + possibly EnemyKilled) instead of mutating global flags/queues.
+  let handleShoot
+    (player: PlayerModel)
+    (weapon: WeaponModel)
+    (enemies: Enemy[])
+    (colliders: BoundingBox[])
+    : WeaponEvent seq =
+    let wc = Assets.weaponClass weapon.EquippedWeapon
+    let events = ResizeArray<WeaponEvent>()
 
-    if model.Ammo <= 0 || model.IsReloading then
-      ()
-    elif model.FireCooldown > 0.0f then
+    if weapon.Ammo <= 0 || weapon.IsReloading then
+      events
+    elif weapon.FireCooldown > 0.0f then
       // Fast-firing weapons ignore the exact per-shot cooldown window and fire
       // as soon as their class cooldown has elapsed.
-      ()
+      events
     else
-      let origin = model.PlayerPosition
-      let dir = lookDirection model.PlayerYaw model.PlayerPitch
+      let origin = player.Position
+      let dir = lookDirection player.Yaw player.Pitch
 
-      let enemyHit = findClosestEnemyHit origin dir model.Enemies
-      let wallHit = closestColliderHit origin dir model.Colliders
+      let enemyHit = findClosestEnemyHit origin dir enemies
+      let wallHit = closestColliderHit origin dir colliders
 
       let hitEnemy =
         match enemyHit, wallHit with
@@ -146,67 +155,55 @@ module Combat =
 
       match hitEnemy with
       | ValueSome idx ->
-        let mutable e = model.Enemies[idx]
+        let mutable e = enemies[idx]
         e.Health <- e.Health - Constants.WeaponDamage
 
         if e.Health <= 0.0f then
           e.Health <- 0.0f
           e.State <- EnemyState.Dead
           e.RespawnTimer <- Constants.EnemyRespawnTime
-          model.Score <- model.Score + 100
+          events.Add(WeaponEvent.EnemyKilled e.Position)
 
-        model.Enemies[idx] <- e
-        queueSound model Assets.injured
+        enemies[idx] <- e
       | ValueNone -> ()
 
-      // Spawn a smoke puff at the muzzle, tilted along the shot direction.
-      let mutable sSlot = -1
-
-      for i = 0 to model.SmokePuffs.Length - 1 do
-        if sSlot < 0 && not model.SmokePuffs[i].Active then
-          sSlot <- i
-
-      if sSlot < 0 then
-        sSlot <- 0
-
+      // Compute muzzle world position for smoke + flash.
       let muzzlePos =
-        ViewMath.muzzleWorldPosition
-          model.PlayerPosition
-          dir
-          model.PlayerPitch
-          model.PlayerYaw
+        ViewMath.muzzleWorldPosition origin dir player.Pitch player.Yaw
 
-      model.SmokePuffs[sSlot] <- SmokePuff.create muzzlePos dir 1.0f
+      // Kick recoil.
+      weapon.RecoilTimer <- 0.12f
+      weapon.RecoilOffset <- 0.08f
 
-      // Kick recoil and play fire sound matched to the equipped weapon class.
-      let wc = Assets.weaponClass model.EquippedWeapon
+      // Consume ammo + set cooldown.
+      weapon.Ammo <- weapon.Ammo - 1
+      weapon.FireCooldown <- Assets.fireCooldown wc
 
-      model.RecoilTimer <- 0.12f
-      model.RecoilOffset <- 0.08f
-      model.LastFireSound <- Assets.gunSound wc
+      // Emit Fired event (router translates to AudioMsg + EffectMsg smoke +
+      // EffectMsg.MuzzleFlash; the muzzle flash timer is weapon-owned state
+      // applied by the EffectMsg.MuzzleFlash handler).
+      events.Add(WeaponEvent.Fired(Assets.gunSound wc, muzzlePos, dir))
 
-      model.Ammo <- model.Ammo - 1
-      model.FireCooldown <- Assets.fireCooldown wc
-
-      model.MuzzleFlash <- {
-        Timer = Constants.MuzzleFlashDuration
-        Active = true
-      }
+      events
 
   /// Starts a reload if ammo is not full and not already reloading.
-  /// Queues the class-appropriate reload sound.
-  let startReload(model: GameModel) : unit =
-    if model.Ammo < Constants.MaxAmmo && not model.IsReloading then
-      let wc = Assets.weaponClass model.EquippedWeapon
-      model.IsReloading <- true
-      model.ReloadTimer <- Constants.ReloadTime
-      model.LastReloadSound <- Assets.reloadSound wc
+  /// Returns a ReloadStarted event (with the class-appropriate reload sound
+  /// path) instead of mutating a global flag.
+  let startReload(weapon: WeaponModel) : WeaponEvent seq =
+
+    if weapon.Ammo < Constants.MaxAmmo && not weapon.IsReloading then
+      let wc = Assets.weaponClass weapon.EquippedWeapon
+      weapon.IsReloading <- true
+      weapon.ReloadTimer <- Constants.ReloadTime
+      Seq.singleton(WeaponEvent.ReloadStarted(Assets.reloadSound wc))
+    else
+      Seq.empty
 
   /// Progresses reload timer; completes reload when timer elapses.
-  let updateReload (dt: float32) (model: GameModel) : unit =
-    if model.IsReloading then
-      model.ReloadTimer <- model.ReloadTimer - dt
+  let updateReload (dt: float32) (weapon: WeaponModel) : unit =
+    if weapon.IsReloading then
+      weapon.ReloadTimer <- weapon.ReloadTimer - dt
 
-      if model.ReloadTimer <= 0.0f then
-        model.Ammo <- Constants.MaxAmmo
-        model.IsReloading <- false
+      if weapon.ReloadTimer <= 0.0f then
+        weapon.Ammo <- Constants.MaxAmmo
+        weapon.IsReloading <- false

@@ -18,9 +18,9 @@ module GameLoop =
   /// pre-init hook (e.g. raylib DisableCursor), then shared Game.init
   /// (which initializes animation via env.Animation.Init).
   /// </summary>
-  let createInit
+  let inline createInit
     (env: Env)
-    (preInit: GameContext -> unit)
+    ([<InlineIfLambda>] preInit: GameContext -> unit)
     : (GameContext -> struct (GameModel * Cmd<Msg>)) =
     fun ctx ->
       preInit ctx
@@ -31,7 +31,7 @@ module GameLoop =
   /// Systems.update which runs the full system pipeline including
   /// animation via env.Animation.Update.
   /// </summary>
-  let createUpdate
+  let inline createUpdate
     (env: Env)
     : (Msg -> GameModel -> struct (GameModel * Cmd<Msg>)) =
     fun msg model -> Systems.update env msg model
@@ -41,8 +41,8 @@ module GameLoop =
   /// The backend passes its input subscription factory (InputMapper.subscribeStatic
   /// is backend-specific); mouse look/buttons come from shared Core.
   /// </summary>
-  let createSubscribe
-    (inputSub: GameContext -> Sub<Msg>)
+  let inline createSubscribe
+    ([<InlineIfLambda>] inputSub: GameContext -> Sub<Msg>)
     : (GameContext -> GameModel -> Sub<Msg>) =
     fun ctx _model ->
       Sub.batch [

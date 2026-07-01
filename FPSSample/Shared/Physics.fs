@@ -2,11 +2,14 @@ namespace FPSSample
 
 open System
 open System.Numerics
+open Mibo.Input
 open Mibo.Layout3D
 
 /// Player physics: collision against solid cell bounds, gravity, ground detection,
 /// acceleration/friction movement, and ramp/stepped terrain walking.
-/// Pure math - no renderer dependency.
+/// Pure math - no renderer dependency. Operates on PlayerModel (the player
+/// sub-model). Footstep audio is computed by the audio service from the
+/// snapshot — there is no IsPlayerWalking model flag.
 module Physics =
 
   open Types
@@ -74,9 +77,16 @@ module Physics =
   /// Full physics update: applies input-driven acceleration, gravity, integrates
   /// position, resolves wall collisions, handles ground standing, and jump.
   /// Ground height is determined by the highest solid cell beneath the player.
-  let update (dt: float32) (model: GameModel) : unit =
-    let actions = model.Actions
-    let struct (forward, right) = moveDirections model.PlayerYaw
+  /// Mutates the PlayerModel in place. Footstep audio is NOT tracked here —
+  /// the audio service derives walking intent from the snapshot each frame.
+  let update
+    (dt: float32)
+    (player: PlayerModel)
+    (level: Level.LevelData)
+    (colliders: BoundingBox[])
+    (actions: ActionState<GameAction>)
+    : unit =
+    let struct (forward, right) = moveDirections player.Yaw
 
     // ── Horizontal movement ──────────────────────────────────────────────────
     let mutable wishDir = Vector3.Zero
@@ -105,53 +115,47 @@ module Physics =
       wishDir <- Vector3.Normalize(wishDir)
       let targetVel = wishDir * maxSpeed
 
-      let diff =
-        targetVel
-        - Vector3(model.PlayerVelocity.X, 0.0f, model.PlayerVelocity.Z)
+      let diff = targetVel - Vector3(player.Velocity.X, 0.0f, player.Velocity.Z)
 
-      model.PlayerVelocity <-
+      player.Velocity <-
         Vector3(
-          model.PlayerVelocity.X + diff.X * Constants.Acceleration * dt,
-          model.PlayerVelocity.Y,
-          model.PlayerVelocity.Z + diff.Z * Constants.Acceleration * dt
+          player.Velocity.X + diff.X * Constants.Acceleration * dt,
+          player.Velocity.Y,
+          player.Velocity.Z + diff.Z * Constants.Acceleration * dt
         )
     else
       // Friction
       let decay = MathF.Exp(-Constants.Friction * dt)
 
-      model.PlayerVelocity <-
+      player.Velocity <-
         Vector3(
-          model.PlayerVelocity.X * decay,
-          model.PlayerVelocity.Y,
-          model.PlayerVelocity.Z * decay
+          player.Velocity.X * decay,
+          player.Velocity.Y,
+          player.Velocity.Z * decay
         )
 
     // ── Jump ─────────────────────────────────────────────────────────────────
-    if model.IsGrounded && actions.Started.Contains(GameAction.Jump) then
-      model.PlayerVelocity <-
-        Vector3(
-          model.PlayerVelocity.X,
-          Constants.JumpSpeed,
-          model.PlayerVelocity.Z
-        )
+    if player.IsGrounded && actions.Started.Contains(GameAction.Jump) then
+      player.Velocity <-
+        Vector3(player.Velocity.X, Constants.JumpSpeed, player.Velocity.Z)
 
     // ── Gravity ──────────────────────────────────────────────────────────────
-    model.PlayerVelocity <-
+    player.Velocity <-
       Vector3(
-        model.PlayerVelocity.X,
-        model.PlayerVelocity.Y + Constants.Gravity * dt,
-        model.PlayerVelocity.Z
+        player.Velocity.X,
+        player.Velocity.Y + Constants.Gravity * dt,
+        player.Velocity.Z
       )
 
     // ── Integrate position ───────────────────────────────────────────────────
-    let prevPos = model.PlayerPosition
-    let newPos = prevPos + model.PlayerVelocity * dt
+    let prevPos = player.Position
+    let newPos = prevPos + player.Velocity * dt
     let mutable resolvedPos = newPos
     let mutable grounded = false
 
     // ── Ground: find the highest solid surface beneath the player ────────────
     let groundY =
-      Level.LevelData.groundHeightAt resolvedPos.X resolvedPos.Z model.Level
+      Level.LevelData.groundHeightAt resolvedPos.X resolvedPos.Z level
 
     if resolvedPos.Y <= groundY + Constants.PlayerEyeHeight then
       resolvedPos <-
@@ -161,26 +165,14 @@ module Physics =
           resolvedPos.Z
         )
 
-      if model.PlayerVelocity.Y < 0.0f then
-        model.PlayerVelocity <-
-          Vector3(model.PlayerVelocity.X, 0.0f, model.PlayerVelocity.Z)
+      if player.Velocity.Y < 0.0f then
+        player.Velocity <- Vector3(player.Velocity.X, 0.0f, player.Velocity.Z)
 
       grounded <- true
 
     // ── Wall collisions (horizontal push-out from solid cells) ───────────────
-    for bounds in model.Colliders do
+    for bounds in colliders do
       resolvedPos <- resolveSphereAABB Constants.PlayerRadius resolvedPos bounds
 
-    model.PlayerPosition <- resolvedPos
-    model.IsGrounded <- grounded
-
-    // Track whether the player is walking for looping footstep audio.
-    // The view manages the SoundEffectInstance lifecycle — this flag just
-    // tells it whether to start or stop the loop.
-    let horizontalSpeed =
-      MathF.Sqrt(
-        model.PlayerVelocity.X * model.PlayerVelocity.X
-        + model.PlayerVelocity.Z * model.PlayerVelocity.Z
-      )
-
-    model.IsPlayerWalking <- grounded && horizontalSpeed > 0.5f
+    player.Position <- resolvedPos
+    player.IsGrounded <- grounded

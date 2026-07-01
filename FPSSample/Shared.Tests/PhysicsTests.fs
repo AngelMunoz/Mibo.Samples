@@ -4,12 +4,13 @@ open Expecto
 open System
 open System.Numerics
 open Mibo.Layout3D
+open Mibo.Input
 open FPSSample
 open FPSSample.Types
 open FPSSample.Physics
 
 /// Creates a minimal GameModel with an empty level (no colliders)
-/// for isolated physics testing.
+/// for isolated physics testing. Physics.update operates on the PlayerModel.
 let private createTestModel() : GameModel =
   let model = GameModel()
   model.Colliders <- [||]
@@ -64,29 +65,42 @@ let tests =
       testCase "player falls when not grounded"
       <| fun _ ->
         let model = createTestModel()
-        model.PlayerPosition <- Vector3(50.0f, 10.0f, 50.0f) // above ground
-        model.PlayerVelocity <- Vector3(0.0f, 0.0f, 0.0f)
-        model.IsGrounded <- false
+        model.Player.Position <- Vector3(50.0f, 10.0f, 50.0f) // above ground
+        model.Player.Velocity <- Vector3(0.0f, 0.0f, 0.0f)
+        model.Player.IsGrounded <- false
         // Override colliders to empty and ground to 0
         model.Colliders <- [||]
 
-        Physics.update 0.016f model
+        Physics.update
+          0.016f
+          model.Player
+          model.Level
+          model.Colliders
+          ActionState.empty
 
         Expect.isLessThan
-          model.PlayerVelocity.Y
+          model.Player.Velocity.Y
           0.0f
           "Y velocity negative after gravity"
 
       testCase "player on ground stays grounded"
       <| fun _ ->
         let model = createTestModel()
-        model.PlayerPosition <- Vector3(50.0f, Constants.PlayerEyeHeight, 50.0f)
-        model.PlayerVelocity <- Vector3.Zero
-        model.IsGrounded <- true
+
+        model.Player.Position <-
+          Vector3(50.0f, Constants.PlayerEyeHeight, 50.0f)
+
+        model.Player.Velocity <- Vector3.Zero
+        model.Player.IsGrounded <- true
         model.Colliders <- [||]
 
-        Physics.update 0.016f model
+        Physics.update
+          0.016f
+          model.Player
+          model.Level
+          model.Colliders
+          ActionState.empty
 
-        Expect.isTrue model.IsGrounded "Still grounded"
+        Expect.isTrue model.Player.IsGrounded "Still grounded"
     ]
   ]
