@@ -7,6 +7,7 @@ open System.Collections.Generic
 open System.Numerics
 open FSharp.NativeInterop
 open Raylib_cs
+open Mibo
 open Mibo.Elmish
 open Mibo.Elmish.Graphics3D
 open Mibo.Animation
@@ -109,12 +110,12 @@ let view (ctx: GameContext) (model: GameModel) (buffer: RenderBuffer3D) =
     Camera3D.render camera |> Camera3D.withClear l.SkyColor
   )
   |> Draw3D.setAmbientLight {
-    Color = l.AmbientColor
+    Color = l.AmbientColor.ToMiboColor()
     Intensity = l.AmbientIntensity
   }
   |> Draw3D.addDirectionalLight {
     Direction = l.LightDirection
-    Color = l.LightColor
+    Color = l.LightColor.ToMiboColor()
     Intensity = l.LightIntensity
     CastsShadows = true
   }

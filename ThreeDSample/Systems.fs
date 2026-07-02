@@ -4,6 +4,7 @@ open System
 open System.Collections.Concurrent
 open System.Numerics
 open Raylib_cs
+open Mibo
 open Mibo.Elmish
 open Mibo.Elmish.Graphics3D
 open Mibo.Animation
@@ -254,7 +255,10 @@ let inline minimapSystem
               model.Chunks
         })
         (fun img -> MinimapReady img)
-        (fun _ex -> MinimapReady(Raylib.GenImageColor(1, 1, Color.Black)))
+        (fun _ex ->
+          MinimapReady(
+            Raylib.GenImageColor(1, 1, Color.Black |> Color.op_Implicit)
+          ))
 
     struct (model, cmd)
   else
@@ -338,17 +342,15 @@ let private collectMushroomLights
             && lights.Count < 8
             && (worldPos - camPos).LengthSquared() <= 1600.0f
           then
-            lights.Add(
-              {
-                Position = worldPos + Vector3(0.0f, 0.5f, 0.0f)
-                Color = Color(255uy, 200uy, 120uy)
-                Intensity = 1.2f
-                Radius = 8.0f
-                Falloff = 1.2f
-                CastsShadows = false
-                ShadowBias = ValueNone
-              }
-            ))
+            lights.Add {
+              Position = worldPos + Vector3(0.0f, 0.5f, 0.0f)
+              Color = Color(255uy, 200uy, 120uy).ToMiboColor()
+              Intensity = 1.2f
+              Radius = 8.0f
+              Falloff = 1.2f
+              CastsShadows = false
+              ShadowBias = ValueNone
+            })
 
   lights.ToArray()
 

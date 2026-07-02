@@ -28,14 +28,6 @@ The `Mibo/` directory contains the [Mibo.Raylib](https://github.com/AngelMunoz/M
 
 ## Samples
 
-### MinimalEvsm
-
-A minimal shadow mapping demo (directional sun + spot light) using raw raylib-cs without Mibo's Elmish loop. Demonstrates low-level shader setup, shadow map rendering, and manual game loop control.
-
-```bash
-dotnet run --project MinimalEvsm
-```
-
 ### PlatformerSample
 
 A 2D side-scrolling platformer with procedural world generation, sprite animation, lighting, particles, and sound. Uses Mibo's Elmish architecture with `InputMap`, `AnimatedSprite`, `CellGrid2D`, and `LightContext2D`.
@@ -101,6 +93,25 @@ dotnet run --project PingPong/Client
 ```
 
 Controls: **Mouse Y-axis** to move your assigned paddle (Left or Right).
+
+### BoneProbe
+
+A CLI diagnostic tool for inspecting glTF/GLB models and verifying bone-palette math. Two modes: raw Assimp scene dump (meshes, bones, animation channels) and Mibo bone-palette verification (bind-pose invariant: `invBind[i] * worldPose[i] ≈ Identity`). Optimized for LLM consumption with compact, line-oriented output and optional verbosity/focus filtering.
+
+```bash
+# Raw mode dump
+dotnet run --project BoneProbe -- raw ThreeDSample/assets/kenney_platformer-kit/Models/character-oobi.glb
+
+# Palette mode with focus on Hips bones
+dotnet run --project BoneProbe -- palette ThreeDSample/assets/kenney_platformer-kit/Models/character-oobi.glb -f Hips
+
+# Summary verbosity (counts only)
+dotnet run --project BoneProbe -- raw ThreeDSample/assets/kenney_platformer-kit/Models/character-oobi.glb -v summary
+```
+
+Controls: **`-v full|summary`** (detail level), **`-f <name>`** (substring filter on node/bone/clip names).
+
+> Uses the `MonoGame.Framework.DesktopGL` (OpenGL) backend, so `BoneProbe` runs cross-platform on any .NET 8+ runtime.
 
 ## Building
 
