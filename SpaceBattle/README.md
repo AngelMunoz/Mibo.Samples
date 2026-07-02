@@ -441,7 +441,7 @@ Messages (`Msg`, `InputMsg`, `UnitsMsg`, etc.) are all `[<Struct>]` — value ty
 
 ### Mibo's adaptability: from turn-based to 60fps action
 
-Mibo.Raylib is built on the same Elmish foundation (`Program.mkProgram`) regardless of game type. What changes is how you use it. The framework gives you the **same building blocks** — `init`, `update`, `view`, `Tick`, `Cmd`, `Sub` — and lets you decide how much optimization and decomposition you need.
+Mibo is built on the same Elmish foundation (`Program.mkProgram`) regardless of game type. What changes is how you use it. The framework gives you the **same building blocks** — `init`, `update`, `view`, `Tick`, `Cmd`, `Sub` — and lets you decide how much optimization and decomposition you need.
 
 **For high-performance games** (platformers, shooters, 3D explorers), the framework supports:
 
@@ -466,7 +466,7 @@ These patterns exist at Level 2.5+ of the scaling ladder. The `update` function 
 
 The key insight is that **you scale the architecture, not the framework**. The same `Program.withTick`, `Program.withRenderer`, `Program.withSubscription` pipeline powers both a 60fps platformer with pre-allocated particle buffers and a turn-based hex strategy game with routed sub-systems. You apply performance patterns where profiling shows need, and keep everything else simple.
 
-For the full scaling ladder and when to apply each pattern, see [Scaling Mibo.Raylib](../../docs/scaling.md). For implementation details on the performance patterns, see [F# For Perf](../../docs/performance.md).
+For the full scaling ladder and when to apply each pattern, see [Scaling Mibo](../Mibo/docs/scaling.md). For implementation details on the performance patterns, see [F# For Perf](../Mibo/docs/performance.md).
 
 ## File Map
 

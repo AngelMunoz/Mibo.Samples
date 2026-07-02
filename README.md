@@ -1,8 +1,8 @@
-# Mibo.Raylib Samples
+# Mibo Samples
 
-Sample projects demonstrating [Mibo.Raylib](https://github.com/AngelMunoz/Mibo) — an Elmish-based F# game framework built on raylib-cs.
+Sample projects demonstrating [Mibo](https://github.com/AngelMunoz/Mibo) — an Elmish-based F# game framework with raylib-cs and MonoGame backends.
 
-For framework documentation and setup instructions, see the [Mibo.Raylib README](Mibo/README.md).
+For framework documentation and setup instructions, see the [Mibo README](Mibo/README.md).
 
 ## Getting Started
 
@@ -19,7 +19,7 @@ If you already cloned without submodules:
 git submodule update --init --recursive
 ```
 
-The `Mibo/` directory contains the [Mibo.Raylib](https://github.com/AngelMunoz/Mibo) framework as a git submodule on the `vnext` branch.
+The `Mibo/` directory contains the [Mibo](https://github.com/AngelMunoz/Mibo) framework as a git submodule on the `main` branch.
 
 ## Prerequisites
 
