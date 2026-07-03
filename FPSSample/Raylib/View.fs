@@ -127,6 +127,75 @@ type EnemyAnimationService() =
 
           states[i] <- newState
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Hit-flash post-process: desaturates the whole 3D scene based on the remaining
+// hit-effect timer. The shader is loaded once (raylib's default vertex shader is
+// used by passing null for the VS, so the fragment shader reads the standard
+// fragTexCoord / texture0 the batch provides).
+// ─────────────────────────────────────────────────────────────────────────────
+
+let private grayscaleFragSrc =
+  "
+#version 330
+in vec2 fragTexCoord;
+uniform sampler2D texture0;
+uniform float intensity;
+out vec4 finalColor;
+
+void main() {
+  vec4 c = texture(texture0, fragTexCoord);
+  float gray = dot(c.rgb, vec3(0.299, 0.587, 0.114));
+  finalColor = vec4(mix(c.rgb, vec3(gray), intensity), c.a);
+}
+"
+
+let mutable private grayscaleShader: Shader voption = ValueNone
+
+let mutable private intensityLoc: int = -1
+
+/// Desaturates the rendered scene by <c>intensity</c> (0 = full color, 1 = full gray),
+/// blitting the scene texture to the active target. Called from the post-process action.
+let private applyGrayscale (pp: PostProcessContext3D) (intensity: float32) =
+  match grayscaleShader with
+  | ValueNone ->
+    let s = Raylib.LoadShaderFromMemory(null, grayscaleFragSrc)
+    grayscaleShader <- ValueSome s
+    intensityLoc <- Raylib.GetShaderLocation(s, "intensity")
+  | ValueSome _ -> ()
+
+  match grayscaleShader with
+  | ValueSome s ->
+    use p = fixed &intensity
+
+    Raylib.SetShaderValue(
+      s,
+      intensityLoc,
+      NativePtr.toVoidPtr p,
+      ShaderUniformDataType.Float
+    )
+
+    Raylib.BeginShaderMode s
+
+    // Negative source height: raylib's FBO texture is vertically flipped relative
+    // to the back buffer, so the blit reads it the right way up.
+    let src =
+      Raylib_cs.Rectangle(0.0f, 0.0f, float32 pp.Width, float32 -pp.Height)
+
+    let dst =
+      Raylib_cs.Rectangle(0.0f, 0.0f, float32 pp.Width, float32 pp.Height)
+
+    Raylib.DrawTexturePro(
+      pp.Source.Texture,
+      src,
+      dst,
+      Vector2.Zero,
+      0.0f,
+      Raylib_cs.Color.White
+    )
+
+    Raylib.EndShaderMode()
+  | ValueNone -> ()
+
 /// Renders the 3D scene from a first-person camera.
 let view
   (animService: EnemyAnimationService)
@@ -307,3 +376,11 @@ let view
     buffer |> Draw3D.drawModel blasterModel weaponTransform |> Draw3D.drop
 
   buffer |> Draw3D.endCamera |> Draw3D.drop
+
+  // ── Hit-flash post-process: desaturate the scene while the effect timer runs ──
+  if HudLayout.isHitFlash model then
+    let intensity = model.Effect.HitEffectTimer / Constants.HitEffectDuration
+
+    buffer
+    |> Draw3D.postProcess(fun pp -> applyGrayscale pp intensity)
+    |> Draw3D.drop
