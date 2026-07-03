@@ -167,6 +167,13 @@ let orientAlong(dir: Vector3) : Matrix =
   else
     Matrix.Identity
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Hit-flash post-process: desaturates the whole 3D scene based on the remaining
+// hit-effect timer. The effect is the compiled Grayscale.mgfx, loaded once.
+// ─────────────────────────────────────────────────────────────────────────────
+
+let mutable private grayscaleEffect: Effect voption = ValueNone
+
 /// Renders the 3D scene from a first-person camera.
 let view
   (animService: EnemyAnimationService)
@@ -314,3 +321,22 @@ let view
     buffer |> Draw3D.drawModel blasterModel transform |> Draw3D.drop
 
   buffer |> Draw3D.endCamera |> Draw3D.drop
+
+  // ── Hit-flash post-process: desaturate the scene while the effect timer runs ──
+  if HudLayout.isHitFlash model then
+    let intensity = model.Effect.HitEffectTimer / Constants.HitEffectDuration
+
+    buffer
+    |> Draw3D.postProcess(fun pp ->
+      match grayscaleEffect with
+      | ValueNone ->
+        let e = assets.Effect("Grayscale")
+        grayscaleEffect <- ValueSome e
+        e.Parameters["SceneTexture"].SetValue(pp.Source)
+        e.Parameters["intensity"].SetValue(intensity)
+        pp.Quad.Draw(e)
+      | ValueSome e ->
+        e.Parameters["SceneTexture"].SetValue(pp.Source)
+        e.Parameters["intensity"].SetValue(intensity)
+        pp.Quad.Draw(e))
+    |> Draw3D.drop

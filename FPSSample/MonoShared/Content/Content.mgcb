@@ -3699,6 +3699,12 @@
 /processorParam:DebugMode=Auto
 /build:Skybox.fx;Skybox
 
+#begin Grayscale.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/build:Grayscale.fx;Grayscale
+
 #begin gun_sounds/7.62x39/762x39 Single MP3.mp3
 /importer:Mp3Importer
 /processor:SoundEffectProcessor
