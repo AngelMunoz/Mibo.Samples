@@ -196,6 +196,183 @@ let private applyGrayscale (pp: PostProcessContext3D) (intensity: float32) =
     Raylib.EndShaderMode()
   | ValueNone -> ()
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Distance fog post-process: fades the lit scene toward a dark color with distance,
+// using the scene's camera-POV depth. Same look + tuning as the MonoGame backend.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Distance fog — fades the lit scene toward a dark color with distance. raylib renders 3D with
+// global clip planes (RL_CULL_DISTANCE_NEAR/FAR, default 0.05/4000) rather than per-camera near/far,
+// so the fog shader's linearization MUST use those same values — a hardcoded mismatch produces
+// wildly wrong distances because OpenGL's hyperbolic depth amplifies any near-plane error. We query
+// rlgl at runtime to stay correct.
+let private fogColor = Vector3(0.02f, 0.02f, 0.03f)
+let private fogNear = 6.0f
+let private fogFar = 32.0f
+
+let private fogFragSrc =
+  "
+#version 330
+in vec2 fragTexCoord;
+uniform sampler2D texture0;   // scene color
+uniform sampler2D texture1;   // scene depth
+uniform vec3 fogColor;
+uniform float fogNear;
+uniform float fogFar;
+uniform float cameraNear;
+uniform float cameraFar;
+uniform float fogStrength;
+out vec4 finalColor;
+
+void main() {
+  vec4 scene = texture(texture0, fragTexCoord);
+  float depth = texture(texture1, fragTexCoord).r;
+
+  // OpenGL depth linearization: raylib's depth buffer stores (z_ndc+1)/2 with z_ndc in [-1,1].
+  // Remap back to NDC [-1,1] before inverting the hyperbolic projection. cameraNear/cameraFar
+  // MUST match the clip planes the scene was rendered with (queried from rlgl at runtime).
+  float z = depth * 2.0 - 1.0;
+  float dist = (2.0 * cameraNear * cameraFar) / (cameraFar + cameraNear - z * (cameraFar - cameraNear));
+  float fog = clamp((dist - fogNear) / (fogFar - fogNear), 0.0, 1.0) * fogStrength;
+  finalColor = vec4(mix(scene.rgb, fogColor, fog), scene.a);
+}
+"
+
+let mutable private fogShader: Shader voption = ValueNone
+let mutable private fogUniforms: Map<string, int> = Map.empty
+
+let private applyFog(pp: PostProcessContext3D) =
+  match fogShader with
+  | ValueNone ->
+    let s = Raylib.LoadShaderFromMemory(null, fogFragSrc)
+    fogShader <- ValueSome s
+
+    fogUniforms <-
+      [
+        "fogColor", Raylib.GetShaderLocation(s, "fogColor")
+        "fogNear", Raylib.GetShaderLocation(s, "fogNear")
+        "fogFar", Raylib.GetShaderLocation(s, "fogFar")
+        "cameraNear", Raylib.GetShaderLocation(s, "cameraNear")
+        "cameraFar", Raylib.GetShaderLocation(s, "cameraFar")
+        "fogStrength", Raylib.GetShaderLocation(s, "fogStrength")
+        "depthSampler", Raylib.GetShaderLocation(s, "texture1")
+      ]
+      |> Map.ofList
+  | ValueSome _ -> ()
+
+  match fogShader with
+  | ValueSome s ->
+    // Upload scalar uniforms via fixed pointers (DisableRuntimeMarshalling requirement).
+    let mutable v = Vector3(0.0f, 0.0f, 0.0f)
+    let loc name = Map.find name fogUniforms
+
+    v <- fogColor
+    use pv = fixed &v
+
+    Raylib.SetShaderValue(
+      s,
+      loc "fogColor",
+      NativePtr.toVoidPtr pv,
+      ShaderUniformDataType.Vec3
+    )
+
+    let mutable near = fogNear
+    let mutable far = fogFar
+    // Query raylib's actual runtime clip planes — these are what the scene was rendered with,
+    // so the linearization must use them (not hardcoded guesses). Convert double→float32 here:
+    // GetCullDistanceNear/Far return double (8 bytes), but SetShaderValue(Float) reads 4 bytes,
+    // so passing a double directly would upload garbage bytes as the near/far plane.
+    let mutable camN = float32(Rlgl.GetCullDistanceNear())
+    let mutable camF = float32(Rlgl.GetCullDistanceFar())
+
+    use pn = fixed &near
+
+    Raylib.SetShaderValue(
+      s,
+      loc "fogNear",
+      NativePtr.toVoidPtr pn,
+      ShaderUniformDataType.Float
+    )
+
+    use pf = fixed &far
+
+    Raylib.SetShaderValue(
+      s,
+      loc "fogFar",
+      NativePtr.toVoidPtr pf,
+      ShaderUniformDataType.Float
+    )
+
+    use pcn = fixed &camN
+
+    Raylib.SetShaderValue(
+      s,
+      loc "cameraNear",
+      NativePtr.toVoidPtr pcn,
+      ShaderUniformDataType.Float
+    )
+
+    use pcf = fixed &camF
+
+    Raylib.SetShaderValue(
+      s,
+      loc "cameraFar",
+      NativePtr.toVoidPtr pcf,
+      ShaderUniformDataType.Float
+    )
+
+    Raylib.BeginShaderMode s
+
+    match pp.Depth with
+    | ValueSome depthTex ->
+      let mutable strength = 1.0f
+      use ps = fixed &strength
+
+      Raylib.SetShaderValue(
+        s,
+        loc "fogStrength",
+        NativePtr.toVoidPtr ps,
+        ShaderUniformDataType.Float
+      )
+
+      // Bind the depth texture via raylib's batch-aware sampler API. SetShaderValueTexture
+      // registers the texture in rlgl's activeTextureId[] so the DrawTexturePro batch flush
+      // re-binds it to a sampler slot automatically, AND points the sampler uniform at that slot.
+      // The original code used raw rlgl (ActiveTextureSlot + EnableTexture) which sets GL state
+      // but bypasses the batch registry — the batch flush only re-binds textures registered through
+      // this API, leaving the depth sampler unbound and reading 0, which produces no fog at all.
+      Raylib.SetShaderValueTexture(s, loc "depthSampler", depthTex)
+    | ValueNone ->
+      let mutable strength = 0.0f
+      use ps = fixed &strength
+
+      Raylib.SetShaderValue(
+        s,
+        loc "fogStrength",
+        NativePtr.toVoidPtr ps,
+        ShaderUniformDataType.Float
+      )
+
+    // Negative source height: raylib's FBO texture is vertically flipped relative
+    // to the back buffer, so the blit reads it the right way up.
+    let src =
+      Raylib_cs.Rectangle(0.0f, 0.0f, float32 pp.Width, float32 -pp.Height)
+
+    let dst =
+      Raylib_cs.Rectangle(0.0f, 0.0f, float32 pp.Width, float32 pp.Height)
+
+    Raylib.DrawTexturePro(
+      pp.Source.Texture,
+      src,
+      dst,
+      Vector2.Zero,
+      0.0f,
+      Raylib_cs.Color.White
+    )
+
+    Raylib.EndShaderMode()
+  | ValueNone -> ()
+
 /// Renders the 3D scene from a first-person camera.
 let view
   (animService: EnemyAnimationService)
@@ -376,6 +553,9 @@ let view
     buffer |> Draw3D.drawModel blasterModel weaponTransform |> Draw3D.drop
 
   buffer |> Draw3D.endCamera |> Draw3D.drop
+
+  // ── Distance fog: blend the lit scene toward fogColor by view-space distance ──
+  buffer |> Draw3D.postProcessWithDepth(fun pp -> applyFog pp) |> Draw3D.drop
 
   // ── Hit-flash post-process: desaturate the scene while the effect timer runs ──
   if HudLayout.isHitFlash model then
