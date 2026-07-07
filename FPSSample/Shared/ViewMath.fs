@@ -115,6 +115,7 @@ module ViewMath =
     Radius = 5.0f
     Falloff = 2.0f
     CastsShadows = false
+    ShadowDirection = ValueNone
     ShadowBias = ValueNone
   }
 
@@ -141,5 +142,6 @@ module ViewMath =
     Radius = 7.0f
     Falloff = 1.8f
     CastsShadows = false
+    ShadowDirection = ValueNone
     ShadowBias = ValueNone
   }

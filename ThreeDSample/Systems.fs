@@ -349,6 +349,7 @@ let private collectMushroomLights
               Radius = 8.0f
               Falloff = 1.2f
               CastsShadows = false
+              ShadowDirection = ValueNone
               ShadowBias = ValueNone
             })
 
