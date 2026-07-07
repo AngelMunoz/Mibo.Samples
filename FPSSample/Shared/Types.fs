@@ -131,10 +131,84 @@ module Types =
     let inline create (pos: Vector3) (dir: Vector3) (scale: float32) = {
       Position = pos
       // Initial burst matches bullet velocity plus a small outward spread.
-      Velocity = dir * 12.0f + Vector3(0.0f, 1.5f, 0.0f)
+      Velocity = dir * 6.0f + Vector3(0.0f, 0.8f, 0.0f)
       Timer = duration
       Active = true
       Scale = scale
+    }
+
+  // ── Traveling Bullets ──────────────────────────────────────────────────────
+
+  /// A visible bullet that travels from the muzzle to the impact point. Gives the
+  /// player visual feedback of where the shot went. The foam-tip model is used.
+  [<Struct>]
+  type Bullet = {
+    Start: Vector3
+    EndPos: Vector3
+    Direction: Vector3
+    Timer: float32
+    Active: bool
+  }
+
+  module Bullet =
+    let empty: Bullet = {
+      Start = Vector3.Zero
+      EndPos = Vector3.Zero
+      Direction = Vector3.Zero
+      Timer = 0.0f
+      Active = false
+    }
+
+    let duration = 0.25f
+
+    let inline create
+      (start: Vector3)
+      (endPos: Vector3)
+      (dir: Vector3)
+      : Bullet =
+      {
+        Start = start
+        EndPos = endPos
+        Direction = dir
+        Timer = duration
+        Active = true
+      }
+
+  // ── Ejected Shell Casings ──────────────────────────────────────────────────
+
+  /// A spent shell casing ejected from the gun when a shot is fired. Falls with
+  /// gravity, bounces off the ground, and fades out. Uses the bullet-foam model.
+  [<Struct>]
+  type ShellCasing = {
+    Position: Vector3
+    Velocity: Vector3
+    Rotation: Vector3
+    AngularVel: Vector3
+    Timer: float32
+    Active: bool
+  }
+
+  module ShellCasing =
+    let empty: ShellCasing = {
+      Position = Vector3.Zero
+      Velocity = Vector3.Zero
+      Rotation = Vector3.Zero
+      AngularVel = Vector3.Zero
+      Timer = 0.0f
+      Active = false
+    }
+
+    let duration = 2.5f
+
+    /// Ejects a casing to the gun's right side with upward pop + spin.
+    /// `right` is the camera-right vector (perpendicular to the look direction).
+    let inline create (pos: Vector3) (right: Vector3) : ShellCasing = {
+      Position = pos
+      Velocity = right * 3.0f + Vector3(0.0f, 2.5f, 0.0f)
+      Rotation = Vector3.Zero
+      AngularVel = Vector3(8.0f, 12.0f, 6.0f)
+      Timer = duration
+      Active = true
     }
 
   // ── Audio Messages ────────────────────────────────────────────────────────
@@ -182,6 +256,8 @@ module Types =
   [<Struct; RequireQualifiedAccess>]
   type EffectMsg =
     | SpawnSmoke of position: Vector3 * direction: Vector3
+    | SpawnBullet of startPos: Vector3 * endPos: Vector3 * direction: Vector3
+    | SpawnShell of position: Vector3 * right: Vector3
     | MuzzleFlash
     | TriggerHitFlash
 
@@ -197,7 +273,12 @@ module Types =
   /// AudioMsg one-shots and EffectMsg spawns (smoke, muzzle flash).
   [<Struct; RequireQualifiedAccess>]
   type WeaponEvent =
-    | Fired of path: string * muzzlePos: Vector3 * direction: Vector3
+    | Fired of
+      path: string *
+      muzzlePos: Vector3 *
+      direction: Vector3 *
+      hitPos: Vector3 *
+      right: Vector3
     | ReloadStarted of path: string
     | EnemyKilled of enemyPos: Vector3
 
@@ -272,6 +353,8 @@ module Types =
   type EffectModel() =
     member val HitEffectTimer = 0.0f with get, set
     member val SmokePuffs: SmokePuff[] = Array.zeroCreate 8 with get, set
+    member val Bullets: Bullet[] = Array.zeroCreate 4 with get, set
+    member val Shells: ShellCasing[] = Array.zeroCreate 8 with get, set
 
   /// Enemy subsystem model. Owns the enemies array (and a reference to the
   /// shared colliders array used for enemy-vs-wall resolution).

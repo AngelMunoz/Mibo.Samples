@@ -3705,6 +3705,12 @@
 /processorParam:DebugMode=Auto
 /build:Grayscale.fx;Grayscale
 
+#begin Fog.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/build:Fog.fx;Fog
+
 #begin gun_sounds/7.62x39/762x39 Single MP3.mp3
 /importer:Mp3Importer
 /processor:SoundEffectProcessor

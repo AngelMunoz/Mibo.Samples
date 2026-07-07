@@ -173,6 +173,17 @@ let orientAlong(dir: Vector3) : Matrix =
 // ─────────────────────────────────────────────────────────────────────────────
 
 let mutable private grayscaleEffect: Effect voption = ValueNone
+let mutable private fogEffect: Effect voption = ValueNone
+
+// Distance fog — fades the lit scene toward a dark color with distance. The FPS arena is a
+// torch-lit night, so geometry near a torch stays lit while everything further out sinks into
+// fog. Tuned against the camera near/far (0.1 / 1000) and arena span (~22 units): fog starts a
+// few units out (just past the torch glow) and is fully opaque before the arena's far wall.
+let private fogColor = Vector3(0.02f, 0.02f, 0.03f)
+let private fogNear = 6.0f
+let private fogFar = 32.0f
+let private cameraNear = 0.1f
+let private cameraFar = 1000.0f
 
 /// Renders the 3D scene from a first-person camera.
 let view
@@ -197,8 +208,8 @@ let view
     Target = target
     Up = Vector3.Up
     FovY = MathHelper.ToRadians(75.0f)
-    NearPlane = 0.1f
-    FarPlane = 1000.0f
+    NearPlane = cameraNear
+    FarPlane = cameraFar
     Projection = CameraProjection.Perspective
   }
 
@@ -298,6 +309,39 @@ let view
         if not(isNull smokeModel) && smokeModel.Meshes.Count > 0 then
           buffer |> Draw3D.drawModel smokeModel smokeTransform |> Draw3D.drop
 
+  // ── Bullet tracers ────────────────────────────────────────────────────────
+  let bulletModel = loadOrGetModel Assets.bulletFoamTip ctx
+
+  for bullet in model.Effect.Bullets do
+    if bullet.Active then
+      let progress = 1.0f - bullet.Timer / Bullet.duration
+
+      let pos =
+        toXnaV(
+          System.Numerics.Vector3.Lerp(bullet.Start, bullet.EndPos, progress)
+        )
+
+      let bulletTransform =
+        orientAlong(toXnaV bullet.Direction) * Matrix.CreateTranslation(pos)
+
+      if not(isNull bulletModel) && bulletModel.Meshes.Count > 0 then
+        buffer |> Draw3D.drawModel bulletModel bulletTransform |> Draw3D.drop
+
+  // ── Ejected shell casings ─────────────────────────────────────────────────
+  let shellModel = loadOrGetModel Assets.bulletFoam ctx
+
+  for shell in model.Effect.Shells do
+    if shell.Active then
+      let pos = toXnaV shell.Position
+      let rot = toXnaV shell.Rotation
+
+      let shellTransform =
+        Matrix.CreateFromYawPitchRoll(rot.Y, rot.X, rot.Z)
+        * Matrix.CreateTranslation(pos)
+
+      if not(isNull shellModel) && shellModel.Meshes.Count > 0 then
+        buffer |> Draw3D.drawModel shellModel shellTransform |> Draw3D.drop
+
   // ── Weapon viewmodel (blaster) ────────────────────────────────────────────
   let blasterModel = loadOrGetModel model.Weapon.EquippedWeapon ctx
 
@@ -321,6 +365,44 @@ let view
     buffer |> Draw3D.drawModel blasterModel transform |> Draw3D.drop
 
   buffer |> Draw3D.endCamera |> Draw3D.drop
+
+  // ── Distance fog: blend the lit scene toward fogColor by view-space distance ──
+  // Runs before the hit-flash so a desaturated frame still shows the fog. Always draws (never
+  // a no-op): when the pipeline couldn't produce depth, fogStrength=0 passes the scene through
+  // unchanged so the back-buffer is never left blank.
+  // ── Distance fog: blend the lit scene toward fogColor by view-space distance ──
+  // Runs before the hit-flash so a desaturated frame still shows the fog. Always draws (never
+  // a no-op): when the pipeline couldn't produce depth, fogStrength=0 passes the scene through
+  // unchanged so the back-buffer is never left blank.
+  buffer
+  |> Draw3D.postProcessWithDepth(fun pp ->
+    let e =
+      match fogEffect with
+      | ValueSome e -> e
+      | ValueNone ->
+        let e = assets.Effect("Fog")
+        fogEffect <- ValueSome e
+        e
+
+    e.Parameters["SceneTexture"].SetValue(pp.Source)
+
+    match pp.Depth with
+    | ValueSome depthTex ->
+      e.Parameters["DepthTexture"].SetValue(depthTex)
+      e.Parameters["fogStrength"].SetValue(1.0f)
+    | ValueNone ->
+      // No depth this frame — bind the scene itself so the depth sampler is valid, and disable
+      // the fog blend (fogStrength=0 → scene passes through unchanged).
+      e.Parameters["DepthTexture"].SetValue(pp.Source)
+      e.Parameters["fogStrength"].SetValue(0.0f)
+
+    e.Parameters["fogColor"].SetValue(fogColor)
+    e.Parameters["fogNear"].SetValue(fogNear)
+    e.Parameters["fogFar"].SetValue(fogFar)
+    e.Parameters["cameraNear"].SetValue(cameraNear)
+    e.Parameters["cameraFar"].SetValue(cameraFar)
+    pp.Quad.Draw(e))
+  |> Draw3D.drop
 
   // ── Hit-flash post-process: desaturate the scene while the effect timer runs ──
   if HudLayout.isHitFlash model then

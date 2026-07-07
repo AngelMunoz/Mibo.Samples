@@ -58,9 +58,52 @@ module Systems =
           p.Position <- p.Position + p.Velocity * dt
 
           let life = 1.0f - p.Timer / SmokePuff.duration
-          p.Scale <- 1.0f + life * 2.0f
+          p.Scale <- 0.6f + life * 0.4f
 
         puffs[i] <- p
+
+    // Bullet tracers — tick down lifetime, deactivate when expired.
+    let bullets = effect.Bullets
+
+    for i = 0 to bullets.Length - 1 do
+      if bullets[i].Active then
+        let b = bullets[i]
+        let timer = b.Timer - dt
+
+        if timer <= 0.0f then
+          bullets[i] <- { b with Active = false }
+        else
+          bullets[i] <- { b with Timer = timer }
+
+    // Shell casings — gravity + ground bounce + spin, fade out over duration.
+    let shells = effect.Shells
+    let gravityY = Constants.Gravity * 0.5f
+
+    for i = 0 to shells.Length - 1 do
+      if shells[i].Active then
+        let s = shells[i]
+        let timer = s.Timer - dt
+
+        if timer <= 0.0f then
+          shells[i] <- { s with Active = false }
+        else
+          let vel1 = s.Velocity + Vector3(0.0f, gravityY, 0.0f) * dt
+          let pos1 = s.Position + vel1 * dt
+
+          let pos2, vel2 =
+            if pos1.Y < 0.0f then
+              Vector3(pos1.X, 0.0f, pos1.Z),
+              Vector3(vel1.X * 0.3f, abs vel1.Y * 0.3f, vel1.Z * 0.3f)
+            else
+              pos1, vel1
+
+          shells[i] <- {
+            s with
+                Timer = timer
+                Position = pos2
+                Velocity = vel2
+                Rotation = s.Rotation + s.AngularVel * dt
+          }
 
     model, Cmd.none
 
@@ -105,11 +148,13 @@ module Systems =
   /// (audio one-shot, smoke puff spawn, muzzle flash, score).
   let translateWeaponEvent(event: WeaponEvent) : Cmd<Msg> =
     match event with
-    | WeaponEvent.Fired(path, muzzlePos, dir) ->
+    | WeaponEvent.Fired(path, muzzlePos, dir, hitPos, right) ->
       Cmd.batch [|
         Cmd.ofMsg(Msg.AudioMsg(AudioMsg.OneShot(path, muzzlePos, false)))
         Cmd.ofMsg(Msg.EffectMsg(EffectMsg.SpawnSmoke(muzzlePos, dir)))
         Cmd.ofMsg(Msg.EffectMsg EffectMsg.MuzzleFlash)
+        Cmd.ofMsg(Msg.EffectMsg(EffectMsg.SpawnBullet(muzzlePos, hitPos, dir)))
+        Cmd.ofMsg(Msg.EffectMsg(EffectMsg.SpawnShell(muzzlePos, right)))
       |]
     | WeaponEvent.ReloadStarted path ->
       // Non-positional: backend ignores position, plays at full volume centered.
@@ -252,6 +297,12 @@ module Systems =
 
     for i = 0 to model.Effect.SmokePuffs.Length - 1 do
       model.Effect.SmokePuffs[i] <- SmokePuff.empty
+
+    for i = 0 to model.Effect.Bullets.Length - 1 do
+      model.Effect.Bullets[i] <- Bullet.empty
+
+    for i = 0 to model.Effect.Shells.Length - 1 do
+      model.Effect.Shells[i] <- ShellCasing.empty
 
     // Enemy
     model.Enemy.Enemies <-
@@ -400,6 +451,28 @@ module Systems =
           sSlot <- 0
 
         model.Effect.SmokePuffs[sSlot] <- SmokePuff.create pos dir 1.0f
+      | EffectMsg.SpawnBullet(startPos, endPos, dir) ->
+        let mutable bSlot = -1
+
+        for i = 0 to model.Effect.Bullets.Length - 1 do
+          if bSlot < 0 && not model.Effect.Bullets[i].Active then
+            bSlot <- i
+
+        if bSlot < 0 then
+          bSlot <- 0
+
+        model.Effect.Bullets[bSlot] <- Bullet.create startPos endPos dir
+      | EffectMsg.SpawnShell(pos, right) ->
+        let mutable shSlot = -1
+
+        for i = 0 to model.Effect.Shells.Length - 1 do
+          if shSlot < 0 && not model.Effect.Shells[i].Active then
+            shSlot <- i
+
+        if shSlot < 0 then
+          shSlot <- 0
+
+        model.Effect.Shells[shSlot] <- ShellCasing.create pos right
       | EffectMsg.MuzzleFlash ->
         model.Weapon.MuzzleFlash <- {
           Timer = Constants.MuzzleFlashDuration

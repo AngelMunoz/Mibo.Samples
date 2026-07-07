@@ -159,7 +159,7 @@ let tests =
         Expect.equal events.Length 1 "One Fired event emitted"
 
         match events with
-        | [ WeaponEvent.Fired(path, _, _) ] ->
+        | [ WeaponEvent.Fired(path, _, _, _, _) ] ->
           Expect.isTrue
             (path.Contains("762x39"))
             "Fired event carries a gun sound path"

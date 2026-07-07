@@ -47,7 +47,7 @@ module Combat =
     else
       ValueSome(if tmin >= 0.0f then tmin else tmax)
 
-  /// Ray-vs-sphere test (for enemy hitboxes). Returns ValueSome(distance) on hit.
+  /// Ray-vs-sphere test (for shadow/legacy use). Returns ValueSome(distance) on hit.
   let inline rayVsSphere
     (origin: Vector3)
     (dir: Vector3)
@@ -75,6 +75,77 @@ module Combat =
         else
           ValueNone
 
+  /// Ray-vs-vertical-cylinder test (for enemy hitboxes). The cylinder is aligned
+  /// along the Y axis at (cx, cz) with the given radius, from yMin to yMax.
+  /// Solves the 2D ray-vs-circle in the XZ plane, then clips to the Y slab.
+  let inline rayVsCylinder
+    (origin: Vector3)
+    (dir: Vector3)
+    (cx: float32)
+    (cz: float32)
+    (radius: float32)
+    (yMin: float32)
+    (yMax: float32)
+    : float32 voption =
+    // ── XZ-plane intersection (2D ray vs circle) ──
+    let ox = origin.X - cx
+    let oz = origin.Z - cz
+    let dx = dir.X
+    let dz = dir.Z
+    let a = dx * dx + dz * dz
+
+    if a < 1e-10f then
+      // Ray is vertical — check if origin is inside the circle radius
+      if ox * ox + oz * oz <= radius * radius then
+        // Hit the Y slab
+        let mutable tmin = -Single.MaxValue
+        let mutable tmax = Single.MaxValue
+
+        if MathF.Abs(dir.Y) > 1e-8f then
+          tmin <- (yMin - origin.Y) / dir.Y
+          tmax <- (yMax - origin.Y) / dir.Y
+
+          if tmin > tmax then
+            let tmp = tmin
+            tmin <- tmax
+            tmax <- tmp
+
+        let t = if tmin >= 0.0f then tmin else tmax
+
+        if t >= 0.0f && t <= Constants.WeaponRange then
+          ValueSome t
+        else
+          ValueNone
+      else
+        ValueNone
+    else
+      let b = 2.0f * (ox * dx + oz * dz)
+      let c = ox * ox + oz * oz - radius * radius
+      let disc = b * b - 4.0f * a * c
+
+      if disc < 0.0f then
+        ValueNone
+      else
+        let sq = MathF.Sqrt(disc)
+        let t0 = (-b - sq) / (2.0f * a)
+        let t1 = (-b + sq) / (2.0f * a)
+
+        // Check both intersection points against the Y slab
+        let inline checkT(t: float32) =
+          if t < 0.0f || t > Constants.WeaponRange then
+            ValueNone
+          else
+            let y = origin.Y + dir.Y * t
+
+            if y >= yMin && y <= yMax then ValueSome t else ValueNone
+
+        match checkT t0 with
+        | ValueSome _ as v -> v
+        | ValueNone ->
+          match checkT t1 with
+          | ValueSome _ as v -> v
+          | ValueNone -> ValueNone
+
   /// Finds the closest enemy hit by a ray from origin along dir.
   /// Returns the enemy index and distance, or ValueNone.
   let findClosestEnemyHit
@@ -83,15 +154,26 @@ module Combat =
     (enemies: Enemy[])
     : struct (int * float32) voption =
     let mutable closest: struct (int * float32) voption = ValueNone
-    let radius = Constants.EnemyHeight * 0.5f
+    // Vertical cylinder hitbox: radius matches the body (EnemyRadius), height
+    // spans the full model (0 to EnemyHeight). Tighter than a sphere so shots
+    // passing beside the enemy don't register.
+    let radius = Constants.EnemyRadius
+    let yMax = Constants.EnemyHeight
 
     for i = 0 to enemies.Length - 1 do
       let e = enemies[i]
 
       if e.State <> EnemyState.Dead then
-        let center = Vector3(e.Position.X, e.Position.Y + radius, e.Position.Z)
-
-        match rayVsSphere origin dir center radius with
+        match
+          rayVsCylinder
+            origin
+            dir
+            e.Position.X
+            e.Position.Z
+            radius
+            e.Position.Y
+            yMax
+        with
         | ValueSome t ->
           match closest with
           | ValueSome(_, cd) when t >= cd -> ()
@@ -146,6 +228,18 @@ module Combat =
       let enemyHit = findClosestEnemyHit origin dir enemies
       let wallHit = closestColliderHit origin dir colliders
 
+      // Compute the impact point for the tracer visual. The nearest hit (enemy
+      // or wall) determines where the bullet model stops; if nothing is hit, the
+      // tracer flies to max weapon range.
+      let hitDist =
+        match enemyHit, wallHit with
+        | ValueSome struct (_, eDist), ValueSome wDist -> min eDist wDist
+        | ValueSome struct (_, eDist), ValueNone -> eDist
+        | ValueNone, ValueSome wDist -> wDist
+        | ValueNone, ValueNone -> Constants.WeaponRange
+
+      let hitPoint = origin + dir * hitDist
+
       let hitEnemy =
         match enemyHit, wallHit with
         | ValueSome struct (idx, eDist), ValueSome wDist when eDist <= wDist ->
@@ -179,10 +273,16 @@ module Combat =
       weapon.Ammo <- weapon.Ammo - 1
       weapon.FireCooldown <- Assets.fireCooldown wc
 
+      // Compute the camera-right vector for shell ejection (perpendicular to
+      // look direction, in the horizontal plane).
+      let right = ViewMath.cameraRight player.Yaw
+
       // Emit Fired event (router translates to AudioMsg + EffectMsg smoke +
-      // EffectMsg.MuzzleFlash; the muzzle flash timer is weapon-owned state
-      // applied by the EffectMsg.MuzzleFlash handler).
-      events.Add(WeaponEvent.Fired(Assets.gunSound wc, muzzlePos, dir))
+      // EffectMsg.MuzzleFlash + bullet + shell; the muzzle flash timer is
+      // weapon-owned state applied by the EffectMsg.MuzzleFlash handler).
+      events.Add(
+        WeaponEvent.Fired(Assets.gunSound wc, muzzlePos, dir, hitPoint, right)
+      )
 
       events
 

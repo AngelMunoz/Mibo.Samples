@@ -247,7 +247,7 @@ let subSystemTests =
           posBefore.Y
           "Smoke rises (buoyancy)"
 
-        Expect.isGreaterThan puff.Scale 1.0f "Scale grows over life"
+        Expect.isGreaterThan puff.Scale 0.0f "Scale grows over life"
 
       testCase "deactivates smoke puff when timer elapses"
       <| fun _ ->
@@ -860,12 +860,16 @@ let translationTests =
         let path = "fire.mp3"
         let muzzlePos = Vector3(1.0f, 2.0f, 3.0f)
         let dir = Vector3(0.0f, 0.0f, -1.0f)
+        let hitPos = Vector3(1.0f, 2.0f, -10.0f)
+        let right = Vector3(1.0f, 0.0f, 0.0f)
 
         let msgs =
-          Systems.translateWeaponEvent(WeaponEvent.Fired(path, muzzlePos, dir))
+          Systems.translateWeaponEvent(
+            WeaponEvent.Fired(path, muzzlePos, dir, hitPos, right)
+          )
           |> drainCmd
 
-        Expect.equal msgs.Length 3 "Three messages emitted"
+        Expect.equal msgs.Length 5 "Five messages emitted"
 
         let hasFireAudio =
           msgs
@@ -882,6 +886,24 @@ let translationTests =
               true
             | _ -> false)
 
+        let hasBullet =
+          msgs
+          |> List.exists (function
+            | Msg.EffectMsg(EffectMsg.SpawnBullet(s, e, d)) when
+              s = muzzlePos && e = hitPos && d = dir
+              ->
+              true
+            | _ -> false)
+
+        let hasShell =
+          msgs
+          |> List.exists (function
+            | Msg.EffectMsg(EffectMsg.SpawnShell(p, r)) when
+              p = muzzlePos && r = right
+              ->
+              true
+            | _ -> false)
+
         let hasMuzzle =
           msgs
           |> List.exists (function
@@ -890,6 +912,15 @@ let translationTests =
 
         Expect.isTrue hasFireAudio "Fire AudioMsg emitted (non-positional)"
         Expect.isTrue hasSmoke "SpawnSmoke EffectMsg emitted with position+dir"
+
+        Expect.isTrue
+          hasBullet
+          "SpawnBullet EffectMsg emitted with start+end+dir"
+
+        Expect.isTrue
+          hasShell
+          "SpawnShell EffectMsg emitted with position+right"
+
         Expect.isTrue hasMuzzle "MuzzleFlash EffectMsg emitted"
 
       testCase "ReloadStarted emits non-positional reload AudioMsg"

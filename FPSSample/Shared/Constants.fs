@@ -21,10 +21,10 @@ module Constants =
   let PlayerMaxHealth = 100.0f
 
   [<Literal>]
-  let MoveSpeed = 6.0f
+  let MoveSpeed = 4.0f
 
   [<Literal>]
-  let SprintSpeed = 10.0f
+  let SprintSpeed = 6.0f
 
   [<Literal>]
   let Acceleration = 40.0f
@@ -36,7 +36,7 @@ module Constants =
   let Gravity = -20.0f
 
   [<Literal>]
-  let JumpSpeed = 7.0f
+  let JumpSpeed = 10.0f
 
   // ── Mouse look ─────────────────────────────────────────────────────────────
 
@@ -83,7 +83,7 @@ module Constants =
   let EnemyMaxHealth = 100.0f
 
   [<Literal>]
-  let EnemyMoveSpeed = 4f
+  let EnemyMoveSpeed = 5f
 
   [<Literal>]
   let EnemyAttackRange = 1.5f
@@ -101,7 +101,7 @@ module Constants =
   let EnemyRadius = 0.4f
 
   [<Literal>]
-  let EnemyHeight = 2.5f
+  let EnemyHeight = 0.8f
 
   [<Literal>]
   let EnemyRespawnTime = 5.0f
