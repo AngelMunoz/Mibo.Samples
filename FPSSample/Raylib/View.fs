@@ -207,8 +207,13 @@ let private applyGrayscale (pp: PostProcessContext3D) (intensity: float32) =
 // wildly wrong distances because OpenGL's hyperbolic depth amplifies any near-plane error. We query
 // rlgl at runtime to stay correct.
 let private fogColor = Vector3(0.02f, 0.02f, 0.03f)
-let private fogNear = 6.0f
-let private fogFar = 32.0f
+let private fogNear = 4.0f
+let private fogFar = 10.0f
+
+// Height fog: dense near the ground, thinning above a ceiling height. Combined with distance
+// fog so distant ground is fully fogged while the skybox stays clear.
+let private fogCeiling = 4.0f
+let private fogDensity = 2.5f
 
 let private fogFragSrc =
   "
@@ -222,18 +227,51 @@ uniform float fogFar;
 uniform float cameraNear;
 uniform float cameraFar;
 uniform float fogStrength;
+uniform vec3 camPos;
+uniform vec3 camForward;
+uniform vec3 camRight;
+uniform vec3 camUp;
+uniform float fovY;
+uniform float aspect;
+uniform float fogCeiling;
+uniform float fogDensity;
 out vec4 finalColor;
 
 void main() {
   vec4 scene = texture(texture0, fragTexCoord);
   float depth = texture(texture1, fragTexCoord).r;
 
-  // OpenGL depth linearization: raylib's depth buffer stores (z_ndc+1)/2 with z_ndc in [-1,1].
-  // Remap back to NDC [-1,1] before inverting the hyperbolic projection. cameraNear/cameraFar
-  // MUST match the clip planes the scene was rendered with (queried from rlgl at runtime).
+  // Skybox / uncovered pixels: depth ≈ 1.0, skip fog so the sky stays visible.
+  if (depth >= 0.999) {
+    finalColor = scene;
+    return;
+  }
+
+  // OpenGL depth linearization to positive view-space distance.
   float z = depth * 2.0 - 1.0;
   float dist = (2.0 * cameraNear * cameraFar) / (cameraFar + cameraNear - z * (cameraFar - cameraNear));
-  float fog = clamp((dist - fogNear) / (fogFar - fogNear), 0.0, 1.0) * fogStrength;
+
+  // Reconstruct world position from depth + camera basis vectors.
+  // raylib's DrawTexturePro with negative source height produces fragTexCoord.y=1 at
+  // the top of the screen and 0 at the bottom (opposite of standard GL). So
+  // ndc.y = fragTexCoord.y * 2 - 1 gives +1 at top (up), -1 at bottom (down).
+  float tanHalfFov = tan(fovY * 0.5);
+  vec2 ndc = vec2(fragTexCoord.x * 2.0 - 1.0, fragTexCoord.y * 2.0 - 1.0);
+  vec3 worldPos = camPos
+    + ndc.x * aspect * tanHalfFov * dist * camRight
+    + ndc.y * tanHalfFov * dist * camUp
+    + dist * camForward;
+
+  // Distance fog (ramps from fogNear to fogFar).
+  float distFog = clamp((dist - fogNear) / (fogFar - fogNear), 0.0, 1.0);
+
+  // Height fog: dense below fogCeiling, thin above it.
+  float heightFog = clamp((fogCeiling - worldPos.y) / fogCeiling, 0.0, 1.0);
+  heightFog = pow(heightFog, fogDensity);
+
+  // Combined: height fog applies at any distance (ground-level haze),
+  // distance fog adds on top for far geometry. Capped at 1.0.
+  float fog = clamp(heightFog * 0.7 + distFog * 0.3, 0.0, 1.0) * fogStrength;
   finalColor = vec4(mix(scene.rgb, fogColor, fog), scene.a);
 }
 "
@@ -241,7 +279,14 @@ void main() {
 let mutable private fogShader: Shader voption = ValueNone
 let mutable private fogUniforms: Map<string, int> = Map.empty
 
-let private applyFog(pp: PostProcessContext3D) =
+let private applyFog
+  (camPos: Vector3)
+  (camFwd: Vector3)
+  (camRight: Vector3)
+  (camUp: Vector3)
+  (fovY: float32)
+  (pp: PostProcessContext3D)
+  =
   match fogShader with
   | ValueNone ->
     let s = Raylib.LoadShaderFromMemory(null, fogFragSrc)
@@ -256,6 +301,14 @@ let private applyFog(pp: PostProcessContext3D) =
         "cameraFar", Raylib.GetShaderLocation(s, "cameraFar")
         "fogStrength", Raylib.GetShaderLocation(s, "fogStrength")
         "depthSampler", Raylib.GetShaderLocation(s, "texture1")
+        "camPos", Raylib.GetShaderLocation(s, "camPos")
+        "camForward", Raylib.GetShaderLocation(s, "camForward")
+        "camRight", Raylib.GetShaderLocation(s, "camRight")
+        "camUp", Raylib.GetShaderLocation(s, "camUp")
+        "fovY", Raylib.GetShaderLocation(s, "fovY")
+        "aspect", Raylib.GetShaderLocation(s, "aspect")
+        "fogCeiling", Raylib.GetShaderLocation(s, "fogCeiling")
+        "fogDensity", Raylib.GetShaderLocation(s, "fogDensity")
       ]
       |> Map.ofList
   | ValueSome _ -> ()
@@ -318,6 +371,88 @@ let private applyFog(pp: PostProcessContext3D) =
       s,
       loc "cameraFar",
       NativePtr.toVoidPtr pcf,
+      ShaderUniformDataType.Float
+    )
+
+    // Camera basis vectors for world-position reconstruction from depth.
+    let mutable camPosV = camPos
+    let mutable camFwdV = camFwd
+    let mutable camRightVec = camRight
+    let mutable camUpVec = camUp
+    let mutable fov = fovY
+    let mutable asp = float32 pp.Width / float32 pp.Height
+    let mutable ceiling = fogCeiling
+    let mutable density = fogDensity
+
+    use pcp = fixed &camPosV
+
+    Raylib.SetShaderValue(
+      s,
+      loc "camPos",
+      NativePtr.toVoidPtr pcp,
+      ShaderUniformDataType.Vec3
+    )
+
+    use pcfwd = fixed &camFwdV
+
+    Raylib.SetShaderValue(
+      s,
+      loc "camForward",
+      NativePtr.toVoidPtr pcfwd,
+      ShaderUniformDataType.Vec3
+    )
+
+    use pcrt = fixed &camRightVec
+
+    Raylib.SetShaderValue(
+      s,
+      loc "camRight",
+      NativePtr.toVoidPtr pcrt,
+      ShaderUniformDataType.Vec3
+    )
+
+    use pcup = fixed &camUpVec
+
+    Raylib.SetShaderValue(
+      s,
+      loc "camUp",
+      NativePtr.toVoidPtr pcup,
+      ShaderUniformDataType.Vec3
+    )
+
+    use pfov = fixed &fov
+
+    Raylib.SetShaderValue(
+      s,
+      loc "fovY",
+      NativePtr.toVoidPtr pfov,
+      ShaderUniformDataType.Float
+    )
+
+    use pasp = fixed &asp
+
+    Raylib.SetShaderValue(
+      s,
+      loc "aspect",
+      NativePtr.toVoidPtr pasp,
+      ShaderUniformDataType.Float
+    )
+
+    use pceil = fixed &ceiling
+
+    Raylib.SetShaderValue(
+      s,
+      loc "fogCeiling",
+      NativePtr.toVoidPtr pceil,
+      ShaderUniformDataType.Float
+    )
+
+    use pdens = fixed &density
+
+    Raylib.SetShaderValue(
+      s,
+      loc "fogDensity",
+      NativePtr.toVoidPtr pdens,
       ShaderUniformDataType.Float
     )
 
@@ -613,7 +748,16 @@ let view
   buffer |> Draw3D.endCamera |> Draw3D.drop
 
   // ── Distance fog: blend the lit scene toward fogColor by view-space distance ──
-  buffer |> Draw3D.postProcessWithDepth(fun pp -> applyFog pp) |> Draw3D.drop
+  buffer
+  |> Draw3D.postProcessWithDepth(fun pp ->
+    applyFog
+      model.Player.Position
+      forward
+      (ViewMath.cameraRightPitched model.Player.Yaw model.Player.Pitch)
+      (ViewMath.cameraUp model.Player.Yaw model.Player.Pitch)
+      (75.0f * MathF.PI / 180.0f)
+      pp)
+  |> Draw3D.drop
 
   // ── Hit-flash post-process: desaturate the scene while the effect timer runs ──
   if HudLayout.isHitFlash model then

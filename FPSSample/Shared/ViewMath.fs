@@ -18,9 +18,23 @@ module ViewMath =
     let cosP = MathF.Cos(pitch)
     Vector3(-MathF.Sin(yaw) * cosP, MathF.Sin(pitch), -MathF.Cos(yaw) * cosP)
 
-  /// Camera right vector from player yaw (horizontal only).
+  /// Camera right vector from player yaw (horizontal only — no pitch).
+  /// Use this for gameplay (shell ejection, audio pan, weapon position).
   let inline cameraRight(yaw: float32) : Vector3 =
     Vector3(MathF.Cos(yaw), 0.0f, -MathF.Sin(yaw))
+
+  /// Camera right vector accounting for pitch — orthonormal to the look direction.
+  /// Use this for world-position reconstruction from depth (post-process effects).
+  let inline cameraRightPitched (yaw: float32) (pitch: float32) : Vector3 =
+    let fwd = cameraForward yaw pitch
+    let worldUp = Vector3(0.0f, 1.0f, 0.0f)
+    Vector3.Normalize(Vector3.Cross(fwd, worldUp))
+
+  /// Camera up vector derived from forward and right — fully orthonormal.
+  let inline cameraUp (yaw: float32) (pitch: float32) : Vector3 =
+    let fwd = cameraForward yaw pitch
+    let right = cameraRightPitched yaw pitch
+    Vector3.Cross(right, fwd)
 
   /// Pickup bobbing offset at a given total time.
   let inline pickupBob(totalTime: float32) : float32 =

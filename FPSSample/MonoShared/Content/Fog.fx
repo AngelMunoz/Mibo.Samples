@@ -43,6 +43,14 @@ float fogFar;
 float cameraNear;
 float cameraFar;
 float fogStrength;
+float3 camPos;
+float3 camForward;
+float3 camRight;
+float3 camUp;
+float fovY;
+float aspect;
+float fogCeiling;
+float fogDensity;
 
 struct VSInput {
     float3 Position : POSITION0;
@@ -65,13 +73,34 @@ float4 FogPS(VSOutput input) : COLOR0 {
     float4 scene = tex2D(SceneSampler, input.TexCoord);
     float ndcZ = tex2D(DepthSampler, input.TexCoord).r;
 
-    // NDC z in [0,1] → positive view-space distance. The projection maps view-space
-    // distance (between near and far) linearly-in-1/z to [0,1]; the inverse is:
-    //   d = (far * near) / (far - ndcZ * (far - near))
+    // Skybox / uncovered pixels: depth ≈ 1.0 (far plane), skip fog so the sky stays visible.
+    // On DesktopGL the depth pre-pass writes clip.z/clip.w in [-1,1]; far plane = 1.0.
+    if (ndcZ >= 0.999) {
+        return scene;
+    }
+
+    // NDC z in [0,1] → positive view-space distance. MonoGame's projection matrix
+    // maps view z to [0,1] on both DX and OpenGL backends.
     float dist = (cameraFar * cameraNear) / (cameraFar - ndcZ * (cameraFar - cameraNear));
 
-    // Smooth fog window: 0 before fogNear, 1 after fogFar.
-    float fog = saturate((dist - fogNear) / (fogFar - fogNear)) * fogStrength;
+    // Reconstruct world position from depth + camera basis vectors.
+    float tanHalfFov = tan(fovY * 0.5);
+    float2 ndc = float2(input.TexCoord.x * 2.0 - 1.0, 1.0 - input.TexCoord.y * 2.0);
+    float3 worldPos = camPos
+        + ndc.x * aspect * tanHalfFov * dist * camRight
+        + ndc.y * tanHalfFov * dist * camUp
+        + dist * camForward;
+
+    // Distance fog (ramps from fogNear to fogFar).
+    float distFog = saturate((dist - fogNear) / (fogFar - fogNear));
+
+    // Height fog: dense below fogCeiling, thin above it.
+    float heightFog = saturate((fogCeiling - worldPos.y) / fogCeiling);
+    heightFog = pow(heightFog, fogDensity);
+
+    // Combined: height fog applies at any distance (ground-level haze),
+    // distance fog adds on top for far geometry. Capped at 1.0.
+    float fog = saturate(heightFog * 0.7 + distFog * 0.3) * fogStrength;
 
     return float4(lerp(scene.rgb, fogColor, fog), scene.a);
 }

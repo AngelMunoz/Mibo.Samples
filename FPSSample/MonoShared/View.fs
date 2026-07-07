@@ -180,10 +180,15 @@ let mutable private fogEffect: Effect voption = ValueNone
 // fog. Tuned against the camera near/far (0.1 / 1000) and arena span (~22 units): fog starts a
 // few units out (just past the torch glow) and is fully opaque before the arena's far wall.
 let private fogColor = Vector3(0.02f, 0.02f, 0.03f)
-let private fogNear = 6.0f
-let private fogFar = 32.0f
+let private fogNear = 4.0f
+let private fogFar = 10.0f
 let private cameraNear = 0.1f
 let private cameraFar = 1000.0f
+
+// Height fog: dense near the ground, thinning above a ceiling height. Combined with distance
+// fog so distant ground is fully fogged while the skybox stays clear.
+let private fogCeiling = 4.0f
+let private fogDensity = 2.5f
 
 /// Renders the 3D scene from a first-person camera.
 let view
@@ -401,6 +406,24 @@ let view
     e.Parameters["fogFar"].SetValue(fogFar)
     e.Parameters["cameraNear"].SetValue(cameraNear)
     e.Parameters["cameraFar"].SetValue(cameraFar)
+
+    // Camera basis vectors for height-fog world-position reconstruction.
+    // Use pitch-aware orthonormal basis so world Y is correct when looking up/down.
+    let yaw = model.Player.Yaw
+    let pitch = model.Player.Pitch
+
+    e.Parameters["camPos"].SetValue(pos)
+    e.Parameters["camForward"].SetValue(forward)
+
+    e.Parameters["camRight"]
+      .SetValue(toXnaV(ViewMath.cameraRightPitched yaw pitch))
+
+    e.Parameters["camUp"].SetValue(toXnaV(ViewMath.cameraUp yaw pitch))
+    e.Parameters["fovY"].SetValue(MathHelper.ToRadians(75.0f))
+    e.Parameters["aspect"].SetValue(float32 pp.Width / float32 pp.Height)
+    e.Parameters["fogCeiling"].SetValue(fogCeiling)
+    e.Parameters["fogDensity"].SetValue(fogDensity)
+
     pp.Quad.Draw(e))
   |> Draw3D.drop
 
