@@ -49,7 +49,7 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
 
   let viewBounds =
     Camera2D.viewportBounds
-      camera
+      &camera
       (float32 ctx.WindowWidth)
       (float32 ctx.WindowHeight)
 
