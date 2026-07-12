@@ -19,8 +19,11 @@
     <Project Path="FPSSample/MonoDesktop/MonoDesktop.fsproj" />
     <Project Path="FPSSample/MonoWindowsDX/MonoWindowsDX.fsproj" />
   </Folder>
-  <Project Path="MonoPlatformer/MonoPlatformer.fsproj" />
-  <Project Path="PlatformerSample/PlatformerSample.fsproj" />
+  <Folder Name="/Platformer/">
+    <Project Path="Platformer/Shared/Shared.fsproj" />
+    <Project Path="Platformer/Raylib/Raylib.fsproj" />
+    <Project Path="Platformer/MonoGame/MonoGame.fsproj" />
+  </Folder>
   <Project Path="SpaceBattle/SpaceBattle.fsproj" />
   <Project Path="ThreeDSample/ThreeDSample.fsproj" />
   <Project Path="MonoThreeD/MonoThreeD.fsproj" />

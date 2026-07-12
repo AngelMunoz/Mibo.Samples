@@ -1,0 +1,47 @@
+#----------------------------- Global Properties ----------------------------#
+
+/outputDir:Content
+/intermediateDir:obj
+/platform:Windows
+/config:
+/profile:HiDef
+/compress:False
+
+#-------------------------------- References --------------------------------#
+
+#---------------------------------- Content ---------------------------------#
+
+#begin ../../assets/kenney_platformer/Spritesheets/spritesheet-characters-default.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/build:../../assets/kenney_platformer/Spritesheets/spritesheet-characters-default.png;Spritesheets/Characters
+
+#begin ../../assets/kenney_platformer/Spritesheets/spritesheet-tiles-default.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/build:../../assets/kenney_platformer/Spritesheets/spritesheet-tiles-default.png;Spritesheets/Tiles
+
+#begin ../../assets/kenney_platformer/Spritesheets/spritesheet-backgrounds-default.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/build:../../assets/kenney_platformer/Spritesheets/spritesheet-backgrounds-default.png;Spritesheets/Backgrounds
+
+#begin ../../assets/kenney_platformer/Spritesheets/spritesheet-enemies-default.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/build:../../assets/kenney_platformer/Spritesheets/spritesheet-enemies-default.png;Spritesheets/Enemies
+
+#begin ../../assets/NormalMap.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/build:../../assets/NormalMap.png;NormalMap
+
+#begin Fonts/Monogram.spritefont
+/importer:FontDescriptionImporter
+/processor:FontDescriptionProcessor
+/build:Fonts/Monogram.spritefont;Fonts/Monogram
+
+#begin ../../assets/sfx_jump.ogg
+/importer:OggImporter
+/processor:SoundEffectProcessor
+/build:../../assets/sfx_jump.ogg;Sounds/Jump
