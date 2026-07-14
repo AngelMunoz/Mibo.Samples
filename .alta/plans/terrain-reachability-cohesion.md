@@ -27,9 +27,12 @@ still be unreachable if the far slab is too high — that is the failure mode.
   - [x] Physics: one-way = land-from-above only; `GameAction.Down` drops through
   - [x] Duck sprite (`character_beige_duck`) + `AnimationState.Duck` when grounded+Down
   - **Verify:** jump through clouds from below; land on top; hold Down to drop; duck sprite shows
-- [ ] **Iter 3 — Band-limited elevation + reachability-aware ground planner**
-  - Per-column elevation field feeding `GroundSpec.Y`
-  - Band-limit so rise-per-gap stays inside the parabola; planner clamps edge cases
+- [ ] **Iter 3 — Band-limited elevation + reachability-aware ground planner** ✅ (uncommitted, awaits verify)
+  - [x] `elevationAtColumn(worldX, seed, scale, amplitude)` — continuous per-column surface Y
+  - [x] `Ground.plan` signature: `surfaceY: int` → `elevationAt: int -> int` (per-slab Y)
+  - [x] Reachability clamp: `clampReachable(gap, prevY, targetY)` clamps to `prevY ± arcHeightTiles(gap)`
+  - [x] Config: `ElevationScale = 0.04f`, `ElevationAmplitude = 2`
+  - **Verify:** run client; terrain has gentle hills; everything reachable
 - [ ] **Iter 4 — O(slabs) reachability verifier (debug/test assertion)**
 - [ ] **Iter 5 — Re-tune `GroundConfig` against verifier; relief + guarantee**
 - [ ] Later: revisit `Island.fs` as self-contained content boxes layered on terrain.

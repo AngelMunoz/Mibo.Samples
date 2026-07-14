@@ -58,6 +58,12 @@ type GenConfig = {
   /// biome regions; ~0.03 yields roughly one biome per chunk with smooth
   /// cross-seam transitions.
   BiomeColumnScale: float32
+  /// Elevation noise scale. Smaller = gentler, wider hills.
+  ElevationScale: float32
+  /// Maximum elevation offset in tiles (±amplitude from groundY).
+  /// 0 = flat terrain (degenerate case). The planner clamps any rise
+  /// that exceeds the jump arc, so this is aesthetic, not a safety limit.
+  ElevationAmplitude: int
 }
 
 let defaultConfig = {
@@ -86,6 +92,8 @@ let defaultConfig = {
     MaxVerticalGap = 4
   }
   BiomeColumnScale = 0.03f
+  ElevationScale = 0.04f
+  ElevationAmplitude = 2
 }
 
 // ==============================================================
@@ -225,6 +233,32 @@ let groundY = int worldHeight
 /// Platforms may occupy Y = skyCeiling..(groundY - MinClearance).
 let skyCeiling = groundY - 10
 
+// --------------------------------------------------------------
+// Elevation — continuous per-column height field
+//
+// Same value-noise pattern as biomeAtColumn, but produces a surface-Y
+// offset from groundY. Low frequency (config.ElevationScale) keeps
+// rises gentle. The planner clamps any rise that exceeds the jump arc
+// (see Ground.plan), so terrain is ALWAYS reachable regardless of the
+// field's shape — the amplitude is aesthetic, not a safety limit.
+// --------------------------------------------------------------
+
+/// Surface tile-Y for world column `worldX`, derived from band-limited
+/// noise. Returns groundY ± amplitude (lower Y = higher terrain on screen).
+/// Uses a seed offset so elevation noise is independent from biome noise.
+let elevationAtColumn
+  (worldX: int)
+  (seed: int)
+  (scale: float32)
+  (amplitude: int)
+  : int =
+  if amplitude <= 0 then
+    groundY
+  else
+    let n = biomeNoise (float32 worldX) 0.0f scale (seed ^^^ 0x5A5A5A5A)
+    let offset = int(round(n * float32(2 * amplitude + 1))) - amplitude
+    groundY - offset
+
 // ==============================================================
 // Context
 // ==============================================================
@@ -291,7 +325,7 @@ type PlatformSpec = {
 module Ground =
 
   /// Decide ground slab placement within a `width`-wide region whose surface
-  /// sits at local row `surfaceY`.
+  /// height is sampled per-column from `elevationAt` (localX → surfaceY).
   ///
   /// The caller passes the generation region explicitly — this is chunk-agnostic,
   /// so the same plan fills a chunk row (width = chunkCells) or an island floor
@@ -301,6 +335,10 @@ module Ground =
   ///   - First slab starts at x=0 (left-edge connectivity).
   ///   - Every slab (including the last) has at least MinGap before it.
   ///   - Gaps are capped to the jump budget so the player can always clear them.
+  ///   - **Reachability clamp**: each slab's surface Y is sampled from the
+  ///     elevation field, then clamped so the rise from the previous slab
+  ///     stays inside the jump arc (`reachable(gap, rise)`). Where the field
+  ///     is too steep the terrain flattens into a reachable plateau.
   ///   - The region ends with a trailing gap, not a sealed edge: the last slab
   ///     stops short of the right edge so its corner tile lands at a genuine
   ///     segment end. The next region (starting at x=0) is reached by jumping
@@ -311,18 +349,33 @@ module Ground =
     (config: GroundConfig)
     (budget: JumpBudget)
     (width: int)
-    (surfaceY: int)
+    (elevationAt: int -> int)
     : GroundSpec[] =
     let specs = ResizeArray<GroundSpec>()
     let maxGap = min config.MaxGap budget.MaxHorizontalTiles
 
+    /// Clamp `targetY` so the rise from `prevY` across `gap` tiles stays
+    /// inside the jump arc. This is the guarantee that terrain is always
+    /// reachable — even if the elevation field produces steep changes.
+    let clampReachable (gap: int) (prevY: int) (targetY: int) =
+      let safeRise = int(floor(arcHeightTiles(float32 gap)))
+      let minY = prevY - safeRise // can't be too far up (lower Y)
+      let maxY = prevY + safeRise // can't be too far down (higher Y)
+      max minY (min maxY targetY)
+
     let mutable x = 0
+    let mutable prevY = elevationAt 0
     let mutable stop = false
 
     while not stop && specs.Count < config.MaxSlabs do
       // Gap before every slab except the first
-      if specs.Count > 0 then
-        x <- x + rng.Next(config.MinGap, maxGap + 1)
+      let gap =
+        if specs.Count > 0 then
+          rng.Next(config.MinGap, maxGap + 1)
+        else
+          0
+
+      x <- x + gap
 
       let remaining = width - x
 
@@ -334,7 +387,17 @@ module Ground =
 
         let h = rng.Next(config.MinHeight, config.MaxHeight + 1)
 
-        specs.Add { X = x; Y = surfaceY; W = w; H = h }
+        // Sample elevation, then clamp so the jump from prevY is reachable
+        let targetY = elevationAt x
+
+        let y =
+          if specs.Count > 0 then
+            clampReachable gap prevY targetY
+          else
+            targetY
+
+        specs.Add { X = x; Y = y; W = w; H = h }
+        prevY <- y
         x <- x + w
 
         // Stop early if trailing gap is within budget and we have enough slabs
@@ -373,13 +436,13 @@ module Ground =
 
         let h = rng.Next(config.MinHeight, config.MaxHeight + 1)
 
-        specs.Add {
-          X = bridgeX
-          Y = surfaceY
-          W = w
-          H = h
-        }
+        // Sample elevation + clamp for the bridge slab too
+        let targetY = elevationAt bridgeX
+        let y = clampReachable gap prevY targetY
 
+        specs.Add { X = bridgeX; Y = y; W = w; H = h }
+
+        prevY <- y
         x <- bridgeX + w
 
     specs.ToArray()
@@ -514,22 +577,28 @@ module Platform =
             | ValueNone -> ci <- ci + 1
             | ValueSome _ -> cellsOk <- false
 
-          // A platform over a ground gap needs clearance beyond the jump height:
-          // the player jumps the gap and bonks their head on a low platform
-          // (physics full-stops on head hit, no momentum), causing a fall into
-          // the pit. Require the platform to sit above the jump arc there.
-          let mutable clearanceOk = true
+          // Clearance: scan downward from each platform column to find the
+          // actual ground surface. Require at least MinClearance tiles of
+          // gap so platforms never sit flush against ground. With variable
+          // elevation the ground surface is different per column, so the old
+          // flat-floorY check would pass platforms with 0 spacing.
+          let mutable clearanceOk = cellsOk
+          let mutable cci = 0
 
-          if cellsOk && (floorY - layerY) <= budget.MaxVerticalTiles then
-            let mutable gi = 0
-            let mutable foundGap = false
+          while clearanceOk && cci < w do
+            let mutable groundFound = false
+            let mutable sy = layerY + 1
 
-            while not foundGap && gi < w do
-              match CellGrid2D.get (x + gi) floorY grid with
-              | ValueNone -> foundGap <- true
-              | _ -> gi <- gi + 1
+            while not groundFound && sy <= layerY + config.MaxClearance do
+              match CellGrid2D.get (x + cci) sy grid with
+              | ValueSome _ -> groundFound <- true
+              | ValueNone -> sy <- sy + 1
 
-            clearanceOk <- not foundGap
+            // Ground found within MaxClearance rows below the platform
+            if groundFound && (sy - layerY) < config.MinClearance then
+              clearanceOk <- false
+
+            cci <- cci + 1
 
           // Check vertical spacing + X non-overlap (min 1 gap) against placed specs
           let mutable spacingOk = true
@@ -710,6 +779,13 @@ let generateChunk (cx: int) (cy: int) (worldSeed: int) : Chunk =
   let biomeForColumn wx =
     biomeAtColumn wx worldSeed config.BiomeColumnScale
 
+  let elevationForColumn lx =
+    elevationAtColumn
+      (originTileX + lx)
+      worldSeed
+      config.ElevationScale
+      config.ElevationAmplitude
+
   let grid =
     LayeredGrid2D.create
       chunkCells
@@ -722,7 +798,12 @@ let generateChunk (cx: int) (cy: int) (worldSeed: int) : Chunk =
     (fun section ->
       // 1. Plan ground slabs (pure data — no grid access)
       // 2. Stamp ground onto grid (biome resolved per slab from world-X)
-      Ground.plan ctx.Rng config.Ground config.JumpBudget chunkCells groundY
+      Ground.plan
+        ctx.Rng
+        config.Ground
+        config.JumpBudget
+        chunkCells
+        elevationForColumn
       |> Array.iter(Ground.stamp biomeForColumn originTileX section)
 
       section)
