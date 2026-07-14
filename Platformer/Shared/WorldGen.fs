@@ -54,7 +54,10 @@ type GenConfig = {
   JumpBudget: JumpBudget
   Ground: GroundConfig
   Platform: PlatformConfig
-  BiomeScale: float32
+  /// Biome noise scale sampled at world-tile-X granularity. Smaller = wider
+  /// biome regions; ~0.03 yields roughly one biome per chunk with smooth
+  /// cross-seam transitions.
+  BiomeColumnScale: float32
 }
 
 let defaultConfig = {
@@ -82,7 +85,7 @@ let defaultConfig = {
     MinVerticalGap = 3
     MaxVerticalGap = 4
   }
-  BiomeScale = 0.15f
+  BiomeColumnScale = 0.03f
 }
 
 // ==============================================================
@@ -126,8 +129,12 @@ let private biomeNoise
 
 let private allBiomes = [| Grass; Dirt; Stone; Snow; Sand; Purple |]
 
-let biomeAt (cx: int) (cy: int) (seed: int) (scale: float32) : Biome =
-  let n = biomeNoise (float32 cx) (float32 cy) scale seed
+/// Biome resolved at world-tile-column granularity from the continuous biome
+/// noise field. Unlike a per-chunk lookup, this yields a smooth biome that
+/// blends across chunk seams. Sampled per terrain segment so each slab/ledge
+/// keeps one consistent biome (no mid-slab seams); transitions land at gaps.
+let biomeAtColumn (worldX: int) (seed: int) (scale: float32) : Biome =
+  let n = biomeNoise (float32 worldX) 0.0f scale seed
   let idx = min (allBiomes.Length - 1) (int(n * float32 allBiomes.Length))
   allBiomes[idx]
 
@@ -166,7 +173,7 @@ let createContext
     CY = cy
     Seed = seed
     Rng = Random(chunkSeed cx cy seed)
-    Biome = biomeAt cx cy seed config.BiomeScale
+    Biome = biomeAtColumn (cx * chunkCells) seed config.BiomeColumnScale
   }
 
 // ==============================================================
@@ -301,10 +308,19 @@ module Ground =
 
     specs.ToArray()
 
-  /// Stamp a ground spec using Stamps.ground (proper corners + sealed box).
+  /// Stamp a ground spec, resolving the biome from the spec's world-X column
+  /// so biome regions blend continuously across chunk seams. `originX` is the
+  /// world-tile-X of column 0 of the region (chunk or island).
   /// All tile-selection logic (BlockTopLeft/Right, BlockBottomLeft/Right,
   /// BlockCenter fill) is handled by Stamps — WorldGen only positions.
-  let stamp (biome: Biome) (section: GridSection2D<Tile>) (spec: GroundSpec) =
+  let stamp
+    (biomeAt: int -> Biome)
+    (originX: int)
+    (section: GridSection2D<Tile>)
+    (spec: GroundSpec)
+    =
+    let biome = biomeAt(originX + spec.X)
+
     section
     |> Layout.section spec.X spec.Y (Stamps.ground biome spec.W spec.H)
     |> ignore
@@ -332,10 +348,19 @@ module Platform =
 
   // --- Stamping ---
 
-  /// Stamp a platform spec using the appropriate Stamps function.
+  /// Stamp a platform spec, resolving the biome from the spec's world-X column
+  /// so biome regions blend continuously across chunk seams. `originX` is the
+  /// world-tile-X of column 0 of the region.
   /// All tile-selection logic (CloudLeft/Middle/Right, HorizontalLeft/Right,
   /// OverhangLeft/Right) is handled by Stamps — WorldGen only positions.
-  let stamp (biome: Biome) (section: GridSection2D<Tile>) (spec: PlatformSpec) =
+  let stamp
+    (biomeAt: int -> Biome)
+    (originX: int)
+    (section: GridSection2D<Tile>)
+    (spec: PlatformSpec)
+    =
+    let biome = biomeAt(originX + spec.X)
+
     match spec.Kind with
     | Cloud ->
       section
@@ -377,7 +402,8 @@ module Platform =
     (rng: Random)
     (config: PlatformConfig)
     (budget: JumpBudget)
-    (biome: Biome)
+    (biomeAt: int -> Biome)
+    (originX: int)
     (floorY: int)
     (ceilingY: int)
     (section: GridSection2D<Tile>)
@@ -453,7 +479,7 @@ module Platform =
             }
 
             specs.Add spec
-            stamp biome section spec
+            stamp biomeAt originX section spec
 
       // Step up for next layer
       layerY <-
@@ -589,6 +615,13 @@ let generateChunk (cx: int) (cy: int) (worldSeed: int) : Chunk =
   let config = defaultConfig
   let ctx = createContext config cx cy worldSeed
 
+  // World-tile-X of this chunk's leftmost column. Terrain biome is resolved
+  // per-segment from a continuous world-X field so regions blend across seams.
+  let originTileX = cx * chunkCells
+
+  let biomeForColumn wx =
+    biomeAtColumn wx worldSeed config.BiomeColumnScale
+
   let grid =
     LayeredGrid2D.create
       chunkCells
@@ -600,9 +633,9 @@ let generateChunk (cx: int) (cy: int) (worldSeed: int) : Chunk =
     Layer.Terrain
     (fun section ->
       // 1. Plan ground slabs (pure data — no grid access)
-      // 2. Stamp ground onto grid
+      // 2. Stamp ground onto grid (biome resolved per slab from world-X)
       Ground.plan ctx.Rng config.Ground config.JumpBudget chunkCells groundY
-      |> Array.iter(Ground.stamp ctx.Biome section)
+      |> Array.iter(Ground.stamp biomeForColumn originTileX section)
 
       section)
     grid
@@ -618,7 +651,8 @@ let generateChunk (cx: int) (cy: int) (worldSeed: int) : Chunk =
       ctx.Rng
       config.Platform
       config.JumpBudget
-      ctx.Biome
+      biomeForColumn
+      originTileX
       groundY
       skyCeiling
   )
