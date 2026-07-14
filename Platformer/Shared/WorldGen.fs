@@ -252,13 +252,18 @@ let skyCeiling = groundY - 10
 /// Surface tile-Y for world column `worldX`, derived from band-limited
 /// noise. Returns groundY ± amplitude (lower Y = higher terrain on screen).
 /// Uses a seed offset so elevation noise is independent from biome noise.
+///
+/// The first `spawnProtectedCells` columns (the spawn area) are pinned to
+/// flat groundY so the player never spawns embedded in raised terrain or
+/// floating above a depression. This also finally enforces the
+/// spawnProtectedCells constant that was declared but never used.
 let elevationAtColumn
   (worldX: int)
   (seed: int)
   (scale: float32)
   (amplitude: int)
   : int =
-  if amplitude <= 0 then
+  if amplitude <= 0 || worldX < spawnProtectedCells then
     groundY
   else
     let n = biomeNoise (float32 worldX) 0.0f scale (seed ^^^ 0x5A5A5A5A)

@@ -134,6 +134,38 @@ let tests =
         Expect.isEmpty violations "flat terrain should have no violations"
 
       testCase
+        "spawn plateau is flat groundY for first spawnProtectedCells columns"
+      <| fun _ ->
+        // The player spawns at spawnX ≈ tile 3.1. Elevation must be flat
+        // groundY there so the player never spawns inside terrain.
+        for lx in 0 .. spawnProtectedCells - 1 do
+          let y =
+            elevationAtColumn
+              lx
+              42
+              defaultConfig.ElevationScale
+              defaultConfig.ElevationAmplitude
+
+          Expect.equal y (int worldHeight) $"column {lx} should be flat groundY"
+
+      testCase "elevation varies past the spawn plateau"
+      <| fun _ ->
+        let mutable anyChange = false
+
+        for lx in spawnProtectedCells .. chunkCells - 1 do
+          let y =
+            elevationAtColumn
+              lx
+              42
+              defaultConfig.ElevationScale
+              defaultConfig.ElevationAmplitude
+
+          if y <> int worldHeight then
+            anyChange <- true
+
+        Expect.isTrue anyChange "terrain should vary past the spawn plateau"
+
+      testCase
         "default amplitude 2 has no violations across 500 chunks (after cross-seam clamp)"
       <| fun _ ->
         let mutable total = 0
