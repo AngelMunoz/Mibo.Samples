@@ -120,7 +120,7 @@ let update (msg: Msg) (model: Model) : struct (Model * Cmd<Msg>) =
       PlayerPosition = model.Physics.Position
     }
 
-    model.Camera <- Camera.update query model.Camera
+    model.Camera <- Camera.update dt query model.Camera
 
     let stateName =
       match model.Animation.State with

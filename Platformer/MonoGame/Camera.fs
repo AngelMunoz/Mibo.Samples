@@ -10,21 +10,56 @@ open Mibo.Elmish
 [<Struct>]
 type CameraQuery = { PlayerPosition: Vector2 }
 
-/// Vertical bias (world units). Shifts the camera center up so the player
-/// sits in the lower portion of the screen and more sky is visible above.
+/// Deadzone half-extents (world units). The camera holds still while the
+/// framed point stays within this box around its current center; it only
+/// follows (by the overshoot amount) once an edge is crossed.
 [<Literal>]
-let verticalOffset = 180.0f
+let deadzoneHalfWidth = 150.0f
 
-/// Smoothing factor for the follow (0–1; higher = snappier).
 [<Literal>]
-let followSpeed = 0.1f
+let deadzoneHalfHeight = 80.0f
+
+/// Follow rate (1/s) for dt-aware smoothing. Higher = snappier re-centering.
+/// ~6.0 matches the prior 0.1-per-frame feel at 60 fps.
+[<Literal>]
+let followRate = 6.0f
 
 /// World point the camera should center on, derived from the query.
 /// Keeps the framing target within sane world bounds on the Y axis.
 let target(query: CameraQuery) : Vector2 =
   let clampedY = MathF.Max(-500.0f, MathF.Min(query.PlayerPosition.Y, 2000.0f))
-  Vector2(query.PlayerPosition.X, clampedY - verticalOffset)
+  Vector2(query.PlayerPosition.X, clampedY)
 
-/// Smoothly move the camera toward the framed target.
-let update (query: CameraQuery) (camera: Camera2D) : Camera2D =
-  Camera2D.smoothFollow camera (target query) followSpeed
+/// Deadzone-adjusted point the camera should move toward. While the framed
+/// point is inside the deadzone box around the current center, this returns
+/// the current center (camera holds still); once it overshoots an edge, it
+/// tracks by the overshoot amount so the player stays at the edge.
+let desiredTarget (current: Vector2) (framed: Vector2) : Vector2 =
+  let dx = framed.X - current.X
+  let dy = framed.Y - current.Y
+
+  let tx =
+    if dx > deadzoneHalfWidth then
+      current.X + (dx - deadzoneHalfWidth)
+    elif dx < -deadzoneHalfWidth then
+      current.X + (dx + deadzoneHalfWidth)
+    else
+      current.X
+
+  let ty =
+    if dy > deadzoneHalfHeight then
+      current.Y + (dy - deadzoneHalfHeight)
+    elif dy < -deadzoneHalfHeight then
+      current.Y + (dy + deadzoneHalfHeight)
+    else
+      current.Y
+
+  Vector2(tx, ty)
+
+/// Smoothly re-center the camera toward the deadzone-adjusted target.
+let update (dt: float32) (query: CameraQuery) (camera: Camera2D) : Camera2D =
+  let goal = desiredTarget camera.Position (target query)
+
+  // dt-aware exponential smoothing: same feel regardless of frame rate.
+  let factor = 1.0f - MathF.Exp(-followRate * dt)
+  Camera2D.smoothFollow camera goal factor
