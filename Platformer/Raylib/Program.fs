@@ -84,10 +84,23 @@ let loadAssets(ctx: GameContext) : SpriteAssets =
       }
     |]
 
+  let tileEffectSheet =
+    SpriteSheet.fromFrames tileTex (Vector2(32.0f, 32.0f)) [|
+      for def in TileAnimations.definitions do
+        def.Name,
+        {
+          Frames =
+            def.Frames |> Array.map(fun fr -> Rectangle(fr.X, fr.Y, 64f, 64f))
+          FrameDuration = def.FrameDuration
+          Loop = def.Loop
+        }
+    |]
+
   {
     PlayerSheet = playerSheet
     TileTexture = tileTex
     TorchSheet = torchSheet
+    TileEffectSheet = tileEffectSheet
     ParticleTexture = particleTex
     CoinNormalMap = coinNormalMap
     Font = font
@@ -121,6 +134,11 @@ let init(ctx: GameContext) : struct (Model * Cmd<_>) =
       Assets = assets,
       PlayerSprite = AnimatedSprite.create assets.PlayerSheet "idle",
       TorchSprite = AnimatedSprite.create assets.TorchSheet "lit",
+      CoinSprite =
+        AnimatedSprite.create
+          (SpriteSheet.withNormalMap assets.CoinNormalMap assets.TileEffectSheet)
+          "coin_gold",
+      FlagSprite = AnimatedSprite.create assets.TileEffectSheet "flag_red",
       Chunks = Chunks.init seed,
       Camera = camera,
       Lighting =

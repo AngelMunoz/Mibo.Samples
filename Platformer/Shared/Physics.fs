@@ -173,19 +173,22 @@ module PhysicsSystem =
 
       match chunks.TryGetValue key with
       | true, chunk ->
+        let terrainGrid, _ =
+          LayeredGrid2D.getOrAddLayer Layer.Terrain chunk.Grids
+
         let cellX =
-          int((coinRect.X - chunk.Grid.Origin.X) / chunk.Grid.CellSize.X)
+          int((coinRect.X - terrainGrid.Origin.X) / terrainGrid.CellSize.X)
 
         let cellY =
-          int((coinRect.Y - chunk.Grid.Origin.Y) / chunk.Grid.CellSize.Y)
+          int((coinRect.Y - terrainGrid.Origin.Y) / terrainGrid.CellSize.Y)
 
         if
           cellX >= 0
-          && cellX < chunk.Grid.Width
+          && cellX < terrainGrid.Width
           && cellY >= 0
-          && cellY < chunk.Grid.Height
+          && cellY < terrainGrid.Height
         then
-          CellGrid2D.set cellX cellY Tile.Empty chunk.Grid
+          CellGrid2D.set cellX cellY Tile.Empty terrainGrid
       | _ -> ()
 
     if finalPos.Y > groundLevel + 500.0f then

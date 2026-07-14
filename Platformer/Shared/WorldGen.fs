@@ -552,13 +552,14 @@ let generateChunk (cx: int) (cy: int) (worldSeed: int) : Chunk =
   let ctx = createContext config cx cy worldSeed
 
   let grid =
-    CellGrid2D.create
+    LayeredGrid2D.create
       chunkCells
       chunkCells
       (Vector2(tileSize, tileSize))
       (Vector2(float32 cx * chunkWorldSize, float32 cy * chunkWorldSize))
 
-  Layout.run
+  LayeredLayout.layer
+    Layer.Terrain
     (fun section ->
       // 1. Plan ground slabs (pure data — no grid access)
       // 2. Stamp ground onto grid
@@ -571,14 +572,17 @@ let generateChunk (cx: int) (cy: int) (worldSeed: int) : Chunk =
 
   // 3. Plan + stamp platforms (reads grid for spatial validation,
   //    stamps as each platform is validated)
-  grid |> Layout.run(Platform.plan ctx.Rng config.Platform ctx.Biome) |> ignore
+  let terrainGrid, _ = LayeredGrid2D.getOrAddLayer Layer.Terrain grid
 
-  // 4. Extract colliders and render data (single pass)
-  let extracted = extractAll grid ctx.Rng
+  terrainGrid
+  |> Layout.run(Platform.plan ctx.Rng config.Platform ctx.Biome)
+  |> ignore
+
+  let extracted = extractAll terrainGrid ctx.Rng
   let origin = grid.Origin
 
   {
-    Grid = grid
+    Grids = grid
     Platforms = extracted.Platforms
     Spikes = extracted.Spikes
     Coins = extracted.Coins

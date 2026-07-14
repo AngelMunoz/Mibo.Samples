@@ -140,6 +140,8 @@ let update (msg: Msg) (model: Model) : struct (Model * Cmd<Msg>) =
         AnimatedSprite.facingRight sprite
 
     model.TorchSprite <- AnimatedSprite.update dt model.TorchSprite
+    model.CoinSprite <- AnimatedSprite.update dt model.CoinSprite
+    model.FlagSprite <- AnimatedSprite.update dt model.FlagSprite
 
 
     model,

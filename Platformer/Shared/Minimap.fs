@@ -67,20 +67,23 @@ module Minimap =
            >= playerPos.Y - minimapWorldRadius
         && chunk.Bounds.Y <= playerPos.Y + minimapWorldRadius
       then
-        let cellW = chunk.Grid.CellSize.X
-        let cellH = chunk.Grid.CellSize.Y
+        let terrainGrid, _ =
+          LayeredGrid2D.getOrAddLayer Layer.Terrain chunk.Grids
 
-        for y in 0 .. chunk.Grid.Height - 1 do
-          for x in 0 .. chunk.Grid.Width - 1 do
-            match CellGrid2D.get x y chunk.Grid with
+        let cellW = terrainGrid.CellSize.X
+        let cellH = terrainGrid.CellSize.Y
+
+        for y in 0 .. terrainGrid.Height - 1 do
+          for x in 0 .. terrainGrid.Width - 1 do
+            match CellGrid2D.get x y terrainGrid with
             | ValueSome tile when tile <> Tile.Empty ->
               let key =
-                struct (int(chunk.Grid.Origin.X + float32 x * cellW),
-                        int(chunk.Grid.Origin.Y + float32 y * cellH))
+                struct (int(terrainGrid.Origin.X + float32 x * cellW),
+                        int(terrainGrid.Origin.Y + float32 y * cellH))
 
               if not(blocks.ContainsKey key) then
                 blocks[key] <-
-                  struct (chunk.Grid.Origin.Y + float32 y * cellH,
+                  struct (terrainGrid.Origin.Y + float32 y * cellH,
                           tile,
                           chunk.Biome)
             | _ -> ()

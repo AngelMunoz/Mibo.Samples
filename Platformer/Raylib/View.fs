@@ -185,31 +185,53 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
       let chunkBounds = toRect chunk.Bounds
 
       if Culling.isVisible2D viewBounds chunkBounds then
+        let terrainGrid, _ =
+          LayeredGrid2D.getOrAddLayer Layer.Terrain chunk.Grids
+
         CellGrid2D.iterVisible
           (int viewBounds.X)
           (int viewBounds.Y)
           (int(viewBounds.X + viewBounds.Width))
           (int(viewBounds.Y + viewBounds.Height))
           (fun x y tile ->
-            if tile <> Tile.Empty then
+            if
+              tile <> Tile.Empty && tile <> Tile.Coin && tile <> Tile.Flag
+            then
               let info = TileData.lookup tile
-              let wx = chunk.Grid.Origin.X + float32 x * tileSize
-              let wy = chunk.Grid.Origin.Y + float32 y * tileSize
+              let wx = terrainGrid.Origin.X + float32 x * tileSize
+              let wy = terrainGrid.Origin.Y + float32 y * tileSize
               let dest = Rectangle(wx, wy, tileSize, tileSize)
               let srcRect = Rectangle(info.SpriteX, info.SpriteY, 64.0f, 64.0f)
 
               let sprite =
-                let s =
-                  SpriteState.create(model.Assets.TileTexture, dest, srcRect)
-                  |> SpriteState.withLayer 10<RenderLayer>
-
-                if tile = Tile.Coin then
-                  s |> SpriteState.withNormalMap model.Assets.CoinNormalMap
-                else
-                  s
+                SpriteState.create(model.Assets.TileTexture, dest, srcRect)
+                |> SpriteState.withLayer 10<RenderLayer>
 
               buffer |> LightDraw.litSprite model.Lighting sprite |> Draw.drop)
-          chunk.Grid
+          terrainGrid
+
+        // Animated collectibles (litAnimatedSprite for per-frame animation)
+        for coin in chunk.Coins do
+          let dest = Rectangle(coin.X, coin.Y, coin.Width, coin.Height)
+
+          buffer
+          |> LightDraw.litAnimatedSprite
+            model.Lighting
+            10<RenderLayer>
+            dest
+            model.CoinSprite
+          |> Draw.drop
+
+        for flag in chunk.Flags do
+          let dest = Rectangle(flag.X, flag.Y, flag.Width, flag.Height)
+
+          buffer
+          |> LightDraw.litAnimatedSprite
+            model.Lighting
+            10<RenderLayer>
+            dest
+            model.FlagSprite
+          |> Draw.drop
 
   // Player
   let playerDrawY = model.Physics.Position.Y + playerHeight - 64.0f

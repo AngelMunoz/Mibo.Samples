@@ -19,6 +19,7 @@ type SpriteAssets = {
   PlayerSheet: SpriteSheet
   TileTexture: Texture2D
   TorchSheet: SpriteSheet
+  TileEffectSheet: SpriteSheet
   ParticleTexture: Texture2D
   CoinNormalMap: Texture2D
   Font: SpriteFont
@@ -47,6 +48,8 @@ type Model() =
   member val Assets: SpriteAssets = Unchecked.defaultof<_> with get, set
   member val PlayerSprite: AnimatedSprite = Unchecked.defaultof<_> with get, set
   member val TorchSprite: AnimatedSprite = Unchecked.defaultof<_> with get, set
+  member val CoinSprite: AnimatedSprite = Unchecked.defaultof<_> with get, set
+  member val FlagSprite: AnimatedSprite = Unchecked.defaultof<_> with get, set
   member val MinimapTexture: Texture2D = Unchecked.defaultof<_> with get, set
   member val MinimapTexReady = false with get, set
   member val ParticleBuffer: Particle2D[] = Array.zeroCreate 512 with get, set
