@@ -668,6 +668,12 @@ module Platform =
   /// as validated, so the grid is the source of truth for occupancy.
   ///
   /// Solid ground must already be stamped on the grid before calling this.
+  ///
+  /// Elevation-aware: for each candidate, the actual ground surface is found
+  /// by scanning the grid downward. A platform is only placed if:
+  ///   - It has ≥ MinClearance tiles of visual gap from ground below.
+  ///   - It is reachable from the ground below (rise within the jump arc).
+  ///   - OR it chains from a platform in the layer directly below it.
   let plan
     (rng: Random)
     (config: PlatformConfig)
@@ -681,6 +687,11 @@ module Platform =
     let grid = section.BackingGrid
     let specs = ResizeArray<PlatformSpec>()
     let target = rng.Next(config.MinCount, config.MaxCount + 1)
+
+    // Max rise reachable from ground at minimum effective gap (1 tile).
+    // A platform higher than this from the ground below is unreachable
+    // unless it chains from a lower platform.
+    let maxReachableRise = int(floor(arcHeightTiles 1.0f))
 
     // First layer: MinClearance..MaxClearance tiles above the floor surface
     let mutable layerY =
@@ -708,12 +719,16 @@ module Platform =
             | ValueNone -> ci <- ci + 1
             | ValueSome _ -> cellsOk <- false
 
-          // Clearance: scan downward from each platform column to find the
-          // actual ground surface. Require at least MinClearance tiles of
-          // gap so platforms never sit flush against ground. With variable
-          // elevation the ground surface is different per column, so the old
-          // flat-floorY check would pass platforms with 0 spacing.
+          // Clearance + reachability: scan downward from each platform column
+          // to find the actual ground surface. With variable elevation the
+          // ground is at different Y per column.
+          //
+          // Reject if ANY column has ground within MinClearance (too close —
+          // no visual gap). Also reject if ALL columns have ground but the
+          // nearest surface is beyond maxReachableRise (unreachable from
+          // ground below AND no chain candidate below).
           let mutable clearanceOk = cellsOk
+          let mutable nearestGroundY = Int32.MaxValue
           let mutable cci = 0
 
           while clearanceOk && cci < w do
@@ -725,11 +740,40 @@ module Platform =
               | ValueSome _ -> groundFound <- true
               | ValueNone -> sy <- sy + 1
 
-            // Ground found within MaxClearance rows below the platform
-            if groundFound && (sy - layerY) < config.MinClearance then
-              clearanceOk <- false
+            if groundFound then
+              if (sy - layerY) < config.MinClearance then
+                clearanceOk <- false
+
+              if sy < nearestGroundY then
+                nearestGroundY <- sy
 
             cci <- cci + 1
+
+          // If ground was found but it's too far below for a direct jump,
+          // the platform is only valid if there's a placed platform below
+          // it to chain from (within reachability range).
+          let mutable reachableOk = true
+
+          if clearanceOk && nearestGroundY < Int32.MaxValue then
+            let rise = nearestGroundY - layerY
+
+            if rise > maxReachableRise then
+              // Too high from ground — check for a chain platform below
+              let mutable chainFound = false
+              let mutable si = 0
+
+              while not chainFound && si < specs.Count do
+                let s = specs[si]
+
+                if s.Y > layerY && (s.Y - layerY) <= maxReachableRise then
+                  let xOverlap = x < s.X + s.W + 1 && s.X < x + w + 1
+
+                  if xOverlap then
+                    chainFound <- true
+
+                si <- si + 1
+
+              reachableOk <- chainFound
 
           // Check vertical spacing + X non-overlap (min 1 gap) against placed specs
           let mutable spacingOk = true
@@ -746,7 +790,7 @@ module Platform =
             else
               si <- si + 1
 
-          if cellsOk && clearanceOk && spacingOk then
+          if cellsOk && clearanceOk && reachableOk && spacingOk then
             let spec = {
               X = x
               Y = layerY
@@ -955,8 +999,11 @@ let generateChunk (cx: int) (cy: int) (worldSeed: int) : Chunk =
   |> ignore
 
   // 3. Plan + stamp platforms (reads grid for spatial validation,
-  //    stamps as each platform is validated)
+  //    stamps as each platform is validated). floorY = the highest ground
+  //    surface in this chunk so the first platform layer clears all ground.
   let terrainGrid, _ = LayeredGrid2D.getOrAddLayer Layer.Terrain grid
+
+  let platformFloorY = groundSpecs |> Array.map(fun s -> s.Y) |> Array.min
 
   terrainGrid
   |> Layout.run(
@@ -966,7 +1013,7 @@ let generateChunk (cx: int) (cy: int) (worldSeed: int) : Chunk =
       config.JumpBudget
       biomeForColumn
       originTileX
-      groundY
+      platformFloorY
       skyCeiling
   )
   |> ignore
