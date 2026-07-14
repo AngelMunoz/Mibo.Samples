@@ -89,6 +89,55 @@ let defaultConfig = {
 }
 
 // ==============================================================
+// Reachability — physics-derived jump predicate
+//
+// Terrain generation must guarantee the player can always reach every
+// surface by walking or jumping. That guarantee is only sound if it is
+// derived from the actual jump arc rather than from independent
+// "max gap" / "max height" caps — those are an over-approximation that
+// broke the moment height varied (a 4-tile gap you clear flat becomes
+// unreachable if the far slab is also too high, because rise and gap
+// share the same jump budget).
+//
+// The player launches upward at `jumpSpeed` and drifts horizontally at
+// `moveSpeed` (no acceleration ramp — full speed is instant in Physics).
+// This models a RUNNING jump (constant horizontal drift), which is the
+// trajectory used to clear gaps between surfaces. Gravity decelerates
+// the ascent. A fully-held jump (no jump cut) is the player's MAXIMUM
+// reach; jump cut only lowers height, so the guarantee uses the
+// best-case arc.
+//
+//   t(d) = d / moveSpeed                  (time to cross distance d)
+//   h(d) = |jumpSpeed|·t(d) − ½·gravity·t(d)²   (height above launch)
+//
+// h(d) peaks at d* = moveSpeed·|jumpSpeed|/gravity ≈ 192px (3 tiles),
+// height ≈ 302px (4.7 tiles), and returns to 0 at the max same-level
+// range d_max = 2·moveSpeed·|jumpSpeed|/gravity ≈ 385px (6 tiles).
+// The JumpBudget config must stay inside this envelope to keep terrain
+// reachable (it does, with a safety margin).
+// ==============================================================
+
+/// Height (in tiles) the player reaches above the launch surface at
+/// horizontal distance `distanceTiles`, for a fully-held running jump.
+/// Negative past the max same-level range (player has fallen below launch).
+let arcHeightTiles(distanceTiles: float32) : float32 =
+  let d = distanceTiles * tileSize
+  let t = d / moveSpeed
+  (-jumpSpeed * t - 0.5f * gravity * t * t) / tileSize
+
+/// Maximum same-level gap (in tiles) a running jump can clear.
+/// At this distance the arc has returned to launch height.
+let maxLevelGapTiles: float32 =
+  (2.0f * moveSpeed * (-jumpSpeed) / gravity) / tileSize
+
+/// True when a surface `gapTiles` away horizontally and `riseTiles`
+/// higher than the launch surface (negative `riseTiles` = lower) is
+/// reachable by a fully-held running jump. This is the physics truth;
+/// generation budgets must stay inside it to guarantee reachability.
+let reachable (gapTiles: float32) (riseTiles: float32) : bool =
+  arcHeightTiles gapTiles >= riseTiles
+
+// ==============================================================
 // Biome — value-noise based coherent regions
 // ==============================================================
 

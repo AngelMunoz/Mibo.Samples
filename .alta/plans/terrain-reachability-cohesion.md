@@ -11,14 +11,17 @@ so a gap-only check was sufficient. Variable height makes reachability a **joint
 still be unreachable if the far slab is too high — that is the failure mode.
 
 ## Iterations
-- [x] **Iter 1 — Per-segment biome cohesion (world-X continuous field)**
+- [x] **Iter 1 — Per-segment biome cohesion (world-X continuous field)** ✅ committed e0ba715
   - [x] `biomeAtColumn`: continuous biome from world-tile-X (replaces chunk-level `biomeAt`)
   - [x] Resolve biome per ground slab / platform from world-X in `stamp`
   - [x] Config: `BiomeColumnScale` (~0.03, ~1 biome/chunk, smooth seams)
   - [x] Build + format
   - **Verify:** biome regions blend across chunk seams; no hard edges.
-- [ ] **Iter 2 — Reachability predicate (foundation)**
-  - `arcHeight(d)` + `reachable(d, r)` from physics constants (pure, unit-testable)
+- [x] **Iter 2 — Reachability predicate (foundation)** ✅
+  - [x] `arcHeightTiles(d)` + `reachable(d, r)` + `maxLevelGapTiles` from physics constants (pure)
+  - [x] `Platformer/Shared.Tests` project (Expecto, mirrors FPSSample) — 11 tests, all pass
+  - [x] Registered in `.slnx`; full solution builds
+  - **Verify:** `dotnet test Platformer/Shared.Tests`
 - [ ] **Iter 3 — Band-limited elevation + reachability-aware ground planner**
   - Per-column elevation field feeding `GroundSpec.Y`
   - Band-limit so rise-per-gap stays inside the parabola; planner clamps edge cases

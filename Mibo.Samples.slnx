@@ -21,6 +21,7 @@
   </Folder>
   <Folder Name="/Platformer/">
     <Project Path="Platformer/Shared/Shared.fsproj" />
+    <Project Path="Platformer/Shared.Tests/Shared.Tests.fsproj" />
     <Project Path="Platformer/Raylib/Raylib.fsproj" />
     <Project Path="Platformer/MonoGame/MonoGame.fsproj" />
   </Folder>
