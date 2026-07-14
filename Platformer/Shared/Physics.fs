@@ -24,18 +24,30 @@ let inline checkCollision (a: Rect) (b: Rect) =
   && a.Y < b.Y + b.Height
   && a.Y + a.Height > b.Y
 
+/// Resolve the player's collision against solid and one-way colliders.
+///
+/// Solid colliders (full blocks): land from above, block from below, and
+/// block from the sides.
+///
+/// One-way colliders (cloud/bridge): land from above ONLY. The player passes
+/// through from below and from the sides. When `dropDown` is set (the player
+/// is holding Down to drop through), landing is suppressed so the player
+/// falls through one-way platforms they are standing on.
 let resolvePlatformCollision
   (prevPos: Vector2)
   (newPos: Vector2)
   (velocity: Vector2)
-  (platforms: ResizeArray<Rect>)
+  (solids: ResizeArray<Rect>)
+  (oneWay: ResizeArray<Rect>)
+  (dropDown: bool)
   =
   let mutable pos = newPos
   let mutable vel = velocity
   let mutable grounded = false
 
-  for i = 0 to platforms.Count - 1 do
-    let pb = platforms[i]
+  // Solid colliders — full collision in all directions
+  for i = 0 to solids.Count - 1 do
+    let pb = solids[i]
 
     if checkCollision (playerBounds pos) pb then
       let prevFeetY = prevPos.Y + playerHeight
@@ -61,10 +73,37 @@ let resolvePlatformCollision
         pos <- Vector2(pb.X + pb.Width, pos.Y)
         vel <- Vector2(0.0f, vel.Y)
 
+  // One-way colliders — land from above only. When the player requests a
+  // drop-down (holding Down), skip landing entirely so they fall through.
+  if not dropDown then
+    for i = 0 to oneWay.Count - 1 do
+      let pb = oneWay[i]
+
+      if checkCollision (playerBounds pos) pb then
+        let prevFeetY = prevPos.Y + playerHeight
+        let currFeetY = pos.Y + playerHeight
+        let platformTop = pb.Y
+
+        let crossedSurface =
+          prevFeetY <= platformTop + 5.0f && currFeetY >= platformTop
+
+        let movingDown = vel.Y >= 0.0f
+
+        if crossedSurface && movingDown then
+          pos <- Vector2(pos.X, platformTop - playerHeight)
+          vel <- Vector2(vel.X, 0.0f)
+          grounded <- true
+
   struct (pos, vel, grounded)
 
-let inline getAnimationState (velocity: Vector2) (isGrounded: bool) =
-  if not isGrounded then
+let inline getAnimationState
+  (velocity: Vector2)
+  (isGrounded: bool)
+  (isDucking: bool)
+  =
+  if isGrounded && isDucking then
+    Duck
+  elif not isGrounded then
     if velocity.Y > 0.0f then Fall else Jump
   elif abs velocity.X > 1.0f then
     Walk
@@ -86,11 +125,13 @@ module PhysicsSystem =
     member val IsGrounded = true with get, set
 
     member val JumpTriggered = false with get, set
+    member val IsDucking = false with get, set
     member val Score = 0 with get, set
 
   let init() = PhysicsModel()
 
-  let private nearbyPlatforms = ResizeArray<Rect>(256)
+  let private nearbySolids = ResizeArray<Rect>(256)
+  let private nearbyOneWay = ResizeArray<Rect>(64)
   let private nearbySpikes = ResizeArray<Rect>(64)
   let private nearbyCoins = ResizeArray<Rect>(64)
   let private collectedCoins = ResizeArray<Rect>(16)
@@ -125,7 +166,8 @@ module PhysicsSystem =
     let newPos = prevPos + velocity * dt
 
     // Collect platforms, spikes, coins from nearby chunks
-    nearbyPlatforms.Clear()
+    nearbySolids.Clear()
+    nearbyOneWay.Clear()
     nearbySpikes.Clear()
     nearbyCoins.Clear()
     let pcx = int(Math.Floor(float newPos.X / float chunkWorldSize))
@@ -137,12 +179,24 @@ module PhysicsSystem =
       if
         abs(cx - pcx) <= chunkLoadRadius && abs(cy - pcy) <= chunkLoadRadius
       then
-        nearbyPlatforms.AddRange chunk.Platforms
+        nearbySolids.AddRange chunk.Platforms
+        nearbyOneWay.AddRange chunk.OneWayPlatforms
         nearbySpikes.AddRange chunk.Spikes
         nearbyCoins.AddRange chunk.Coins
 
+    // Drop through one-way platforms while holding Down. Only suppresses
+    // one-way landing; solid ground is unaffected.
+    let dropDown = actions.Held.Contains GameAction.Down
+    model.IsDucking <- dropDown
+
     let struct (finalPos, finalVel, isGrounded) =
-      resolvePlatformCollision prevPos newPos velocity nearbyPlatforms
+      resolvePlatformCollision
+        prevPos
+        newPos
+        velocity
+        nearbySolids
+        nearbyOneWay
+        dropDown
 
     let mutable finalPos = finalPos
     let mutable finalVel = finalVel

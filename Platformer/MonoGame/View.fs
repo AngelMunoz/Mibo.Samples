@@ -279,7 +279,7 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
   |> Draw.text(
     TextState.create(
       model.Assets.Font,
-      $"Day/Night Cycle | Time: {model.DayNight.Time.TimeOfDay:F1}h | Chunks: {model.Chunks.Chunks.Count} | Score: {model.Physics.Score} | WASD/Arrows: Move | Space: Jump | R: Respawn",
+      $"Day/Night Cycle | Time: {model.DayNight.Time.TimeOfDay:F1}h | Chunks: {model.Chunks.Chunks.Count} | Score: {model.Physics.Score} | WASD/Arrows: Move | Space: Jump | S/Down: Drop | R: Respawn",
       Vector2(10.0f, 10.0f)
     )
     |> TextState.withScale 1.0f

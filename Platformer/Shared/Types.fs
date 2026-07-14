@@ -93,6 +93,7 @@ type GameAction =
   | MoveRight
   | Jump
   | Respawn
+  | Down
 
 [<Struct>]
 type AnimationState =
@@ -100,6 +101,7 @@ type AnimationState =
   | Walk
   | Jump
   | Fall
+  | Duck
 
 [<Struct>]
 type Biome =
@@ -241,6 +243,7 @@ type TorchLight = {
 type Chunk = {
   Grids: LayeredGrid2D<Tile>
   Platforms: Rect[]
+  OneWayPlatforms: Rect[]
   Spikes: Rect[]
   Coins: Rect[]
   Flags: Rect[]

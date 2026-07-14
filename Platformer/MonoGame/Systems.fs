@@ -102,6 +102,7 @@ let update (msg: Msg) (model: Model) : struct (Model * Cmd<Msg>) =
       Platformer.Animation.update
         model.Physics.Velocity
         model.Physics.IsGrounded
+        model.Physics.IsDucking
         model.Physics.Facing
 
     let struct (minimapModel, mcmd) =
@@ -128,6 +129,7 @@ let update (msg: Msg) (model: Model) : struct (Model * Cmd<Msg>) =
       | Walk -> "walk"
       | Jump -> "jump"
       | Fall -> "fall"
+      | Duck -> "duck"
 
     let sprite =
       AnimatedSprite.playIfNot stateName model.PlayerSprite

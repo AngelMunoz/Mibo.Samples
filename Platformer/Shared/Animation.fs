@@ -15,10 +15,11 @@ module Animation =
   let update
     (velocity: Vector2)
     (isGrounded: bool)
+    (isDucking: bool)
     (facing: float32)
     : AnimationModel =
     {
-      State = Physics.getAnimationState velocity isGrounded
+      State = Physics.getAnimationState velocity isGrounded isDucking
       Facing = facing
     }
 

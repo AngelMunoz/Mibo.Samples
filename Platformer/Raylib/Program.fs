@@ -69,6 +69,12 @@ let loadAssets(ctx: GameContext) : SpriteAssets =
         FrameDuration = 1.0f
         Loop = false
       }
+      "duck",
+      {
+        Frames = [| Rectangle(258f, 0f, 128f, 128f) |]
+        FrameDuration = 1.0f
+        Loop = false
+      }
     |]
 
   let torchSheet =
@@ -114,6 +120,8 @@ let inputMap =
   |> InputMap.key GameAction.MoveRight KeyCode.D
   |> InputMap.key GameAction.MoveRight KeyCode.Right
   |> InputMap.key GameAction.Jump KeyCode.Space
+  |> InputMap.key GameAction.Down KeyCode.S
+  |> InputMap.key GameAction.Down KeyCode.Down
   |> InputMap.key GameAction.Respawn KeyCode.R
 
 let init(ctx: GameContext) : struct (Model * Cmd<_>) =

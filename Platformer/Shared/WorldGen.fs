@@ -134,8 +134,35 @@ let maxLevelGapTiles: float32 =
 /// higher than the launch surface (negative `riseTiles` = lower) is
 /// reachable by a fully-held running jump. This is the physics truth;
 /// generation budgets must stay inside it to guarantee reachability.
+///
+/// NOTE: this models a SINGLE jump from ONE launch surface. It does NOT
+/// by itself guarantee the player can get back. For any MANDATORY
+/// traversal edge (a gap the player must cross) use `reachableBoth`.
+///
+/// All platform colliders in this game behave as solid full blocks (no
+/// pass-through / semi-solid tiles — see Physics.resolvePlatformCollision,
+/// which lands, blocks-from-below, and blocks-from-sides uniformly). So
+/// Cloud/Ledge/Overhang are visually distinct but equally landable; the
+/// asymmetry risk is purely geometric and lives in the generation planner,
+/// not in the tile type.
 let reachable (gapTiles: float32) (riseTiles: float32) : bool =
   arcHeightTiles gapTiles >= riseTiles
+
+/// Bidirectional reachability between two surfaces separated by `gapTiles`
+/// horizontally and `dyTiles` vertically (positive = the far surface is
+/// higher). BOTH the forward jump (gap, +dy) and the return jump (gap, -dy)
+/// must be clearable. Use this for any MANDATORY traversal edge: the player
+/// must be able to cross a gap in both directions (e.g. to backtrack), not
+/// just one way.
+///
+/// With the symmetric running-jump model (instant horizontal speed, equal in
+/// both directions) and all-solid platforms, reachability between two points
+/// depends only on |gap| and |Δheight|, so this is equivalent to
+/// `reachable (gap, |dy|)`. The two explicit checks keep the intent obvious
+/// and serve as the predicate the generation planner uses to validate both
+/// directions of every mandatory edge.
+let reachableBoth (gapTiles: float32) (dyTiles: float32) : bool =
+  reachable gapTiles dyTiles && reachable gapTiles (-dyTiles)
 
 // ==============================================================
 // Biome — value-noise based coherent regions
@@ -543,6 +570,7 @@ module Platform =
 [<Struct>]
 type ExtractedData = {
   Platforms: Rect[]
+  OneWayPlatforms: Rect[]
   Spikes: Rect[]
   Coins: Rect[]
   Flags: Rect[]
@@ -559,6 +587,7 @@ type ExtractedData = {
 /// scan is not a per-frame concern.
 let private extractAll (grid: CellGrid2D<Tile>) (rng: Random) : ExtractedData =
   let platforms = ResizeArray<Rect>(256)
+  let oneWayPlatforms = ResizeArray<Rect>(64)
   let spikes = ResizeArray<Rect>(32)
   let coins = ResizeArray<Rect>(64)
   let flags = ResizeArray<Rect>(4)
@@ -578,7 +607,7 @@ let private extractAll (grid: CellGrid2D<Tile>) (rng: Random) : ExtractedData =
         let solid = isSolid tile
         let oneway = isOneWay tile
 
-        if solid || oneway then
+        if solid then
           let info = lookup tile
 
           platforms.Add {
@@ -587,17 +616,26 @@ let private extractAll (grid: CellGrid2D<Tile>) (rng: Random) : ExtractedData =
             Width = info.ColliderRect.Width
             Height = info.ColliderRect.Height
           }
+        elif oneway then
+          let info = lookup tile
 
-          if torches.Count < maxTorchLights then
-            match CellGrid2D.get x (y - 1) grid with
-            | ValueNone ->
-              if rng.NextDouble() > 0.92 then
-                torches.Add {
-                  Position = Vector2(wx + cellW * 0.5f, wy - 10.0f)
-                  Color = Mibo.Color.rgb 255uy 160uy 60uy
-                  Radius = 100.0f + float32(rng.Next(-20, 20))
-                }
-            | _ -> ()
+          oneWayPlatforms.Add {
+            X = wx + info.ColliderRect.X
+            Y = wy + info.ColliderRect.Y
+            Width = info.ColliderRect.Width
+            Height = info.ColliderRect.Height
+          }
+
+        if (solid || oneway) && torches.Count < maxTorchLights then
+          match CellGrid2D.get x (y - 1) grid with
+          | ValueNone ->
+            if rng.NextDouble() > 0.92 then
+              torches.Add {
+                Position = Vector2(wx + cellW * 0.5f, wy - 10.0f)
+                Color = Mibo.Color.rgb 255uy 160uy 60uy
+                Radius = 100.0f + float32(rng.Next(-20, 20))
+              }
+          | _ -> ()
 
         if isHazard tile then
           spikes.Add {
@@ -649,6 +687,7 @@ let private extractAll (grid: CellGrid2D<Tile>) (rng: Random) : ExtractedData =
 
   {
     Platforms = platforms.ToArray()
+    OneWayPlatforms = oneWayPlatforms.ToArray()
     Spikes = spikes.ToArray()
     Coins = coins.ToArray()
     Flags = flags.ToArray()
@@ -713,6 +752,7 @@ let generateChunk (cx: int) (cy: int) (worldSeed: int) : Chunk =
   {
     Grids = grid
     Platforms = extracted.Platforms
+    OneWayPlatforms = extracted.OneWayPlatforms
     Spikes = extracted.Spikes
     Coins = extracted.Coins
     Flags = extracted.Flags
