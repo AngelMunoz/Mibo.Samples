@@ -23,13 +23,13 @@ let gravity = 2000.0f
 let moveSpeed = 350.0f
 
 [<Literal>]
-let jumpSpeed = -900.0f
+let jumpSpeed = -1100.0f
 
 [<Literal>]
-let jumpCutMultiplier = 0.3f
+let jumpCutMultiplier = 0.25f
 
 [<Literal>]
-let worldHeight = 12.0f
+let worldHeight = 10.0f
 
 let groundLevel = worldHeight * tileSize
 let groundSurface = groundLevel - tileSize

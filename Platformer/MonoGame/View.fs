@@ -10,6 +10,7 @@ open Mibo.Layout
 open Mibo.Animation
 open Platformer.Constants
 open Platformer.Types
+open Platformer
 open Platformer.MonoGame.Types
 
 type Model = Types.Model
@@ -179,24 +180,11 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
     |> LightDraw.addOccluder model.Lighting 8<RenderLayer> nearbyOccluders[i]
     |> Draw.drop
 
-  let tileSpriteSrc (biome: Biome) (tile: TileType) =
-    match tile with
-    | Ground ->
-      match biome with
-      | Grass -> Rectangle(260, 585, 64, 64)
-      | Stone -> Rectangle(520, 975, 64, 64)
-      | Snow -> Rectangle(1040, 845, 64, 64)
-      | Sand -> Rectangle(390, 780, 64, 64)
-    | Platform ->
-      match biome with
-      | Grass -> Rectangle(520, 975, 64, 64)
-      | Stone -> Rectangle(780, 455, 64, 64)
-      | Snow -> Rectangle(520, 975, 64, 64)
-      | Sand -> Rectangle(780, 455, 64, 64)
-    | Spikes -> Rectangle(715, 0, 64, 64)
-    | Coin -> Rectangle(0, 130, 64, 64)
-    | Flag -> Rectangle(780, 195, 64, 64)
-    | Empty -> Rectangle(0, 0, 0, 0)
+  buffer
+  |> Draw.setSamplerState
+    9<RenderLayer>
+    Microsoft.Xna.Framework.Graphics.SamplerState.PointClamp
+  |> Draw.drop
 
   for KeyValue(key, chunk) in model.Chunks.Chunks do
     let struct (cx, cy) = key
@@ -205,42 +193,40 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
       let chunkBounds = toRect chunk.Bounds
 
       if isVisible2D viewBounds chunkBounds then
-        let chunkBiome = chunk.Biome
-
         CellGrid2D.iterVisible
           viewBounds.X
           viewBounds.Y
           (viewBounds.X + viewBounds.Width)
           (viewBounds.Y + viewBounds.Height)
           (fun x y tile ->
-            if tile <> TileType.Empty then
+            if tile <> Tile.Empty then
+              let info = TileData.lookup tile
               let wx = chunk.Grid.Origin.X + float32 x * tileSize
               let wy = chunk.Grid.Origin.Y + float32 y * tileSize
 
-              let dest =
-                Microsoft.Xna.Framework.Rectangle(
-                  int wx,
-                  int wy,
-                  int tileSize,
-                  int tileSize
-                )
+              let dest = Rectangle(int wx, int wy, int tileSize, int tileSize)
+
+              let srcRect =
+                Rectangle(int info.SpriteX, int info.SpriteY, 64, 64)
 
               let sprite =
                 let s =
-                  SpriteState.create(
-                    model.Assets.TileTexture,
-                    dest,
-                    tileSpriteSrc chunkBiome tile
-                  )
+                  SpriteState.create(model.Assets.TileTexture, dest, srcRect)
                   |> SpriteState.withLayer 10<RenderLayer>
 
-                if tile = TileType.Coin then
+                if tile = Tile.Coin then
                   s |> SpriteState.withNormalMap model.Assets.CoinNormalMap
                 else
                   s
 
               buffer |> LightDraw.litSprite model.Lighting sprite |> Draw.drop)
           chunk.Grid
+
+  buffer
+  |> Draw.setSamplerState
+    11<RenderLayer>
+    Microsoft.Xna.Framework.Graphics.SamplerState.LinearClamp
+  |> Draw.drop
 
   let playerDrawY = int(model.Physics.Position.Y + playerHeight - 64.0f)
   let playerDest = Rectangle(int model.Physics.Position.X, playerDrawY, 64, 64)

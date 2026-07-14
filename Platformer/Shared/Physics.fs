@@ -85,9 +85,6 @@ module PhysicsSystem =
     member val Facing = 1.0f with get, set
     member val IsGrounded = true with get, set
 
-    member val CameraTarget =
-      Vector2(spawnX, groundSurface - playerHeight) with get, set
-
     member val JumpTriggered = false with get, set
     member val Score = 0 with get, set
 
@@ -188,7 +185,7 @@ module PhysicsSystem =
           && cellY >= 0
           && cellY < chunk.Grid.Height
         then
-          CellGrid2D.set cellX cellY Empty chunk.Grid
+          CellGrid2D.set cellX cellY Tile.Empty chunk.Grid
       | _ -> ()
 
     if finalPos.Y > groundLevel + 500.0f then
@@ -211,9 +208,5 @@ module PhysicsSystem =
       else model.Facing
 
     model.Facing <- newFacing
-
-    let clampedX = MathF.Max(-999999.0f, MathF.Min(finalPos.X, 999999.0f))
-    let clampedY = MathF.Max(-500.0f, MathF.Min(finalPos.Y, 2000.0f))
-    model.CameraTarget <- Vector2(clampedX, clampedY)
 
     model

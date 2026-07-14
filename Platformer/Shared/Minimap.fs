@@ -27,23 +27,27 @@ module Minimap =
   [<Literal>]
   let texSize = 200
 
-  let private tileColor
-    (skyColor: Color)
-    (biome: Biome)
-    (tile: TileType)
-    : Color =
+  let private tileColor (skyColor: Color) (biome: Biome) (tile: Tile) : Color =
     match tile with
-    | Ground ->
+    | Tile.Empty -> skyColor
+    | Tile.Coin -> Color.rgb 255uy 215uy 0uy
+    | Tile.Flag -> Color.rgb 255uy 0uy 0uy
+    | Tile.Spikes
+    | Tile.BlockSpikes
+    | Tile.Lava
+    | Tile.LavaTop
+    | Tile.LavaTopLow -> Color.rgb 192uy 192uy 192uy
+    | Tile.Bridge
+    | Tile.BridgeLogs -> Color.rgb 139uy 90uy 43uy
+    | _ ->
+      // Solid or one-way tiles: color by biome
       match biome with
       | Grass -> Color.rgb 76uy 153uy 0uy
+      | Dirt -> Color.rgb 139uy 90uy 43uy
       | Stone -> Color.rgb 128uy 128uy 128uy
       | Snow -> Color.rgb 230uy 230uy 230uy
       | Sand -> Color.rgb 210uy 180uy 140uy
-    | Platform -> Color.rgb 139uy 90uy 43uy
-    | Spikes -> Color.rgb 192uy 192uy 192uy
-    | Coin -> Color.rgb 255uy 215uy 0uy
-    | Flag -> Color.rgb 255uy 0uy 0uy
-    | Empty -> skyColor
+      | Purple -> Color.rgb 160uy 100uy 200uy
 
   let generateMinimapData
     (chunks: ConcurrentDictionary<struct (int * int), Chunk>)
@@ -53,7 +57,7 @@ module Minimap =
     let scale = minimapSize / (minimapWorldRadius * 2.0f)
 
     let blocks =
-      Dictionary<struct (int * int), struct (float32 * TileType * Biome)>()
+      Dictionary<struct (int * int), struct (float32 * Tile * Biome)>()
 
     for KeyValue(_, chunk) in chunks do
       if
@@ -69,7 +73,7 @@ module Minimap =
         for y in 0 .. chunk.Grid.Height - 1 do
           for x in 0 .. chunk.Grid.Width - 1 do
             match CellGrid2D.get x y chunk.Grid with
-            | ValueSome tile when tile <> Empty ->
+            | ValueSome tile when tile <> Tile.Empty ->
               let key =
                 struct (int(chunk.Grid.Origin.X + float32 x * cellW),
                         int(chunk.Grid.Origin.Y + float32 y * cellH))

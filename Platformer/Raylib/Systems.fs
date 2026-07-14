@@ -13,6 +13,7 @@ open Platformer.Types
 open Platformer.Physics
 open Platformer.WorldGen
 open Platformer.Raylib.Types
+open Platformer.Raylib.Camera
 
 type Model = Types.Model
 type Msg = Types.Msg
@@ -114,10 +115,12 @@ let update (msg: Msg) (model: Model) : struct (Model * Cmd<Msg>) =
     // Diagnostics
     model.Diag <- Platformer.Diagnostics.update dt
 
-    // Backend-specific sync
-    let mutable cam = model.Camera
-    Camera2D.smoothFollow &cam model.Physics.CameraTarget 0.1f
-    model.Camera <- cam
+    // Camera follows the player — framing is a camera concern, not physics'.
+    let query = {
+      PlayerPosition = model.Physics.Position
+    }
+
+    model.Camera <- Camera.update query model.Camera
 
     let stateName =
       match model.Animation.State with

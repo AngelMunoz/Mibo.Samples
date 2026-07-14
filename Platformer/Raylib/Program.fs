@@ -14,6 +14,7 @@ open Platformer.Constants
 open Platformer.Types
 open Platformer.WorldGen
 open Platformer.Raylib.Types
+open Platformer.Raylib.Camera
 open Platformer.Raylib.Systems
 open Platformer
 
@@ -27,6 +28,7 @@ let loadAssets(ctx: GameContext) : SpriteAssets =
   let tileTex =
     assets.Texture
       "assets/kenney_platformer/Spritesheets/spritesheet-tiles-default.png"
+    |> Texture.filter TextureFilter.Point
 
   let font = assets.Font "assets/Fonts/monogram.ttf"
   let jumpSound = assets.Sound "assets/sfx_jump.ogg"
@@ -107,7 +109,9 @@ let init(ctx: GameContext) : struct (Model * Cmd<_>) =
 
   let camera =
     Camera2D.create
-      (Vector2(spawnX, groundSurface - playerHeight))
+      (Camera.target {
+        PlayerPosition = Vector2(spawnX, groundSurface - playerHeight)
+      })
       1.0f
       (Vector2(float32 viewportWidth, float32 viewportHeight))
 

@@ -14,6 +14,7 @@ open Mibo.Layout
 open Platformer.Constants
 open Platformer.Types
 open Platformer.MonoGame.Types
+open Platformer.MonoGame.Camera
 open Platformer.MonoGame.Systems
 open Platformer
 
@@ -96,7 +97,9 @@ let init(ctx: GameContext) : struct (Model * Cmd<_>) =
 
   let camera =
     Camera2D.create
-      (Vector2(spawnX, groundSurface - playerHeight))
+      (Camera.target {
+        PlayerPosition = Vector2(spawnX, groundSurface - playerHeight)
+      })
       1.0f
       (Vector2(float32 viewportWidth, float32 viewportHeight))
 

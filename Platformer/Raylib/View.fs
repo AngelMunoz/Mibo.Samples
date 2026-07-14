@@ -13,6 +13,7 @@ open Platformer.Constants
 open Platformer.Types
 open Platformer.Raylib
 open Platformer.Raylib.Types
+open Platformer
 
 type Model = Types.Model
 
@@ -177,25 +178,6 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
     |> Draw.drop
 
   // Tiles
-  let tileSpriteSrc (biome: Biome) (tile: TileType) =
-    match tile with
-    | Ground ->
-      match biome with
-      | Grass -> Rectangle(260f, 585f, 64f, 64f)
-      | Stone -> Rectangle(520f, 975f, 64f, 64f)
-      | Snow -> Rectangle(1040f, 845f, 64f, 64f)
-      | Sand -> Rectangle(390f, 780f, 64f, 64f)
-    | Platform ->
-      match biome with
-      | Grass -> Rectangle(520f, 975f, 64f, 64f)
-      | Stone -> Rectangle(780f, 455f, 64f, 64f)
-      | Snow -> Rectangle(520f, 975f, 64f, 64f)
-      | Sand -> Rectangle(780f, 455f, 64f, 64f)
-    | Spikes -> Rectangle(715f, 0f, 64f, 64f)
-    | Coin -> Rectangle(0f, 130f, 64f, 64f)
-    | Flag -> Rectangle(780f, 195f, 64f, 64f)
-    | Empty -> Rectangle(0f, 0f, 0f, 0f)
-
   for KeyValue(key, chunk) in model.Chunks.Chunks do
     let struct (cx, cy) = key
 
@@ -203,29 +185,25 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
       let chunkBounds = toRect chunk.Bounds
 
       if Culling.isVisible2D viewBounds chunkBounds then
-        let chunkBiome = chunk.Biome
-
         CellGrid2D.iterVisible
           (int viewBounds.X)
           (int viewBounds.Y)
           (int(viewBounds.X + viewBounds.Width))
           (int(viewBounds.Y + viewBounds.Height))
           (fun x y tile ->
-            if tile <> TileType.Empty then
+            if tile <> Tile.Empty then
+              let info = TileData.lookup tile
               let wx = chunk.Grid.Origin.X + float32 x * tileSize
               let wy = chunk.Grid.Origin.Y + float32 y * tileSize
               let dest = Rectangle(wx, wy, tileSize, tileSize)
+              let srcRect = Rectangle(info.SpriteX, info.SpriteY, 64.0f, 64.0f)
 
               let sprite =
                 let s =
-                  SpriteState.create(
-                    model.Assets.TileTexture,
-                    dest,
-                    tileSpriteSrc chunkBiome tile
-                  )
+                  SpriteState.create(model.Assets.TileTexture, dest, srcRect)
                   |> SpriteState.withLayer 10<RenderLayer>
 
-                if tile = TileType.Coin then
+                if tile = Tile.Coin then
                   s |> SpriteState.withNormalMap model.Assets.CoinNormalMap
                 else
                   s

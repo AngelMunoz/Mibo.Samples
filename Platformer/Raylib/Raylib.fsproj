@@ -7,6 +7,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Types.fs" />
+    <Compile Include="Camera.fs" />
     <Compile Include="Systems.fs" />
     <Compile Include="MinimapView.fs" />
     <Compile Include="View.fs" />

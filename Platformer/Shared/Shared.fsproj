@@ -7,6 +7,9 @@
   <ItemGroup>
     <Compile Include="Constants.fs" />
     <Compile Include="Types.fs" />
+    <Compile Include="TileData.fs" />
+    <Compile Include="Stamps.fs" />
+    <Compile Include="Island.fs" />
     <Compile Include="DayNight.fs" />
     <Compile Include="WorldGen.fs" />
     <Compile Include="Physics.fs" />

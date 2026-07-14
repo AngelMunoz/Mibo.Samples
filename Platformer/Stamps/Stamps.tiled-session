@@ -1,0 +1,46 @@
+{
+    "activeFile": "stamps.tmx",
+    "expandedProjectPaths": [
+        "."
+    ],
+    "fileStates": {
+        "prototype.tmx": {
+            "scale": 0.2212646484375,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 2747.8406708595394,
+                "y": 1330.985324947589
+            }
+        },
+        "spritesheet-tiles-default.tsx": {
+            "scaleInDock": 1
+        },
+        "stamps.tmx": {
+            "scale": 0.5,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 692,
+                "y": 762
+            }
+        }
+    },
+    "last.imagePath": "E:/Mibo.Samples/Platformer/assets/kenney_platformer/Spritesheets",
+    "map.lastUsedFormat": "tmx",
+    "map.tileHeight": 64,
+    "map.tileWidth": 64,
+    "map.width": 20,
+    "openFiles": [
+        "stamps.tmx"
+    ],
+    "project": "Stamps.tiled-project",
+    "recentFiles": [
+        "stamps.tmx"
+    ],
+    "tileset.lastUsedFormat": "tsx",
+    "tileset.spacing": 1,
+    "tileset.tileSize": {
+        "height": 64,
+        "width": 64
+    },
+    "tileset.useTransparentColor": true
+}
