@@ -177,7 +177,7 @@ let createContext
 [<Struct>]
 type GroundSpec = {
   X: int
-  Y: int // top surface Y (= groundY)
+  Y: int // top surface Y (caller-supplied, e.g. groundY for chunks)
   W: int
   H: int // 1..MaxHeight
 }
@@ -207,19 +207,28 @@ type PlatformSpec = {
 
 module Ground =
 
-  /// Decide ground slab placement for a chunk.
+  /// Decide ground slab placement within a `width`-wide region whose surface
+  /// sits at local row `surfaceY`.
+  ///
+  /// The caller passes the generation region explicitly — this is chunk-agnostic,
+  /// so the same plan fills a chunk row (width = chunkCells) or an island floor
+  /// (width = island interior).
   ///
   /// Rules:
   ///   - First slab starts at x=0 (left-edge connectivity).
   ///   - Every slab (including the last) has at least MinGap before it.
   ///   - Gaps are capped to the jump budget so the player can always clear them.
-  ///   - Trailing gap (last slab → chunk right edge) must also be ≤ maxGap
-  ///     for cross-chunk connectivity. If it isn't, a bridge slab is placed.
+  ///   - The region ends with a trailing gap, not a sealed edge: the last slab
+  ///     stops short of the right edge so its corner tile lands at a genuine
+  ///     segment end. The next region (starting at x=0) is reached by jumping
+  ///     that trailing gap, which is kept within [MinGap, maxGap].
   ///   - Each slab height is 1..MaxHeight (≤ 4).
   let plan
     (rng: Random)
     (config: GroundConfig)
     (budget: JumpBudget)
+    (width: int)
+    (surfaceY: int)
     : GroundSpec[] =
     let specs = ResizeArray<GroundSpec>()
     let maxGap = min config.MaxGap budget.MaxHorizontalTiles
@@ -232,7 +241,7 @@ module Ground =
       if specs.Count > 0 then
         x <- x + rng.Next(config.MinGap, maxGap + 1)
 
-      let remaining = chunkCells - x
+      let remaining = width - x
 
       if remaining < config.MinWidth then
         stop <- true
@@ -242,31 +251,36 @@ module Ground =
 
         let h = rng.Next(config.MinHeight, config.MaxHeight + 1)
 
-        specs.Add { X = x; Y = groundY; W = w; H = h }
+        specs.Add { X = x; Y = surfaceY; W = w; H = h }
         x <- x + w
 
         // Stop early if trailing gap is within budget and we have enough slabs
-        if chunkCells - x <= maxGap && specs.Count >= config.MinSlabs then
+        if width - x <= maxGap && specs.Count >= config.MinSlabs then
           stop <- true
 
-    // Ensure cross-chunk connectivity: if trailing > maxGap, place bridge slabs
-    while chunkCells - x > maxGap do
+    // Ensure the trailing gap stays within the jump budget. When there isn't
+    // room for another minimum-width slab, extend the last slab just enough to
+    // leave a jumpable gap at the end — instead of bridging to the right edge,
+    // which would put a corner tile on the seam.
+    while width - x > maxGap do
       let gap = rng.Next(config.MinGap, maxGap + 1)
       let bridgeX = x + gap
-      let bridgeRemaining = chunkCells - bridgeX
+      let bridgeRemaining = width - bridgeX
 
       if bridgeRemaining < config.MinWidth then
-        // Can't fit a full slab — extend the last one to close the gap
+        // Can't fit another slab — grow the last one so the trailing gap is
+        // jumpable rather than a sealed edge.
         if specs.Count > 0 then
           let i = specs.Count - 1
           let last = specs[i]
+          let trailingGap = rng.Next(config.MinGap, maxGap + 1)
 
           specs[i] <- {
             last with
-                W = last.W + (chunkCells - x)
+                W = last.W + (width - x - trailingGap)
           }
 
-        x <- chunkCells
+        x <- width
       else
         let w =
           rng.Next(
@@ -278,7 +292,7 @@ module Ground =
 
         specs.Add {
           X = bridgeX
-          Y = groundY
+          Y = surfaceY
           W = w
           H = h
         }
@@ -346,30 +360,37 @@ module Platform =
 
   // --- Planning ---
 
-  /// Decide platform placement, building layer-by-layer from ground up.
+  /// Decide platform placement, building layer-by-layer from `floorY` up.
+  ///
+  /// The caller passes the generation region explicitly — this is chunk-agnostic,
+  /// so the same plan fills a chunk sky (floorY = groundY, ceilingY = skyCeiling)
+  /// or an island interior (floorY/ceilingY = the walls' inner rows).
   ///
   /// Each layer sits MinVerticalGap..MaxVerticalGap tiles above the previous,
-  /// guaranteeing reachability from ground → layer 1 → layer 2 → …
+  /// guaranteeing reachability from floor → layer 1 → layer 2 → …
   /// At each layer, multiple platforms may be placed as long as they have
   /// at least 1 tile X gap between them. Platforms are stamped immediately
   /// as validated, so the grid is the source of truth for occupancy.
   ///
-  /// Ground must already be stamped on the grid before calling this.
+  /// Solid ground must already be stamped on the grid before calling this.
   let plan
     (rng: Random)
     (config: PlatformConfig)
+    (budget: JumpBudget)
     (biome: Biome)
+    (floorY: int)
+    (ceilingY: int)
     (section: GridSection2D<Tile>)
     =
     let grid = section.BackingGrid
     let specs = ResizeArray<PlatformSpec>()
     let target = rng.Next(config.MinCount, config.MaxCount + 1)
 
-    // First layer: MinClearance..MaxClearance tiles above ground surface
+    // First layer: MinClearance..MaxClearance tiles above the floor surface
     let mutable layerY =
-      groundY - rng.Next(config.MinClearance, config.MaxClearance + 1)
+      floorY - rng.Next(config.MinClearance, config.MaxClearance + 1)
 
-    while specs.Count < target && layerY >= skyCeiling do
+    while specs.Count < target && layerY >= ceilingY do
       // Try several candidate positions at this Y level
       let maxTries = rng.Next(3, 7)
 
@@ -378,10 +399,10 @@ module Platform =
           ()
 
         let w = rng.Next(config.MinWidth, config.MaxWidth + 1)
-        let x = rng.Next(0, max 1 (chunkCells - w))
+        let x = rng.Next(0, max 1 (section.Width - w))
 
         // Bounds check
-        if layerY >= skyCeiling && layerY < groundY && x + w <= grid.Width then
+        if layerY >= ceilingY && layerY < floorY && x + w <= grid.Width then
           // Check grid cells are free using CellGrid2D.get directly
           let mutable cellsOk = true
           let mutable ci = 0
@@ -390,6 +411,23 @@ module Platform =
             match CellGrid2D.get (x + ci) layerY grid with
             | ValueNone -> ci <- ci + 1
             | ValueSome _ -> cellsOk <- false
+
+          // A platform over a ground gap needs clearance beyond the jump height:
+          // the player jumps the gap and bonks their head on a low platform
+          // (physics full-stops on head hit, no momentum), causing a fall into
+          // the pit. Require the platform to sit above the jump arc there.
+          let mutable clearanceOk = true
+
+          if cellsOk && (floorY - layerY) <= budget.MaxVerticalTiles then
+            let mutable gi = 0
+            let mutable foundGap = false
+
+            while not foundGap && gi < w do
+              match CellGrid2D.get (x + gi) floorY grid with
+              | ValueNone -> foundGap <- true
+              | _ -> gi <- gi + 1
+
+            clearanceOk <- not foundGap
 
           // Check vertical spacing + X non-overlap (min 1 gap) against placed specs
           let mutable spacingOk = true
@@ -406,7 +444,7 @@ module Platform =
             else
               si <- si + 1
 
-          if cellsOk && spacingOk then
+          if cellsOk && clearanceOk && spacingOk then
             let spec = {
               X = x
               Y = layerY
@@ -563,7 +601,7 @@ let generateChunk (cx: int) (cy: int) (worldSeed: int) : Chunk =
     (fun section ->
       // 1. Plan ground slabs (pure data — no grid access)
       // 2. Stamp ground onto grid
-      Ground.plan ctx.Rng config.Ground config.JumpBudget
+      Ground.plan ctx.Rng config.Ground config.JumpBudget chunkCells groundY
       |> Array.iter(Ground.stamp ctx.Biome section)
 
       section)
@@ -575,7 +613,15 @@ let generateChunk (cx: int) (cy: int) (worldSeed: int) : Chunk =
   let terrainGrid, _ = LayeredGrid2D.getOrAddLayer Layer.Terrain grid
 
   terrainGrid
-  |> Layout.run(Platform.plan ctx.Rng config.Platform ctx.Biome)
+  |> Layout.run(
+    Platform.plan
+      ctx.Rng
+      config.Platform
+      config.JumpBudget
+      ctx.Biome
+      groundY
+      skyCeiling
+  )
   |> ignore
 
   let extracted = extractAll terrainGrid ctx.Rng
