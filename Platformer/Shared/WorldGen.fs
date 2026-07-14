@@ -153,8 +153,14 @@ let maxLevelGapTiles: float32 =
 /// Cloud/Ledge/Overhang are visually distinct but equally landable; the
 /// asymmetry risk is purely geometric and lives in the generation planner,
 /// not in the tile type.
+///
+/// A minimum effective gap of 1 tile is used: the player always moves
+/// horizontally during a jump, so adjacent surfaces (gap=0) with a height
+/// difference are still reachable — the player jumps up and steps sideways,
+/// gaining height almost immediately (arcHeightTiles(1) ≈ 4.4 tiles).
 let reachable (gapTiles: float32) (riseTiles: float32) : bool =
-  arcHeightTiles gapTiles >= riseTiles
+  let effectiveGap = max gapTiles 1.0f
+  arcHeightTiles effectiveGap >= riseTiles
 
 /// Bidirectional reachability between two surfaces separated by `gapTiles`
 /// horizontally and `dyTiles` vertically (positive = the far surface is
@@ -404,6 +410,15 @@ module Ground =
         if width - x <= maxGap && specs.Count >= config.MinSlabs then
           stop <- true
 
+    // Reset x to the last slab's actual right edge. The main loop may have
+    // consumed gaps without placing slabs (remaining < MinWidth → stop),
+    // leaving x ahead of the last slab's right edge. Without this reset,
+    // the trailing-gap loop sees a smaller remaining space than actually
+    // exists and may skip entirely — leaving an unreachable cross-seam gap.
+    if specs.Count > 0 then
+      let last = specs[specs.Count - 1]
+      x <- last.X + last.W
+
     // Ensure the trailing gap stays within the jump budget. When there isn't
     // room for another minimum-width slab, extend the last slab just enough to
     // leave a jumpable gap at the end — instead of bridging to the right edge,
@@ -423,7 +438,7 @@ module Ground =
 
           specs[i] <- {
             last with
-                W = last.W + (width - x - trailingGap)
+                W = last.W + (width - (last.X + last.W) - trailingGap)
           }
 
         x <- width
@@ -446,6 +461,117 @@ module Ground =
         x <- bridgeX + w
 
     specs.ToArray()
+
+  // -------------------------------------------------------------
+  // Reachability verifier — O(slabs) connectivity check
+  //
+  // Ground.plan clamps each slab to be reachable from its predecessor
+  // (intra-chunk). But the CROSS-SEAM edge — last slab of chunk N → first
+  // slab of chunk N+1 — is NOT clamped: the first slab takes the raw
+  // elevation value directly. This verifier catches both intra-chunk
+  // regressions (config changes that break the clamp) and cross-seam
+  // violations (elevation amplitude too high relative to the trailing gap).
+  // -------------------------------------------------------------
+
+  [<Struct>]
+  type ReachabilityViolation = { Gap: int; Rise: int; CrossSeam: bool }
+
+  /// Verify that every consecutive pair of ground slabs is mutually
+  /// reachable by walking or jumping, including the cross-seam edge from
+  /// the last slab to the next chunk's first slab.
+  ///
+  /// `nextChunkFirstSlabY` is the surface Y of the next chunk's first slab,
+  /// computed from the same elevation field (deterministic — no need to
+  /// generate the next chunk). Returns violations (empty = all reachable).
+  /// O(slabs) — safe to call on every chunk (cold async path).
+  let verifyReachability
+    (specs: GroundSpec[])
+    (chunkWidth: int)
+    (nextChunkFirstSlabY: int)
+    : ReachabilityViolation[] =
+    if specs.Length = 0 then
+      [||]
+    else
+      let violations = ResizeArray<ReachabilityViolation>()
+
+      // Intra-chunk: each consecutive pair must be mutually reachable
+      for i in 0 .. specs.Length - 2 do
+        let prev = specs[i]
+        let next = specs[i + 1]
+        let gap = next.X - (prev.X + prev.W)
+        let dy = next.Y - prev.Y
+
+        if not(reachableBoth (float32 gap) (float32 dy)) then
+          violations.Add {
+            Gap = gap
+            Rise = dy
+            CrossSeam = false
+          }
+
+      // Cross-seam: last slab → next chunk's first slab (deterministic Y)
+      let last = specs[specs.Length - 1]
+      let gap = chunkWidth - (last.X + last.W)
+      let dy = nextChunkFirstSlabY - last.Y
+
+      if not(reachableBoth (float32 gap) (float32 dy)) then
+        violations.Add {
+          Gap = gap
+          Rise = dy
+          CrossSeam = true
+        }
+
+      violations.ToArray()
+
+  /// Adjust the last slab's surface Y so the cross-seam edge to the next
+  /// chunk's first slab is reachable, while preserving intra-chunk
+  /// reachability from the second-to-last slab.
+  ///
+  /// `clampReachable` in `plan` guards every intra-chunk edge, but the
+  /// cross-seam edge (last slab of chunk N → first slab of chunk N+1) is
+  /// unguarded because the first slab takes the raw elevation value
+  /// directly. This post-process clamps the last slab's Y to the
+  /// intersection of:
+  ///   - cross-seam range: [nextFirstSlabY ± arcHeightTiles(trailingGap)]
+  ///   - intra-chunk range: [prevSlabY  ± arcHeightTiles(intraGap)]
+  ///
+  /// The ranges always overlap for reasonable amplitudes (≤ ~3), since both
+  /// radii are ~4+ tiles while the Y values are within ±amplitude of groundY.
+  let clampCrossSeam
+    (specs: GroundSpec[])
+    (chunkWidth: int)
+    (nextFirstSlabY: int)
+    : GroundSpec[] =
+    if specs.Length = 0 then
+      specs
+    else
+      let i = specs.Length - 1
+      let last = specs[i]
+      let trailingGap = chunkWidth - (last.X + last.W)
+
+      if trailingGap <= 0 then
+        specs
+      else
+        let crossSafeRise = int(floor(arcHeightTiles(float32 trailingGap)))
+
+        let crossMinY = nextFirstSlabY - crossSafeRise
+        let crossMaxY = nextFirstSlabY + crossSafeRise
+
+        let (intraMinY, intraMaxY) =
+          if i >= 1 then
+            let prev = specs[i - 1]
+            let intraGap = last.X - (prev.X + prev.W)
+            let intraSafeRise = int(floor(arcHeightTiles(float32 intraGap)))
+            (prev.Y - intraSafeRise, prev.Y + intraSafeRise)
+          else
+            (Int32.MinValue, Int32.MaxValue)
+
+        let lo = max crossMinY intraMinY
+        let hi = min crossMaxY intraMaxY
+
+        // Clamp to the intersection, staying as close to the original Y as possible
+        let clampedY = max lo (min hi last.Y)
+        specs[i] <- { last with Y = clampedY }
+        specs
 
   /// Stamp a ground spec, resolving the biome from the spec's world-X column
   /// so biome regions blend continuously across chunk seams. `originX` is the
@@ -786,6 +912,26 @@ let generateChunk (cx: int) (cy: int) (worldSeed: int) : Chunk =
       config.ElevationScale
       config.ElevationAmplitude
 
+  // Next chunk's first slab Y (deterministic — needed for cross-seam clamping)
+  let nextChunkFirstSlabY =
+    elevationAtColumn
+      (originTileX + chunkCells)
+      worldSeed
+      config.ElevationScale
+      config.ElevationAmplitude
+
+  // 1. Plan ground slabs (pure data — no grid access)
+  // 2. Clamp cross-seam edge so the last slab is reachable from the next chunk
+  // 3. Stamp ground onto grid (biome resolved per slab from world-X)
+  let groundSpecs =
+    Ground.plan
+      ctx.Rng
+      config.Ground
+      config.JumpBudget
+      chunkCells
+      elevationForColumn
+    |> fun specs -> Ground.clampCrossSeam specs chunkCells nextChunkFirstSlabY
+
   let grid =
     LayeredGrid2D.create
       chunkCells
@@ -796,14 +942,7 @@ let generateChunk (cx: int) (cy: int) (worldSeed: int) : Chunk =
   LayeredLayout.layer
     Layer.Terrain
     (fun section ->
-      // 1. Plan ground slabs (pure data — no grid access)
-      // 2. Stamp ground onto grid (biome resolved per slab from world-X)
-      Ground.plan
-        ctx.Rng
-        config.Ground
-        config.JumpBudget
-        chunkCells
-        elevationForColumn
+      groundSpecs
       |> Array.iter(Ground.stamp biomeForColumn originTileX section)
 
       section)

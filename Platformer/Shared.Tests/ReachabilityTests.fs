@@ -1,7 +1,9 @@
 module Platformer.Tests.ReachabilityTests
 
 open Expecto
+open System
 open Platformer.WorldGen
+open Platformer.Constants
 
 /// Reachability predicate tests.
 ///
@@ -84,5 +86,102 @@ let tests =
         Expect.isTrue
           (reachable (float32 budget.MaxHorizontalTiles) 0.0f)
           "configured max horizontal gap is clearable"
+    ]
+
+    testList "Ground reachability verification" [
+
+      /// Helper: elevation closure for chunk `cx` with given amplitude.
+      let makeElevation cx seed amplitude =
+        let originTileX = cx * chunkCells
+
+        fun lx ->
+          elevationAtColumn
+            (originTileX + lx)
+            seed
+            defaultConfig.ElevationScale
+            amplitude
+
+      /// Helper: surface Y of the next chunk's first slab (cross-seam target).
+      let nextFirstSlabY cx seed amplitude =
+        elevationAtColumn
+          ((cx + 1) * chunkCells)
+          seed
+          defaultConfig.ElevationScale
+          amplitude
+
+      /// Helper: generate ground specs for a chunk, apply cross-seam clamp,
+      /// and verify reachability.
+      let verifyChunk cx seed amplitude =
+        let rng =
+          Random(defaultConfig.Ground.GetHashCode() ^^^ (seed * 100 + cx))
+
+        let elev = makeElevation cx seed amplitude
+
+        let nextY = nextFirstSlabY cx seed amplitude
+
+        Ground.plan
+          rng
+          defaultConfig.Ground
+          defaultConfig.JumpBudget
+          chunkCells
+          elev
+        |> fun specs -> Ground.clampCrossSeam specs chunkCells nextY
+        |> fun specs -> Ground.verifyReachability specs chunkCells nextY
+
+      testCase "flat terrain (amplitude 0) has no violations"
+      <| fun _ ->
+        let violations = verifyChunk 0 42 0
+        Expect.isEmpty violations "flat terrain should have no violations"
+
+      testCase
+        "default amplitude 2 has no violations across 500 chunks (after cross-seam clamp)"
+      <| fun _ ->
+        let mutable total = 0
+
+        for seed in 1..50 do
+          for cx in 0..9 do
+            let violations =
+              verifyChunk cx seed defaultConfig.ElevationAmplitude
+
+            total <- total + violations.Length
+
+        Expect.equal total 0 $"no violations across 500 chunks (got {total})"
+
+      testCase
+        "default amplitude 2 has no cross-seam violations across 1000 chunks"
+      <| fun _ ->
+        // Cross-seam edges were the weak point before clampCrossSeam.
+        // This wider test confirms the clamp holds at scale.
+        let mutable crossCount = 0
+
+        for seed in 1..100 do
+          for cx in 0..9 do
+            let violations =
+              verifyChunk cx seed defaultConfig.ElevationAmplitude
+
+            crossCount <-
+              crossCount
+              + (violations |> Array.filter(fun v -> v.CrossSeam)).Length
+
+        Expect.equal crossCount 0 $"cross-seam violations: {crossCount}"
+
+      testCase "extreme amplitude 6 may still produce cross-seam violations"
+      <| fun _ ->
+        // With amplitude 6, the intra and cross reachable ranges may not
+        // overlap (|prevY - nextY| can exceed the sum of both arc radii).
+        // clampCrossSeam does its best, but the verifier correctly detects
+        // cases it cannot fix — this is the value of having a verifier.
+        let mutable foundUnfixable = false
+
+        for seed in 1..100 do
+          for cx in 0..20 do
+            let violations = verifyChunk cx seed 6
+
+            if violations |> Array.exists(fun v -> v.CrossSeam) then
+              foundUnfixable <- true
+
+        Expect.isTrue
+          foundUnfixable
+          "extreme amplitude should produce cross-seam violations that clamping cannot fix"
     ]
   ]
