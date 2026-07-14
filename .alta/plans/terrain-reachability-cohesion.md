@@ -22,6 +22,11 @@ still be unreachable if the far slab is too high — that is the failure mode.
   - [x] `Platformer/Shared.Tests` project (Expecto, mirrors FPSSample) — 11 tests, all pass
   - [x] Registered in `.slnx`; full solution builds
   - **Verify:** `dotnet test Platformer/Shared.Tests`
+- [x] **Iter 2b — One-way platform colliders + drop-through** ✅ committed 20958eb
+  - [x] Split collider data: `Chunk.Platforms` (solids) / `Chunk.OneWayPlatforms` (one-way)
+  - [x] Physics: one-way = land-from-above only; `GameAction.Down` drops through
+  - [x] Duck sprite (`character_beige_duck`) + `AnimationState.Duck` when grounded+Down
+  - **Verify:** jump through clouds from below; land on top; hold Down to drop; duck sprite shows
 - [ ] **Iter 3 — Band-limited elevation + reachability-aware ground planner**
   - Per-column elevation field feeding `GroundSpec.Y`
   - Band-limit so rise-per-gap stays inside the parabola; planner clamps edge cases
