@@ -56,7 +56,7 @@ let getAmbientColor time : Color =
   else
     Color.rgb 40uy 50uy 120uy
 
-let getAmbientIntensity time : float32 =
+let inline getAmbientIntensity time : float32 =
   let color = getAmbientColor time
   let avg = (float32 color.R + float32 color.G + float32 color.B) / 3.0f
   MathF.Max(avg / 255.0f * 0.7f, 0.05f)

@@ -22,20 +22,20 @@ let loadInitialChunks(model: Model) =
 let init(ctx: GameContext) =
   let inputMap: InputMap<GameAction> =
     InputMap.empty
-    |> InputMap.key GameAction.MoveLeft KeyCode.A
-    |> InputMap.key GameAction.MoveLeft KeyCode.Left
-    |> InputMap.key GameAction.MoveRight KeyCode.D
-    |> InputMap.key GameAction.MoveRight KeyCode.Right
-    |> InputMap.key GameAction.MoveForward KeyCode.W
-    |> InputMap.key GameAction.MoveForward KeyCode.Up
-    |> InputMap.key GameAction.MoveBackward KeyCode.S
-    |> InputMap.key GameAction.MoveBackward KeyCode.Down
-    |> InputMap.key GameAction.Jump KeyCode.Space
-    |> InputMap.key GameAction.Respawn KeyCode.R
-    |> InputMap.key GameAction.RotateCameraLeft KeyCode.Q
-    |> InputMap.key GameAction.RotateCameraRight KeyCode.E
-    |> InputMap.key GameAction.RotateCameraUp KeyCode.PageUp
-    |> InputMap.key GameAction.RotateCameraDown KeyCode.PageDown
+    |> InputMap.key MoveLeft KeyCode.A
+    |> InputMap.key MoveLeft KeyCode.Left
+    |> InputMap.key MoveRight KeyCode.D
+    |> InputMap.key MoveRight KeyCode.Right
+    |> InputMap.key MoveForward KeyCode.W
+    |> InputMap.key MoveForward KeyCode.Up
+    |> InputMap.key MoveBackward KeyCode.S
+    |> InputMap.key MoveBackward KeyCode.Down
+    |> InputMap.key Jump KeyCode.Space
+    |> InputMap.key Respawn KeyCode.R
+    |> InputMap.key RotateCameraLeft KeyCode.Q
+    |> InputMap.key RotateCameraRight KeyCode.E
+    |> InputMap.key RotateCameraUp KeyCode.PageUp
+    |> InputMap.key RotateCameraDown KeyCode.PageDown
 
   let model = Model()
   model.InputMap <- inputMap

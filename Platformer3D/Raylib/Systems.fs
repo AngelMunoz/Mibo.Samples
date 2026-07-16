@@ -1,5 +1,7 @@
 module Platformer3D.Raylib.Systems
 
+#nowarn "9"
+
 open System
 open System.Collections.Concurrent
 open FSharp.NativeInterop
@@ -8,9 +10,7 @@ open Mibo
 open Mibo.Elmish
 open Mibo.Elmish.Graphics3D
 open Mibo.Animation
-open Mibo.Input
 open Mibo.Layout3D
-open Platformer3D.Constants
 open Platformer3D.Types
 open Platformer3D.Physics
 open Platformer3D.WorldGen
@@ -41,7 +41,9 @@ let private uploadMinimapTexture
     use ptr = fixed buffer
     Raylib.UpdateTexture(model.MinimapTexture, NativePtr.toVoidPtr ptr)
   else
-    let img = Raylib.GenImageColor(w, h, Raylib_cs.Color.Black)
+    let img =
+      Raylib.GenImageColor(w, h, Color.Black |> RaylibColor.toRaylibColor)
+
     model.MinimapTexture <- Raylib.LoadTextureFromImage(img)
     Raylib.UnloadImage(img)
     use ptr = fixed buffer
@@ -50,7 +52,7 @@ let private uploadMinimapTexture
 
 let private collectMushroomLights
   (chunks: ConcurrentDictionary<struct (int * int), Chunk>)
-  (camPos: System.Numerics.Vector3)
+  (camPos: Numerics.Vector3)
   : PointLight3D[] =
   let lights = ResizeArray<PointLight3D>(8)
 
@@ -66,7 +68,7 @@ let private collectMushroomLights
             && (worldPos - camPos).LengthSquared() <= 1600.0f
           then
             lights.Add {
-              Position = worldPos + System.Numerics.Vector3(0.0f, 0.5f, 0.0f)
+              Position = worldPos + Numerics.Vector3(0.0f, 0.5f, 0.0f)
               Color = Color.rgb 255uy 200uy 120uy
               Intensity = 1.2f
               Radius = 8.0f

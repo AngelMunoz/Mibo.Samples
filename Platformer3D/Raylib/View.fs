@@ -12,7 +12,6 @@ open Mibo.Elmish
 open Mibo.Elmish.Graphics3D
 open Mibo.Animation
 open Mibo.Layout3D
-open Platformer3D.Constants
 open Platformer3D.Types
 open Platformer3D.Raylib.Types
 
@@ -34,7 +33,7 @@ let loadOrGetModel
 
 // Persistent mesh/material cache keyed by model path.
 let private meshMaterialCache =
-  Dictionary<string, struct (Raylib_cs.Mesh * Material3D)[]>()
+  Dictionary<string, struct (Mesh * Material3D)[]>()
 
 // Per-frame mutable context set once before rendering.
 let mutable private currentModelCache =
