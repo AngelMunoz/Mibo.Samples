@@ -13,6 +13,7 @@ open Mibo.Elmish.Graphics3D
 open Mibo.Animation
 open Mibo.Layout3D
 open Platformer3D.Types
+open Platformer3D.BlockData
 open Platformer3D.Raylib.Types
 
 let loadOrGetModel
@@ -42,7 +43,7 @@ let mutable private currentModelCache =
 let mutable private currentGameContext = Unchecked.defaultof<GameContext>
 
 let private resolveMeshesAndMaterial(blockType: BlockType) =
-  let name = BlockType.modelName blockType
+  let name = modelName blockType
   let path = AssetPaths.modelPath name
 
   match meshMaterialCache.TryGetValue path with
@@ -74,12 +75,13 @@ let private resolveMeshesAndMaterial(blockType: BlockType) =
 // Persistent context — allocated once, reused every frame.
 let private instancedCtx =
   InstancedRenderContext<BlockType, string>(
-    getKey = BlockType.modelName,
+    getKey = modelName,
     getMeshesAndMaterial = resolveMeshesAndMaterial,
     getTransform =
       fun worldPos blockType ->
-        let rotAngle = BlockType.modelRotation blockType * MathF.PI / 180.0f
-        let yOff = BlockType.modelVerticalOffset blockType
+        let info = lookup blockType
+        let rotAngle = info.RotationY * MathF.PI / 180.0f
+        let yOff = info.VerticalOffset
 
         if rotAngle = 0.0f && yOff = 0.0f then
           Raymath.MatrixTranslate(worldPos.X, worldPos.Y, worldPos.Z)

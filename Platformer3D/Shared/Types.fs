@@ -2,7 +2,6 @@ module Platformer3D.Types
 
 open System.Numerics
 open Mibo.Layout3D
-open Platformer3D.Constants
 
 [<Struct>]
 type GameAction =
@@ -17,21 +16,44 @@ type GameAction =
   | RotateCameraUp
   | RotateCameraDown
 
+/// Terrain biome — grass/snow share identical block shapes, differing only by
+/// color/model (confirmed via BoneProbe dimensions: footprints match per shape).
+/// Like the 2D sample's `Biome`, this is carried as a field on terrain block
+/// cases so each shape exists once instead of once-per-color.
+[<Struct>]
+type Biome3D =
+  | Grass
+  | Snow
+
+/// Slope facing direction. Determines the model's Y rotation (see BlockData).
+[<Struct>]
+type SlopeDir =
+  | XPos
+  | XNeg
+  | ZPos
+  | ZNeg
+
+/// Block type stored in the chunk grid. Terrain shapes carry biome as a field
+/// (grass/snow = same shape, different color), folding the old Ground/SnowGround
+/// and the four-per-biome slope cases into a single parametric case each.
+///
+/// Per-block data (model name, extents, vertical offset, rotation, category) is
+/// resolved on demand via BlockData.lookup — never stored per-cell, mirroring the
+/// 2D TileData.fs pattern.
 [<Struct>]
 type BlockType =
   | Empty
-  | Ground
-  | GroundSlopeXPos
-  | GroundSlopeXNeg
-  | GroundSlopeZPos
-  | GroundSlopeZNeg
+  // Terrain (biome-as-field) — solid collision
+  | Block of biome: Biome3D
+  | LargeBlock of biome: Biome3D
+  | TallBlock of biome: Biome3D
+  | LongBlock of biome: Biome3D
+  | LowBlock of biome: Biome3D
+  | NarrowBlock of biome: Biome3D
+  | Slope of biome: Biome3D * dir: SlopeDir
+  // Non-terrain (flat) — platforms, hazards, decorations, collectibles
   | Platform
   | PlatformRamp
-  | SnowGround
-  | SnowSlopeXPos
-  | SnowSlopeXNeg
-  | SnowSlopeZPos
-  | SnowSlopeZNeg
   | Spikes
   | TreePine
   | TreeSnow
@@ -46,97 +68,6 @@ type BlockType =
   | Barrel
   | Flag
   | MushroomLight
-
-module BlockType =
-  /// Bare logical model name (backend composes basePath + extension).
-  let modelName =
-    function
-    | Ground -> KenneyModels.blockGrass
-    | GroundSlopeXPos -> KenneyModels.blockGrassSlope
-    | GroundSlopeXNeg -> KenneyModels.blockGrassSlope
-    | GroundSlopeZPos -> KenneyModels.blockGrassSlope
-    | GroundSlopeZNeg -> KenneyModels.blockGrassSlope
-    | Platform -> KenneyModels.platform
-    | PlatformRamp -> KenneyModels.platformRamp
-    | SnowGround -> KenneyModels.blockSnow
-    | SnowSlopeXPos -> KenneyModels.blockSnowSlope
-    | SnowSlopeXNeg -> KenneyModels.blockSnowSlope
-    | SnowSlopeZPos -> KenneyModels.blockSnowSlope
-    | SnowSlopeZNeg -> KenneyModels.blockSnowSlope
-    | Spikes -> KenneyModels.spikeBlock
-    | TreePine -> KenneyModels.treePine
-    | TreeSnow -> KenneyModels.treeSnow
-    | Rock -> KenneyModels.rocks
-    | GrassTuft -> KenneyModels.grass
-    | Coin -> KenneyModels.coinGold
-    | Jewel -> KenneyModels.jewel
-    | Heart -> KenneyModels.heart
-    | Star -> KenneyModels.star
-    | Mushrooms -> KenneyModels.mushrooms
-    | Crate -> KenneyModels.crate
-    | Barrel -> KenneyModels.barrel
-    | Flag -> KenneyModels.flag
-    | MushroomLight -> KenneyModels.mushrooms
-    | Empty -> ""
-
-  let modelVerticalOffset =
-    function
-    | Platform
-    | PlatformRamp -> cellSize * 0.5f
-    | Coin
-    | Jewel
-    | Heart
-    | Star
-    | Flag -> cellSize * 0.5f
-    | _ -> 0.0f
-
-  let modelRotation =
-    function
-    | GroundSlopeXNeg -> 180.0f
-    | GroundSlopeZPos -> 90.0f
-    | GroundSlopeZNeg -> -90.0f
-    | SnowSlopeXNeg -> 180.0f
-    | SnowSlopeZPos -> 90.0f
-    | SnowSlopeZNeg -> -90.0f
-    | _ -> 0.0f
-
-  let isSolid =
-    function
-    | Empty
-    | Coin
-    | Jewel
-    | Heart
-    | Star
-    | GrassTuft
-    | Mushrooms
-    | MushroomLight
-    | Flag -> false
-    | _ -> true
-
-  let isCollectible =
-    function
-    | Coin
-    | Jewel
-    | Heart
-    | Star -> true
-    | _ -> false
-
-  let isDecoration =
-    function
-    | TreePine
-    | TreeSnow
-    | Rock
-    | GrassTuft
-    | Mushrooms
-    | Flag
-    | Barrel
-    | Crate -> true
-    | _ -> false
-
-  let isLightSource =
-    function
-    | MushroomLight -> true
-    | _ -> false
 
 [<Struct>]
 type Chunk = {

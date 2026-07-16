@@ -38,7 +38,7 @@ let generateChunk cx cz worldSeed : Chunk =
         0
         chunkWidth
         chunkDepth
-        (if isSnow then BlockType.SnowGround else BlockType.Ground))
+        (if isSnow then Block Snow else Block Grass))
     grid
   |> ignore
 
@@ -62,9 +62,7 @@ let generateChunk cx cz worldSeed : Chunk =
     let pw = rng.Next(2, 7)
     let pd = rng.Next(2, 7)
 
-    Layout3D.run
-      (fun s -> s |> Layout3D.floorXZ px py pz pw pd BlockType.Platform)
-      grid
+    Layout3D.run (fun s -> s |> Layout3D.floorXZ px py pz pw pd Platform) grid
     |> ignore
 
   // ── Stairs (procedural) ──
@@ -73,7 +71,7 @@ let generateChunk cx cz worldSeed : Chunk =
     let sz = rng.Next(4, chunkDepth - 10)
 
     for step in 0..4 do
-      CellGrid3D.set (sx + step) (1 + step) sz BlockType.Ground grid
+      CellGrid3D.set (sx + step) (1 + step) sz (Block Grass) grid
 
   // ── High platforms ──
   if rng.Next(3) = 0 then
@@ -83,9 +81,7 @@ let generateChunk cx cz worldSeed : Chunk =
     let pw = rng.Next(2, 5)
     let pd = rng.Next(2, 5)
 
-    Layout3D.run
-      (fun s -> s |> Layout3D.floorXZ px py pz pw pd BlockType.Platform)
-      grid
+    Layout3D.run (fun s -> s |> Layout3D.floorXZ px py pz pw pd Platform) grid
     |> ignore
 
   // ── Pillars via DSL column ──
@@ -96,9 +92,7 @@ let generateChunk cx cz worldSeed : Chunk =
     let pz = rng.Next(1, chunkDepth - 3)
     let ph = rng.Next(2, 6)
 
-    Layout3D.run
-      (fun s -> s |> Layout3D.column px 0 pz ph BlockType.Ground)
-      grid
+    Layout3D.run (fun s -> s |> Layout3D.column px 0 pz ph (Block Grass)) grid
     |> ignore
 
   // ── Spikes ──
@@ -108,14 +102,12 @@ let generateChunk cx cz worldSeed : Chunk =
     let sw = rng.Next(1, 4)
     let sd = rng.Next(1, 4)
 
-    Layout3D.run
-      (fun s -> s |> Layout3D.floorXZ sx 1 sz sw sd BlockType.Spikes)
-      grid
+    Layout3D.run (fun s -> s |> Layout3D.floorXZ sx 1 sz sw sd Spikes) grid
     |> ignore
 
   // ── Decorations via scatter ──
   let treeCount = rng.Next(1, 4)
-  let treeType = if isSnow then BlockType.TreeSnow else BlockType.TreePine
+  let treeType = if isSnow then TreeSnow else TreePine
 
   Layout3D.run
     (fun s -> s |> Layout3D.scatterXZ 1 treeCount (rng.Next()) treeType)
@@ -125,15 +117,14 @@ let generateChunk cx cz worldSeed : Chunk =
   let rockCount = rng.Next(0, 3)
 
   Layout3D.run
-    (fun s -> s |> Layout3D.scatterXZ 1 rockCount (rng.Next()) BlockType.Rock)
+    (fun s -> s |> Layout3D.scatterXZ 1 rockCount (rng.Next()) Rock)
     grid
   |> ignore
 
   let grassCount = rng.Next(2, 8)
 
   Layout3D.run
-    (fun s ->
-      s |> Layout3D.scatterXZ 1 grassCount (rng.Next()) BlockType.GrassTuft)
+    (fun s -> s |> Layout3D.scatterXZ 1 grassCount (rng.Next()) GrassTuft)
     grid
   |> ignore
 
@@ -141,9 +132,7 @@ let generateChunk cx cz worldSeed : Chunk =
   let lanternCount = rng.Next(1, 3)
 
   Layout3D.run
-    (fun s ->
-      s
-      |> Layout3D.scatterXZ 1 lanternCount (rng.Next()) BlockType.MushroomLight)
+    (fun s -> s |> Layout3D.scatterXZ 1 lanternCount (rng.Next()) MushroomLight)
     grid
   |> ignore
 
@@ -157,7 +146,7 @@ let generateChunk cx cz worldSeed : Chunk =
     for cy in 1 .. chunkHeight - 2 do
       let below =
         match CellGrid3D.get cx' (cy - 1) cz' grid with
-        | ValueSome bt when BlockType.isSolid bt -> true
+        | ValueSome bt when BlockData.isSolid bt -> true
         | _ -> false
 
       let current =
@@ -166,7 +155,7 @@ let generateChunk cx cz worldSeed : Chunk =
         | _ -> false
 
       if below && not current then
-        CellGrid3D.set cx' cy cz' BlockType.Coin grid
+        CellGrid3D.set cx' cy cz' Coin grid
 
   // ── Flag ──
   let fx = rng.Next(2, chunkWidth - 3)
@@ -175,7 +164,7 @@ let generateChunk cx cz worldSeed : Chunk =
   for fy in 1 .. chunkHeight - 2 do
     let below =
       match CellGrid3D.get fx (fy - 1) fz grid with
-      | ValueSome bt when BlockType.isSolid bt -> true
+      | ValueSome bt when BlockData.isSolid bt -> true
       | _ -> false
 
     let current =
@@ -184,7 +173,7 @@ let generateChunk cx cz worldSeed : Chunk =
       | _ -> false
 
     if below && not current then
-      CellGrid3D.set fx fy fz BlockType.Flag grid
+      CellGrid3D.set fx fy fz Flag grid
 
   {
     Grid = grid

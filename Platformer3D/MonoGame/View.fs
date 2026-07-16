@@ -11,6 +11,7 @@ open Mibo.Animation
 open Mibo.Layout3D
 open Platformer3D.Constants
 open Platformer3D.Types
+open Platformer3D.BlockData
 open Platformer3D.MonoGame.Types
 
 let loadOrGetModel
@@ -44,7 +45,7 @@ let private wrapPartAsPrimitive(part: ModelMeshPart) : PrimitiveMesh = {
 }
 
 let private resolveMeshesAndMaterial(blockType: BlockType) =
-  let name = BlockType.modelName blockType
+  let name = modelName blockType
   let path = AssetPaths.modelPath name
 
   match meshMaterialCache.TryGetValue path with
@@ -73,12 +74,13 @@ let private resolveMeshesAndMaterial(blockType: BlockType) =
 
 let private instancedCtx =
   InstancedRenderContext<BlockType, string>(
-    getKey = BlockType.modelName,
+    getKey = modelName,
     getMeshesAndMaterial = resolveMeshesAndMaterial,
     getTransform =
       fun worldPos blockType ->
-        let rotAngle = BlockType.modelRotation blockType * MathF.PI / 180.0f
-        let yOff = BlockType.modelVerticalOffset blockType
+        let info = lookup blockType
+        let rotAngle = info.RotationY * MathF.PI / 180.0f
+        let yOff = info.VerticalOffset
 
         if rotAngle = 0.0f && yOff = 0.0f then
           Matrix.CreateTranslation(worldPos)

@@ -154,7 +154,7 @@ let resolveCollision
               && gz < chunkDepth
             then
               match CellGrid3D.get gx gy gz chunk.Grid with
-              | ValueSome blockType when BlockType.isSolid blockType ->
+              | ValueSome blockType when BlockData.isSolid blockType ->
                 let worldX = origin.X + float32 gx * cellSize
                 let worldY = origin.Y + float32 gy * cellSize
                 let worldZ = origin.Z + float32 gz * cellSize
@@ -238,7 +238,7 @@ let resolveCollision
               && gz < chunkDepth
             then
               match CellGrid3D.get gx gy gz chunk.Grid with
-              | ValueSome blockType when BlockType.isCollectible blockType ->
+              | ValueSome blockType when BlockData.isCollectible blockType ->
                 let worldX = origin.X + float32 gx * cellSize + cellSize * 0.5f
                 let worldY = origin.Y + float32 gy * cellSize + cellSize * 0.5f
                 let worldZ = origin.Z + float32 gz * cellSize + cellSize * 0.5f

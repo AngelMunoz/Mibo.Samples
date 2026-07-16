@@ -32,18 +32,22 @@ module Minimap =
 
   let private blockColor (fallbackColor: Color) (blockType: BlockType) =
     match blockType with
-    | Ground
-    | GroundSlopeXPos
-    | GroundSlopeXNeg
-    | GroundSlopeZPos
-    | GroundSlopeZNeg -> Color.rgb 76uy 153uy 0uy
+    | Block Grass
+    | LargeBlock Grass
+    | TallBlock Grass
+    | LongBlock Grass
+    | LowBlock Grass
+    | NarrowBlock Grass
+    | Slope(Grass, _) -> Color.rgb 76uy 153uy 0uy
+    | Block Snow
+    | LargeBlock Snow
+    | TallBlock Snow
+    | LongBlock Snow
+    | LowBlock Snow
+    | NarrowBlock Snow
+    | Slope(Snow, _) -> Color.rgb 230uy 230uy 230uy
     | Platform
     | PlatformRamp -> Color.rgb 100uy 100uy 100uy
-    | SnowGround
-    | SnowSlopeXPos
-    | SnowSlopeXNeg
-    | SnowSlopeZPos
-    | SnowSlopeZNeg -> Color.rgb 230uy 230uy 230uy
     | TreePine
     | TreeSnow -> Color.rgb 0uy 100uy 0uy
     | Rock -> Color.rgb 128uy 128uy 128uy
