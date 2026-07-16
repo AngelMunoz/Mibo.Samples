@@ -25,8 +25,12 @@
     <Project Path="Platformer/Raylib/Raylib.fsproj" />
     <Project Path="Platformer/MonoGame/MonoGame.fsproj" />
   </Folder>
+  <Folder Name="/Platformer3D/">
+    <Project Path="Platformer3D/Shared/Shared.fsproj" />
+    <Project Path="Platformer3D/Shared.Tests/Shared.Tests.fsproj" />
+    <Project Path="Platformer3D/Raylib/Raylib.fsproj" />
+    <Project Path="Platformer3D/MonoGame/MonoGame.fsproj" />
+  </Folder>
   <Project Path="SpaceBattle/SpaceBattle.fsproj" />
-  <Project Path="ThreeDSample/ThreeDSample.fsproj" />
-  <Project Path="MonoThreeD/MonoThreeD.fsproj" />
   <Project Path="BoneProbe/BoneProbe.fsproj" />
 </Solution>
