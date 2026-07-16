@@ -79,18 +79,21 @@ module Minimap =
         && chunk.Bounds.Max.Z >= bounds.Min.Z
         && chunk.Bounds.Min.Z <= bounds.Max.Z
       then
+        let terrainGrid, _ =
+          LayeredGrid3D.getOrAddLayer Layer.Terrain chunk.Grids
+
         CellGrid3D.iterVolume
           bounds
           (fun x y z blockType ->
             if blockType <> Empty then
               let worldX =
-                chunk.Grid.Origin.X + float32 x * chunk.Grid.CellSize.X
+                terrainGrid.Origin.X + float32 x * terrainGrid.CellSize.X
 
               let worldZ =
-                chunk.Grid.Origin.Z + float32 z * chunk.Grid.CellSize.Z
+                terrainGrid.Origin.Z + float32 z * terrainGrid.CellSize.Z
 
               let worldY =
-                chunk.Grid.Origin.Y + float32 y * chunk.Grid.CellSize.Y
+                terrainGrid.Origin.Y + float32 y * terrainGrid.CellSize.Y
 
               let qx = int(worldX) / sampleStep * sampleStep
               let qz = int(worldZ) / sampleStep * sampleStep
@@ -99,7 +102,7 @@ module Minimap =
               match blocks.TryGetValue key with
               | true, struct (existingY, _) when existingY >= worldY -> ()
               | _ -> blocks[key] <- struct (worldY, blockType))
-          chunk.Grid
+          terrainGrid
 
   let generateMinimapData
     (playerPos: Vector3)

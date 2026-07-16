@@ -3,6 +3,23 @@ module Platformer3D.Types
 open System.Numerics
 open Mibo.Layout3D
 
+/// Logical layer indices for the layered chunk grid. Each category maps to a
+/// separate CellGrid3D inside the LayeredGrid3D, so consumers only scan the
+/// layers they care about (physics reads terrain; rendering walks all visible
+/// layers). Mirrors the 2D sample's Layer module.
+module Layer =
+  [<Literal>]
+  let Terrain = 0
+
+  [<Literal>]
+  let Hazards = 1
+
+  [<Literal>]
+  let Collectibles = 2
+
+  [<Literal>]
+  let Decorations = 3
+
 [<Struct>]
 type GameAction =
   | MoveLeft
@@ -71,7 +88,7 @@ type BlockType =
 
 [<Struct>]
 type Chunk = {
-  Grid: CellGrid3D<BlockType>
+  Grids: LayeredGrid3D<BlockType>
   Bounds: BoundingBox
   OriginX: int
   OriginZ: int

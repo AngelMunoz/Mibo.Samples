@@ -8,11 +8,30 @@ open Mibo.Layout3D
 open Platformer3D.Constants
 open Platformer3D.Types
 
-// ── Player bounds ──
+// ── Player bounds (cylinder) ──
+// The player is a Y-axis-aligned cylinder:
+//   Center XZ: (pos.X, pos.Z)
+//   Radius:    playerRadius (0.21)
+//   Bottom Y:  pos.Y           (feet)
+//   Top Y:     pos.Y + playerHeight (head)
 
-let inline playerBottom(pos: Vector3) = pos.Y
+// ── Ground probe constants ──
 
-let inline playerCenter(pos: Vector3) = pos + Vector3(0.0f, playerRadius, 0.0f)
+/// Maximum slope angle (radians) the player can walk on. Surfaces steeper
+/// than this are not detected as ground by the cone probe.
+let maxWalkableSlopeAngle = 50.0f * MathF.PI / 180.0f
+
+/// tan(maxWalkableSlopeAngle) — precomputed for the cone radius formula.
+let coneTanAngle = MathF.Tan(maxWalkableSlopeAngle)
+
+/// How far above a surface the player's feet can be while still counting as
+/// grounded. Kept very small — just enough for float jitter, NOT enough to
+/// catch the first frame of a jump. Grounding is further guarded by a
+/// `vel.Y <= 0` check so a rising player is never snapped back down.
+let groundTolerance = 0.02f
+
+/// How far below the player's feet the cone probe searches for ground.
+let groundProbeDepth = playerHeight
 
 // ── Camera-relative movement ──
 
@@ -73,32 +92,58 @@ let applyMovement (dt: float32) (moveDir: Vector3) (velocity: Vector3) =
 
   Vector3(newHorizontalVel.X, velocity.Y, newHorizontalVel.Z)
 
-// ── AABB vs Sphere collision ──
+// ── Collision primitives ──
 
-let private aabbVsSphere
-  (boxMin: Vector3)
-  (boxMax: Vector3)
-  (center: Vector3)
-  (radius: float32)
-  =
-  let mutable dmin = 0.0f
+/// Test whether a Y-axis-aligned cylinder overlaps an AABB along the Y axis.
+/// Returns (overlaps, pushUp, pushDown) where pushUp = boxMaxY - yBottom
+/// and pushDown = yTop - boxMinY. Both are positive when overlapping.
+let inline cylinderYOverlap
+  (yBottom: float32)
+  (yTop: float32)
+  (boxMinY: float32)
+  (boxMaxY: float32)
+  : struct (bool * float32 * float32) =
+  if yBottom < boxMaxY && yTop > boxMinY then
+    struct (true, boxMaxY - yBottom, yTop - boxMinY)
+  else
+    struct (false, 0.0f, 0.0f)
 
-  if center.X < boxMin.X then
-    dmin <- dmin + (center.X - boxMin.X) * (center.X - boxMin.X)
-  elif center.X > boxMax.X then
-    dmin <- dmin + (center.X - boxMax.X) * (center.X - boxMax.X)
+/// Test XZ circle-vs-rectangle overlap and compute push direction.
+/// Returns (overlaps, penetration, pushDirX, pushDirZ).
+/// pushDir is normalized AWAY from the closest point on the rectangle.
+/// When the circle center is inside the rectangle (distSq ≈ 0) the push
+/// direction is undefined (0,0) and penetration equals r.
+let inline circleVsRectXZ
+  (cx: float32)
+  (cz: float32)
+  (r: float32)
+  (rectMinX: float32)
+  (rectMaxX: float32)
+  (rectMinZ: float32)
+  (rectMaxZ: float32)
+  : struct (bool * float32 * float32 * float32) =
+  let closestX =
+    if cx < rectMinX then rectMinX
+    elif cx > rectMaxX then rectMaxX
+    else cx
 
-  if center.Y < boxMin.Y then
-    dmin <- dmin + (center.Y - boxMin.Y) * (center.Y - boxMin.Y)
-  elif center.Y > boxMax.Y then
-    dmin <- dmin + (center.Y - boxMax.Y) * (center.Y - boxMax.Y)
+  let closestZ =
+    if cz < rectMinZ then rectMinZ
+    elif cz > rectMaxZ then rectMaxZ
+    else cz
 
-  if center.Z < boxMin.Z then
-    dmin <- dmin + (center.Z - boxMin.Z) * (center.Z - boxMin.Z)
-  elif center.Z > boxMax.Z then
-    dmin <- dmin + (center.Z - boxMax.Z) * (center.Z - boxMax.Z)
+  let dx = cx - closestX
+  let dz = cz - closestZ
+  let distSq = dx * dx + dz * dz
 
-  dmin <= radius * radius
+  if distSq > r * r then
+    struct (false, 0.0f, 0.0f, 0.0f)
+  elif distSq > 1e-8f then
+    let dist = MathF.Sqrt distSq
+    struct (true, r - dist, dx / dist, dz / dist)
+  else
+    // Center inside rectangle — degenerate: full radius penetration.
+    struct (true, r, 0.0f, 0.0f)
 
 // ── Collision resolution ──
 
@@ -113,9 +158,7 @@ let resolveCollision
   let mutable grounded = false
   let mutable scoreDelta = 0
 
-  let playerBottomY = pos.Y
-  let prevPlayerBottomY = prevPos.Y
-  let sphereCenter = playerCenter pos
+  let r = playerRadius
 
   let pcx = int(Math.Floor(float pos.X / float chunkWorldWidth))
   let pcz = int(Math.Floor(float pos.Z / float chunkWorldDepth))
@@ -125,22 +168,31 @@ let resolveCollision
   let localX =
     bx - int(Math.Floor(float pos.X / float chunkWorldWidth)) * chunkWidth
 
-  let by = int(Math.Floor(float playerBottomY / float cellSize))
+  let by = int(Math.Floor(float pos.Y / float cellSize))
 
   let bz = int(Math.Floor(float pos.Z / float cellSize))
 
   let localZ =
     bz - int(Math.Floor(float pos.Z / float chunkWorldDepth)) * chunkDepth
 
+  // ── Phase A: Ground detection (cone probe) ──
+  // Scan the neighborhood downward for the highest walkable surface.
+  // The cone radius at depth dy below the feet is:
+  //   playerRadius + dy * tan(maxWalkableSlopeAngle)
+  // This widens with depth, naturally filtering steep surfaces.
+  let mutable groundY = Single.MinValue
+
   for KeyValue(struct (cx, cz), chunk) in chunks do
     if abs(cx - pcx) <= 2 && abs(cz - pcz) <= 2 then
-      let origin = chunk.Grid.Origin
+      let terrainGrid, _ = LayeredGrid3D.getOrAddLayer Layer.Terrain chunk.Grids
+
+      let origin = terrainGrid.Origin
       let blockOriginX = int origin.X
       let blockOriginZ = int origin.Z
 
       for dy in -1 .. 2 do
-        for dx in -1 .. 1 do
-          for dz in -1 .. 1 do
+        for dx in -2 .. 1 do
+          for dz in -2 .. 1 do
             let gx = localX - (cx * chunkWidth - blockOriginX) + dx
             let gy = by + dy
             let gz = localZ - (cz * chunkDepth - blockOriginZ) + dz
@@ -153,72 +205,176 @@ let resolveCollision
               && gz >= 0
               && gz < chunkDepth
             then
-              match CellGrid3D.get gx gy gz chunk.Grid with
+              match CellGrid3D.get gx gy gz terrainGrid with
               | ValueSome blockType when BlockData.isSolid blockType ->
                 let worldX = origin.X + float32 gx * cellSize
                 let worldY = origin.Y + float32 gy * cellSize
                 let worldZ = origin.Z + float32 gz * cellSize
 
-                let boxMin = Vector3(worldX, worldY, worldZ)
+                // Surface height: analytical for slopes, AABB top otherwise.
+                let surfaceY =
+                  match
+                    BlockData.slopeSurfaceY
+                      blockType
+                      worldX
+                      worldY
+                      worldZ
+                      pos.X
+                      pos.Z
+                  with
+                  | ValueSome sy -> sy
+                  | ValueNone ->
+                    let struct (_, eh, _) = BlockData.colliderExtents blockType
 
-                let boxMax =
-                  Vector3(
-                    worldX + cellSize,
-                    worldY + cellSize,
-                    worldZ + cellSize
-                  )
+                    worldY + eh
 
-                if aabbVsSphere boxMin boxMax sphereCenter playerRadius then
-                  if
-                    not grounded && sphereCenter.Y >= boxMax.Y - playerRadius
-                  then
-                    pos <- Vector3(pos.X, boxMax.Y, pos.Z)
-                    vel <- Vector3(vel.X, 0.0f, vel.Z)
-                    grounded <- true
-                  elif
-                    vel.Y > 0.0f && sphereCenter.Y <= boxMin.Y + playerRadius
-                  then
-                    let pushDown =
-                      sphereCenter.Y + playerRadius - boxMin.Y + 0.02f
+                // Surface must be below the player's previous feet position
+                // (within tolerance) and within probe depth of the current
+                // position. Using prevPos.Y as the upper bound catches the
+                // case where the player crossed the surface in a single frame
+                // (fell fast enough that pos.Y < surfaceY < prevPos.Y).
+                if
+                  surfaceY <= prevPos.Y + groundTolerance
+                  && surfaceY >= pos.Y - groundProbeDepth
+                then
+                  // Clamp depth to 0 — when the player overshoots the surface
+                  // (pos.Y < surfaceY), the cone shouldn't shrink below the
+                  // player's base radius.
+                  let depth = max 0.0f (pos.Y - surfaceY)
+                  let coneR = r + depth * coneTanAngle
+                  let struct (ew, _, ed) = BlockData.colliderExtents blockType
 
-                    pos <- Vector3(pos.X, pos.Y - pushDown, pos.Z)
-                    vel <- Vector3(vel.X, 0.0f, vel.Z)
-                  elif not grounded then
-                    let mutable pushX = 0.0f
+                  let struct (overlaps, _, _, _) =
+                    circleVsRectXZ
+                      pos.X
+                      pos.Z
+                      coneR
+                      worldX
+                      (worldX + ew)
+                      worldZ
+                      (worldZ + ed)
 
-                    if sphereCenter.X < boxMin.X + boxMax.X * 0.5f then
-                      pushX <-
-                        boxMin.X - (sphereCenter.X + playerRadius) - 0.01f
-                    else
-                      pushX <-
-                        boxMax.X - (sphereCenter.X - playerRadius) + 0.01f
-
-                    let mutable pushZ = 0.0f
-
-                    if sphereCenter.Z < boxMin.Z + boxMax.Z * 0.5f then
-                      pushZ <-
-                        boxMin.Z - (sphereCenter.Z + playerRadius) - 0.01f
-                    else
-                      pushZ <-
-                        boxMax.Z - (sphereCenter.Z - playerRadius) + 0.01f
-
-                    if abs pushX < abs pushZ then
-                      pos <- Vector3(pos.X + pushX, pos.Y, pos.Z)
-
-                      vel <-
-                        Vector3(float32(sign(int vel.X)) * 2.0f, vel.Y, vel.Z)
-                    else
-                      pos <- Vector3(pos.X, pos.Y, pos.Z + pushZ)
-
-                      vel <-
-                        Vector3(vel.X, vel.Y, float32(sign(int vel.Z)) * 2.0f)
-
+                  if overlaps && surfaceY > groundY then
+                    groundY <- surfaceY
               | _ -> ()
 
-  // Check collectibles
+  // Only ground when the player is descending or stationary (vel.Y <= 0).
+  // If the player just jumped (vel.Y > 0), Phase A must NOT snap them back
+  // down — otherwise the first frame of the jump is killed by re-grounding.
+  if
+    groundY > Single.MinValue
+    && vel.Y <= 0.0f
+    && pos.Y <= groundY + groundTolerance
+  then
+    pos <- Vector3(pos.X, groundY, pos.Z)
+    vel <- Vector3(vel.X, 0.0f, vel.Z)
+    grounded <- true
+
+  // Refresh cylinder Y bounds after ground snap.
+  let yBottom = pos.Y
+  let yTop = pos.Y + playerHeight
+
+  // ── Phase B: Body collision (cylinder vs AABB) ──
+  // Resolve overlaps by minimum penetration axis:
+  //   Y-axis: push up (land/step) or push down (head bonk).
+  //   XZ-axis: push horizontally along closest-point direction.
+  // Phase B never sets grounded or zeroes velocity on push-up — Phase A
+  // is the sole authority on grounding. Otherwise float-precision overlaps
+  // on the block the player stands on would re-ground them every frame.
   for KeyValue(struct (cx, cz), chunk) in chunks do
     if abs(cx - pcx) <= 2 && abs(cz - pcz) <= 2 then
-      let origin = chunk.Grid.Origin
+      let terrainGrid, _ = LayeredGrid3D.getOrAddLayer Layer.Terrain chunk.Grids
+
+      let origin = terrainGrid.Origin
+      let blockOriginX = int origin.X
+      let blockOriginZ = int origin.Z
+
+      for dy in -1 .. 2 do
+        for dx in -2 .. 1 do
+          for dz in -2 .. 1 do
+            let gx = localX - (cx * chunkWidth - blockOriginX) + dx
+            let gy = by + dy
+            let gz = localZ - (cz * chunkDepth - blockOriginZ) + dz
+
+            if
+              gx >= 0
+              && gx < chunkWidth
+              && gy >= 0
+              && gy < chunkHeight
+              && gz >= 0
+              && gz < chunkDepth
+            then
+              match CellGrid3D.get gx gy gz terrainGrid with
+              | ValueSome blockType when BlockData.isSolid blockType ->
+                let worldX = origin.X + float32 gx * cellSize
+                let worldY = origin.Y + float32 gy * cellSize
+                let worldZ = origin.Z + float32 gz * cellSize
+
+                let struct (ew, eh, ed) = BlockData.colliderExtents blockType
+
+                let struct (yOverlaps, yPenUp, yPenDown) =
+                  cylinderYOverlap yBottom yTop worldY (worldY + eh)
+
+                if yOverlaps then
+                  let struct (xzOverlaps, xzPen, pushDirX, pushDirZ) =
+                    circleVsRectXZ
+                      pos.X
+                      pos.Z
+                      r
+                      worldX
+                      (worldX + ew)
+                      worldZ
+                      (worldZ + ed)
+
+                  if xzOverlaps then
+                    let yPen = min yPenUp yPenDown
+
+                    if pushDirX = 0.0f && pushDirZ = 0.0f then
+                      // Center inside block (degenerate) — resolve on Y only.
+                      if yPenUp < yPenDown then
+                        pos <- Vector3(pos.X, worldY + eh, pos.Z)
+                      else
+                        pos <- Vector3(pos.X, worldY - playerHeight, pos.Z)
+                    elif yPen < xzPen then
+                      // Y penetration is smaller — resolve vertically.
+                      if yPenUp < yPenDown then
+                        // Push up — position correction only, no velocity change.
+                        pos <- Vector3(pos.X, worldY + eh, pos.Z)
+                      else
+                        // Head bonk — push down and kill upward velocity.
+                        pos <- Vector3(pos.X, worldY - playerHeight, pos.Z)
+                        vel <- Vector3(vel.X, 0.0f, vel.Z)
+                    else
+                      // XZ penetration is smaller — push horizontally.
+                      let pen = xzPen + 0.01f
+
+                      pos <-
+                        Vector3(
+                          pos.X + pushDirX * pen,
+                          pos.Y,
+                          pos.Z + pushDirZ * pen
+                        )
+
+                      // Cancel velocity component into the wall.
+                      let pushVel = pushDirX * vel.X + pushDirZ * vel.Z
+
+                      if pushVel < 0.0f then
+                        vel <-
+                          Vector3(
+                            vel.X - pushDirX * pushVel,
+                            vel.Y,
+                            vel.Z - pushDirZ * pushVel
+                          )
+              | _ -> ()
+
+  // ── Phase C: Collectibles ──
+  let playerCenterY = pos.Y + playerHeight * 0.5f
+
+  for KeyValue(struct (cx, cz), chunk) in chunks do
+    if abs(cx - pcx) <= 2 && abs(cz - pcz) <= 2 then
+      let terrainGrid, _ = LayeredGrid3D.getOrAddLayer Layer.Terrain chunk.Grids
+
+      let origin = terrainGrid.Origin
       let blockOriginX = int origin.X
       let blockOriginZ = int origin.Z
 
@@ -237,18 +393,20 @@ let resolveCollision
               && gz >= 0
               && gz < chunkDepth
             then
-              match CellGrid3D.get gx gy gz chunk.Grid with
+              match CellGrid3D.get gx gy gz terrainGrid with
               | ValueSome blockType when BlockData.isCollectible blockType ->
                 let worldX = origin.X + float32 gx * cellSize + cellSize * 0.5f
                 let worldY = origin.Y + float32 gy * cellSize + cellSize * 0.5f
                 let worldZ = origin.Z + float32 gz * cellSize + cellSize * 0.5f
 
-                let collectibleCenter = Vector3(worldX, worldY, worldZ)
+                let dx' = pos.X - worldX
+                let dy' = playerCenterY - worldY
+                let dz' = pos.Z - worldZ
 
-                let distSq = (sphereCenter - collectibleCenter).LengthSquared()
+                let distSq = dx' * dx' + dy' * dy' + dz' * dz'
 
                 if distSq < (playerRadius + 0.5f) * (playerRadius + 0.5f) then
-                  CellGrid3D.clear gx gy gz chunk.Grid |> ignore
+                  CellGrid3D.clear gx gy gz terrainGrid |> ignore
                   scoreDelta <- scoreDelta + 1
 
               | _ -> ()

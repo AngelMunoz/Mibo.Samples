@@ -144,10 +144,12 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
       )
 
     if (chunkCenter - camPos).LengthSquared() <= maxChunkDistSq then
+      let terrainGrid, _ = LayeredGrid3D.getOrAddLayer Layer.Terrain chunk.Grids
+
       CellGridRenderer3D.renderVolumeInstanced
         instancedCtx
         chunk.Bounds
-        chunk.Grid
+        terrainGrid
         buffer
 
   let playerModel = model.PlayerAnim.Model

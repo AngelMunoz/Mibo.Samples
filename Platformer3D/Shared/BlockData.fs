@@ -9,6 +9,7 @@
 /// Grass/snow share identical extents per shape; only the model differs.
 module Platformer3D.BlockData
 
+open System
 open Platformer3D.Constants
 open Platformer3D.Types
 
@@ -254,3 +255,87 @@ let isCollectible(bt: BlockType) : bool =
   | Heart
   | Star -> true
   | _ -> false
+
+/// Collider AABB dimensions (width, height, depth) in world units for a block at
+/// a single grid cell. Multi-cell blocks extend beyond their anchor cell; Physics
+/// must scan a wider neighborhood (±2 in XZ) to catch them. Slopes use full
+/// cellSize height — no ramp physics this step. Blocks whose extents are within
+/// [0.9, 1.2] × cellSize snap to exactly cellSize to avoid fractional overlap
+/// jitter on adjacent terrain cells. Sub-cell blocks keep their real extent.
+///
+/// Fast-path: the most common terrain blocks (`Block _`, `Slope _`) return
+/// cellSize constants directly — no `lookup` call, no match overhead in the
+/// physics hot path.
+let colliderExtents(bt: BlockType) : struct (float32 * float32 * float32) =
+  match bt with
+  | Block _
+  | Slope _ -> struct (cellSize, cellSize, cellSize)
+  | _ ->
+    let info = lookup bt
+
+    let snapIfNearCell(v: float32) =
+      if v >= 0.9f * cellSize && v <= 1.2f * cellSize then
+        cellSize
+      else
+        v
+
+    struct (snapIfNearCell info.ExtentW,
+            snapIfNearCell info.ExtentH,
+            snapIfNearCell info.ExtentD)
+
+/// Analytical surface height for a slope block at the given player XZ position.
+/// Returns ValueNone if the position is outside the slope's footprint or the
+/// block is not a slope.
+///
+/// The slope model rises ExtentH (0.759) over its run length (ExtentW ≈2.082).
+/// For XPos/XNeg the run is along world X; for ZPos/ZNeg along world Z.
+/// The perpendicular span uses ExtentD (≈2.011). The surface height varies
+/// linearly from worldY at the low end to worldY + ExtentH at the high end.
+let slopeSurfaceY
+  (bt: BlockType)
+  (cellWorldX: float32)
+  (cellWorldY: float32)
+  (cellWorldZ: float32)
+  (px: float32)
+  (pz: float32)
+  : float32 voption =
+  match bt with
+  | Slope(_, dir) ->
+    let info = lookup bt
+    let run = info.ExtentW
+    let rise = info.ExtentH
+    let width = info.ExtentD
+
+    // Footprint bounds and parametric t along the run axis.
+    let xMin, xMax, zMin, zMax, t =
+      match dir with
+      | XPos ->
+        cellWorldX,
+        cellWorldX + run,
+        cellWorldZ,
+        cellWorldZ + width,
+        (px - cellWorldX) / run
+      | XNeg ->
+        cellWorldX,
+        cellWorldX + run,
+        cellWorldZ,
+        cellWorldZ + width,
+        (cellWorldX + run - px) / run
+      | ZPos ->
+        cellWorldX,
+        cellWorldX + width,
+        cellWorldZ,
+        cellWorldZ + run,
+        (pz - cellWorldZ) / run
+      | ZNeg ->
+        cellWorldX,
+        cellWorldX + width,
+        cellWorldZ,
+        cellWorldZ + run,
+        (cellWorldZ + run - pz) / run
+
+    if px >= xMin && px <= xMax && pz >= zMin && pz <= zMax then
+      ValueSome(cellWorldY + rise * Math.Clamp(t, 0.0f, 1.0f))
+    else
+      ValueNone
+  | _ -> ValueNone

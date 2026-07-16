@@ -22,7 +22,7 @@ let chunkWorldDepth = float32 chunkDepth * cellSize
 let playerHeight = 1.8f
 
 [<Literal>]
-let playerRadius = 0.3f
+let playerRadius = 0.21f
 
 [<Literal>]
 let gravity = -20.0f

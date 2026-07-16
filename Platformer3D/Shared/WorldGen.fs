@@ -9,174 +9,437 @@ open Mibo.Elmish
 open Platformer3D.Constants
 open Platformer3D.Types
 
-let chunkSeed cx cz worldSeed =
+// ==============================================================
+// Config
+// ==============================================================
+
+/// Player jump reachability budget in cell units.
+/// Derived from physics constants:
+///   gravity=-20, jumpSpeed=12, moveSpeed=8, cellSize=1
+///   apex: h=3.6 at d=4.8, max same-level range: d=9.6
+[<Struct>]
+type JumpBudget3D = {
+  MaxHorizontalCells: int
+  MaxVerticalCells: int
+}
+
+[<Struct>]
+type TerrainConfig3D = {
+  BiomeColumnScale: float32
+  ElevationScale: float32
+  ElevationAmplitude: int
+  SpawnProtectedRadius: int
+  /// Probability of replacing a flat 2×2 surface region with a multi-cell
+  /// block (LargeBlock or TallBlock). 0 = all individual Block cells.
+  MultiCellChance: float32
+  /// P(TallBlock | multi-cell hit). Remainder → LargeBlock.
+  TallBlockChance: float32
+  /// P(replacing a surface Block with a LowBlock). Sub-cell height variety.
+  LowBlockChance: float32
+  /// P(replacing a surface Block with a NarrowBlock). Sub-cell width variety.
+  NarrowBlockChance: float32
+}
+
+[<Struct>]
+type GapConfig3D = {
+  MinCount: int
+  MaxCount: int
+  MinRadius: int
+  MaxRadius: int
+}
+
+[<Struct>]
+type PlatformConfig3D = {
+  MinCount: int
+  MaxCount: int
+  /// Cells above the terrain surface to place the platform.
+  MinHeight: int
+  MaxHeight: int
+}
+
+[<Struct>]
+type GenConfig3D = {
+  JumpBudget: JumpBudget3D
+  Terrain: TerrainConfig3D
+  Gap: GapConfig3D
+  Platform: PlatformConfig3D
+}
+
+let defaultConfig3D = {
+  JumpBudget = {
+    MaxHorizontalCells = 4
+    MaxVerticalCells = 3
+  }
+  Terrain = {
+    BiomeColumnScale = 0.03f
+    ElevationScale = 0.04f
+    ElevationAmplitude = 2
+    SpawnProtectedRadius = 4
+    MultiCellChance = 0.15f
+    TallBlockChance = 0.4f
+    LowBlockChance = 0.08f
+    NarrowBlockChance = 0.05f
+  }
+  Gap = {
+    MinCount = 2
+    MaxCount = 4
+    MinRadius = 1
+    MaxRadius = 2
+  }
+  Platform = {
+    MinCount = 4
+    MaxCount = 8
+    MinHeight = 2
+    MaxHeight = 4
+  }
+}
+
+// ==============================================================
+// Reachability — physics-derived 3D jump predicate
+//
+// The player launches upward at jumpSpeed and drifts horizontally at
+// moveSpeed. In 3D the horizontal distance is Euclidean √(dx²+dz²).
+//
+//   t(d) = d / moveSpeed              (time to cross distance d)
+//   h(d) = jumpSpeed·t(d) + ½·gravity·t(d)²   (height above launch)
+//
+// h(d) peaks at d* = moveSpeed·jumpSpeed/|gravity| ≈ 4.8 cells,
+// height ≈ 3.6 cells, and returns to 0 at d_max = 2·moveSpeed·jumpSpeed/|gravity| ≈ 9.6.
+// ==============================================================
+
+/// Height (in cells) the player reaches above the launch surface at
+/// Euclidean horizontal distance `horizontalDist` (in cells), for a fully-held
+/// running jump. Negative past the max same-level range.
+let arcHeight3D(horizontalDist: float32) : float32 =
+  let d = horizontalDist * cellSize
+  let t = d / moveSpeed
+  (jumpSpeed * t + 0.5f * gravity * t * t) / cellSize
+
+/// Maximum same-level gap (in cells) a running jump can clear.
+let maxLevelGap3D: float32 =
+  (2.0f * moveSpeed * jumpSpeed / abs(gravity)) / cellSize
+
+/// True when a surface `horizontalDist` cells away (Euclidean XZ) and `rise`
+/// cells higher (negative = lower) is reachable by a fully-held running jump.
+let reachable3D (horizontalDist: float32) (rise: float32) : bool =
+  let effectiveGap = max horizontalDist 1.0f
+  arcHeight3D effectiveGap >= rise
+
+// ==============================================================
+// Noise — 2D value noise for elevation and biome fields
+// ==============================================================
+
+let inline chunkSeed (cx: int) (cz: int) (worldSeed: int) =
   cx * 73856093 ^^^ cz * 19349663 ^^^ worldSeed
 
-let generateChunk cx cz worldSeed : Chunk =
-  let rng = Random(chunkSeed cx cz worldSeed)
+let private hash01 (x: int) (z: int) (seed: int) : float32 =
+  let mutable h = x * 374761393 ^^^ z * 668265263 ^^^ seed * 1442695041
+  h <- h ^^^ (h >>> 13)
+  h <- h * 1274126177
+  h <- h ^^^ (h >>> 16)
+  abs(float32(h % 1000)) / 1000.0f
+
+let inline private smoothstep(t: float32) = t * t * (3.0f - 2.0f * t)
+
+/// Bilinear-interpolated 2D value noise in [0, 1].
+let private valueNoise
+  (worldX: float32)
+  (worldZ: float32)
+  (scale: float32)
+  (seed: int)
+  : float32 =
+  let fx = worldX * scale
+  let fz = worldZ * scale
+  let x0 = int(MathF.Floor(fx))
+  let z0 = int(MathF.Floor(fz))
+
+  let sx = smoothstep(fx - float32 x0)
+  let sz = smoothstep(fz - float32 z0)
+
+  let n00 = hash01 x0 z0 seed
+  let n10 = hash01 (x0 + 1) z0 seed
+  let n01 = hash01 x0 (z0 + 1) seed
+  let n11 = hash01 (x0 + 1) (z0 + 1) seed
+
+  let top = n00 + (n10 - n00) * sx
+  let bot = n01 + (n11 - n01) * sx
+  top + (bot - top) * sz
+
+// ==============================================================
+// World constants
+// ==============================================================
+
+/// Base terrain surface Y. Columns are filled from y=0 to the elevation.
+/// Player spawns at y=10, well above this.
+let groundY3D = 2
+
+// ==============================================================
+// Elevation & biome — continuous per-column fields over world XZ
+// ==============================================================
+
+/// Surface Y for world column (worldX, worldZ), derived from band-limited
+/// noise. Returns groundY3D ± amplitude. Spawn area is pinned flat so the
+/// player always lands on a stable surface.
+let elevationAt
+  (worldX: int)
+  (worldZ: int)
+  (seed: int)
+  (scale: float32)
+  (amplitude: int)
+  (spawnRadius: int)
+  : int =
+  if amplitude <= 0 then
+    groundY3D
+  else
+    let dx = float32 worldX - spawnPosition.X
+    let dz = float32 worldZ - spawnPosition.Z
+    let distSq = dx * dx + dz * dz
+    let radius = float32 spawnRadius
+
+    if distSq <= radius * radius then
+      groundY3D
+    else
+      let n =
+        valueNoise (float32 worldX) (float32 worldZ) scale (seed ^^^ 0x5A5A5A5A)
+
+      let offset = int(round(n * float32(2 * amplitude + 1))) - amplitude
+      groundY3D + offset
+
+let private allBiomes3D = [| Biome3D.Grass; Biome3D.Snow |]
+
+/// Biome resolved per-column from the continuous biome noise field.
+/// Sampled per-column so each cell keeps one consistent biome.
+let biomeAt (worldX: int) (worldZ: int) (seed: int) (scale: float32) : Biome3D =
+  let n = valueNoise (float32 worldX) (float32 worldZ) scale seed
+  let idx = min (allBiomes3D.Length - 1) (int(n * float32 allBiomes3D.Length))
+  allBiomes3D[idx]
+
+// ==============================================================
+// Chunk generation
+// ==============================================================
+
+let generateChunk (cx: int) (cz: int) (worldSeed: int) : Chunk =
+  let config = defaultConfig3D
 
   let origin =
     Vector3(float32 cx * chunkWorldWidth, 0.0f, float32 cz * chunkWorldDepth)
 
-  let isSnow = (abs cx + abs cz) % 3 = 0
+  let originTileX = cx * chunkWidth
+  let originTileZ = cz * chunkDepth
 
-  let grid =
-    CellGrid3D.create
+  let grids =
+    LayeredGrid3D.create
       chunkWidth
       chunkHeight
       chunkDepth
       (Vector3(cellSize, cellSize, cellSize))
       origin
 
-  // ── Ground floor via DSL ──
-  Layout3D.run
-    (fun s ->
-      s
-      |> Layout3D.floorXZ
-        0
-        0
-        0
-        chunkWidth
-        chunkDepth
-        (if isSnow then Block Snow else Block Grass))
-    grid
+  let rng = Random(chunkSeed cx cz worldSeed)
+
+  LayeredLayout3D.layer
+    Layer.Terrain
+    (fun section ->
+      let grid = section.BackingGrid
+
+      // ── Elevation field (W×D, no border — full fill doesn't need neighbors) ──
+      let elevField = Array.create (section.Width * section.Depth) 0
+
+      for lz in 0 .. section.Depth - 1 do
+        for lx in 0 .. section.Width - 1 do
+          elevField[lz * section.Width + lx] <-
+            elevationAt
+              (originTileX + lx)
+              (originTileZ + lz)
+              worldSeed
+              config.Terrain.ElevationScale
+              config.Terrain.ElevationAmplitude
+              config.Terrain.SpawnProtectedRadius
+
+      let elevAt (lx: int) (lz: int) = elevField[lz * section.Width + lx]
+
+      let biomeAt' (lx: int) (lz: int) =
+        biomeAt
+          (originTileX + lx)
+          (originTileZ + lz)
+          worldSeed
+          config.Terrain.BiomeColumnScale
+
+      let inSpawn (lx: int) (lz: int) =
+        let wx = float32(originTileX + lx) - spawnPosition.X
+        let wz = float32(originTileZ + lz) - spawnPosition.Z
+        let r = float32 config.Terrain.SpawnProtectedRadius
+        wx * wx + wz * wz <= r * r
+
+      // ── 1. Full volume fill ──
+      // Solid columns from y=0 to surface. The framework shadow instancing fix
+      // (ForwardPbrPipeline) renders these as single DrawMeshInstanced calls,
+      // so the full volume no longer incurs per-cell shadow cost.
+      for lz in 0 .. section.Depth - 1 do
+        for lx in 0 .. section.Width - 1 do
+          let surfaceY = min (elevAt lx lz) (section.Height - 1)
+          let biome = biomeAt' lx lz
+
+          for y in 0..surfaceY do
+            setLocal lx y lz (Block biome) section
+
+      // ── 2. Multi-cell surface variety (2×2 flat regions) ──
+      // Replace flat 2×2 surface areas with LargeBlock or TallBlock.
+      if config.Terrain.MultiCellChance > 0.0f then
+        let mutable lz = 0
+
+        while lz < section.Depth - 1 do
+          let mutable lx = 0
+
+          while lx < section.Width - 1 do
+            let h00 = elevAt lx lz
+            let h10 = elevAt (lx + 1) lz
+            let h01 = elevAt lx (lz + 1)
+            let h11 = elevAt (lx + 1) (lz + 1)
+
+            if h00 = h10 && h00 = h01 && h00 = h11 then
+              let b00 = biomeAt' lx lz
+              let b10 = biomeAt' (lx + 1) lz
+              let b01 = biomeAt' lx (lz + 1)
+              let b11 = biomeAt' (lx + 1) (lz + 1)
+
+              if b00 = b10 && b00 = b01 && b00 = b11 then
+                if
+                  float32(rng.NextDouble()) < config.Terrain.MultiCellChance
+                then
+                  let y = min h00 (section.Height - 1)
+
+                  clearLocal lx y lz section
+                  clearLocal (lx + 1) y lz section
+                  clearLocal lx y (lz + 1) section
+                  clearLocal (lx + 1) y (lz + 1) section
+
+                  let blockType =
+                    if
+                      float32(rng.NextDouble()) < config.Terrain.TallBlockChance
+                    then
+                      TallBlock b00
+                    else
+                      LargeBlock b00
+
+                  setLocal lx y lz blockType section
+                  lx <- lx + 2
+                else
+                  lx <- lx + 2
+              else
+                lx <- lx + 2
+            else
+              lx <- lx + 1
+
+          lz <- lz + 2
+
+      // ── 3. Individual surface variety (LowBlock, NarrowBlock) ──
+      // For surface cells still containing a plain Block, roll for sub-cell
+      // variants. These are single-cell blocks — no multi-cell scan needed.
+      if
+        config.Terrain.LowBlockChance > 0.0f
+        || config.Terrain.NarrowBlockChance > 0.0f
+      then
+        let lowThreshold = config.Terrain.LowBlockChance
+        let narrowThreshold = lowThreshold + config.Terrain.NarrowBlockChance
+
+        for lz in 0 .. section.Depth - 1 do
+          for lx in 0 .. section.Width - 1 do
+            let y = min (elevAt lx lz) (section.Height - 1)
+
+            match CellGrid3D.get lx y lz grid with
+            | ValueSome(Block biome) ->
+              let roll = float32(rng.NextDouble())
+
+              if roll < lowThreshold then
+                setLocal lx y lz (LowBlock biome) section
+              elif roll < narrowThreshold then
+                setLocal lx y lz (NarrowBlock biome) section
+            | _ -> ()
+
+      // ── 4. Gaps — carve circular pits through the terrain ──
+      // Removes all cells in a column within a small radius, creating pits
+      // the player must jump across. Gaps are kept small (radius 1-2) so they
+      // are easily jumpable (max Euclidean gap ~4 cells, well within budget).
+      if config.Gap.MaxCount > 0 then
+        let gapCount = rng.Next(config.Gap.MinCount, config.Gap.MaxCount + 1)
+
+        for _ in 1..gapCount do
+          let gcx =
+            rng.Next(
+              config.Terrain.SpawnProtectedRadius,
+              section.Width - config.Terrain.SpawnProtectedRadius
+            )
+
+          let gcz =
+            rng.Next(
+              config.Terrain.SpawnProtectedRadius,
+              section.Depth - config.Terrain.SpawnProtectedRadius
+            )
+
+          let radius = rng.Next(config.Gap.MinRadius, config.Gap.MaxRadius + 1)
+
+          for dz in -radius .. radius do
+            for dx in -radius .. radius do
+              if dx * dx + dz * dz <= radius * radius then
+                let gx = gcx + dx
+                let gz = gcz + dz
+
+                if
+                  gx >= 0
+                  && gx < section.Width
+                  && gz >= 0
+                  && gz < section.Depth
+                  && not(inSpawn gx gz)
+                then
+                  let h = min (elevAt gx gz) (section.Height - 1)
+
+                  for y in 0..h do
+                    clearLocal gx y gz section
+
+      // ── 5. Floating platforms ──
+      // Place Platform blocks above the terrain surface at jumpable heights.
+      // Each platform is a single Platform cell; adjacent platforms form wider
+      // surfaces the player can land on. Height is 2-4 cells above the surface,
+      // within the jump budget (MaxVerticalCells = 3).
+      if config.Platform.MaxCount > 0 then
+        let targetCount =
+          rng.Next(config.Platform.MinCount, config.Platform.MaxCount + 1)
+
+        let mutable placed = 0
+        let mutable tries = 0
+        let maxTries = targetCount * 4
+
+        while placed < targetCount && tries < maxTries do
+          tries <- tries + 1
+
+          let px = rng.Next(1, section.Width - 1)
+          let pz = rng.Next(1, section.Depth - 1)
+
+          if not(inSpawn px pz) then
+            let surfH = min (elevAt px pz) (section.Height - 1)
+
+            let heightOffset =
+              rng.Next(
+                config.Platform.MinHeight,
+                config.Platform.MaxHeight + 1
+              )
+
+            let py = min (surfH + heightOffset) (section.Height - 1)
+
+            // Only place if the cell is empty (no overlap with terrain or existing platform).
+            match CellGrid3D.get px py pz grid with
+            | ValueNone ->
+              setLocal px py pz Platform section
+              placed <- placed + 1
+            | _ -> ()
+
+      section)
+    grids
   |> ignore
-
-  // ── Pits (gaps in ground) ──
-  let pitCount = rng.Next(2, 6)
-
-  for _ in 0..pitCount do
-    let px = rng.Next(1, chunkWidth - 6)
-    let pz = rng.Next(1, chunkDepth - 6)
-    let pw = rng.Next(2, 5)
-    let pd = rng.Next(2, 5)
-    Layout3D.run (fun s -> s |> Layout3D.clear px 0 pz pw 1 pd) grid |> ignore
-
-  // ── Mid-level platforms via DSL fill ──
-  let platformCount = rng.Next(2, 5)
-
-  for _ in 0..platformCount do
-    let px = rng.Next(1, chunkWidth - 8)
-    let pz = rng.Next(1, chunkDepth - 8)
-    let py = 3 + rng.Next(0, 3)
-    let pw = rng.Next(2, 7)
-    let pd = rng.Next(2, 7)
-
-    Layout3D.run (fun s -> s |> Layout3D.floorXZ px py pz pw pd Platform) grid
-    |> ignore
-
-  // ── Stairs (procedural) ──
-  if rng.Next(2) = 0 then
-    let sx = rng.Next(4, chunkWidth - 10)
-    let sz = rng.Next(4, chunkDepth - 10)
-
-    for step in 0..4 do
-      CellGrid3D.set (sx + step) (1 + step) sz (Block Grass) grid
-
-  // ── High platforms ──
-  if rng.Next(3) = 0 then
-    let px = rng.Next(2, chunkWidth - 8)
-    let pz = rng.Next(2, chunkDepth - 8)
-    let py = 6 + rng.Next(0, 4)
-    let pw = rng.Next(2, 5)
-    let pd = rng.Next(2, 5)
-
-    Layout3D.run (fun s -> s |> Layout3D.floorXZ px py pz pw pd Platform) grid
-    |> ignore
-
-  // ── Pillars via DSL column ──
-  let pillarCount = rng.Next(0, 3)
-
-  for _ in 0..pillarCount do
-    let px = rng.Next(1, chunkWidth - 3)
-    let pz = rng.Next(1, chunkDepth - 3)
-    let ph = rng.Next(2, 6)
-
-    Layout3D.run (fun s -> s |> Layout3D.column px 0 pz ph (Block Grass)) grid
-    |> ignore
-
-  // ── Spikes ──
-  if rng.Next(3) = 0 then
-    let sx = rng.Next(2, chunkWidth - 6)
-    let sz = rng.Next(2, chunkDepth - 6)
-    let sw = rng.Next(1, 4)
-    let sd = rng.Next(1, 4)
-
-    Layout3D.run (fun s -> s |> Layout3D.floorXZ sx 1 sz sw sd Spikes) grid
-    |> ignore
-
-  // ── Decorations via scatter ──
-  let treeCount = rng.Next(1, 4)
-  let treeType = if isSnow then TreeSnow else TreePine
-
-  Layout3D.run
-    (fun s -> s |> Layout3D.scatterXZ 1 treeCount (rng.Next()) treeType)
-    grid
-  |> ignore
-
-  let rockCount = rng.Next(0, 3)
-
-  Layout3D.run
-    (fun s -> s |> Layout3D.scatterXZ 1 rockCount (rng.Next()) Rock)
-    grid
-  |> ignore
-
-  let grassCount = rng.Next(2, 8)
-
-  Layout3D.run
-    (fun s -> s |> Layout3D.scatterXZ 1 grassCount (rng.Next()) GrassTuft)
-    grid
-  |> ignore
-
-  // ── Glowing mushrooms (light sources) ──
-  let lanternCount = rng.Next(1, 3)
-
-  Layout3D.run
-    (fun s -> s |> Layout3D.scatterXZ 1 lanternCount (rng.Next()) MushroomLight)
-    grid
-  |> ignore
-
-  // ── Coins on elevated platforms (procedural — needs neighbor checks) ──
-  let coinCount = rng.Next(2, 8)
-
-  for _ in 0..coinCount do
-    let cx' = rng.Next(2, chunkWidth - 3)
-    let cz' = rng.Next(2, chunkDepth - 3)
-
-    for cy in 1 .. chunkHeight - 2 do
-      let below =
-        match CellGrid3D.get cx' (cy - 1) cz' grid with
-        | ValueSome bt when BlockData.isSolid bt -> true
-        | _ -> false
-
-      let current =
-        match CellGrid3D.get cx' cy cz' grid with
-        | ValueSome _ -> true
-        | _ -> false
-
-      if below && not current then
-        CellGrid3D.set cx' cy cz' Coin grid
-
-  // ── Flag ──
-  let fx = rng.Next(2, chunkWidth - 3)
-  let fz = rng.Next(2, chunkDepth - 3)
-
-  for fy in 1 .. chunkHeight - 2 do
-    let below =
-      match CellGrid3D.get fx (fy - 1) fz grid with
-      | ValueSome bt when BlockData.isSolid bt -> true
-      | _ -> false
-
-    let current =
-      match CellGrid3D.get fx fy fz grid with
-      | ValueSome _ -> true
-      | _ -> false
-
-    if below && not current then
-      CellGrid3D.set fx fy fz Flag grid
 
   {
-    Grid = grid
+    Grids = grids
     Bounds = {
       Min = origin
       Max =
