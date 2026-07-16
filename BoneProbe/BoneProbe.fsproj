@@ -10,6 +10,7 @@
     <Compile Include="Scene.fs" />
     <Compile Include="RawAssimp.fs" />
     <Compile Include="Palette.fs" />
+    <Compile Include="Dimensions.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

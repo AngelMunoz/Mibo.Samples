@@ -27,6 +27,7 @@ let tryLoad(path: string) : Scene voption =
 type Mode =
   | Raw
   | Palette
+  | Dimensions
 
 type Verbosity =
   | Full

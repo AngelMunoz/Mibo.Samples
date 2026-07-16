@@ -5,16 +5,19 @@ open BoneProbe.Scene
 
 let private printUsage() =
   eprintfn
-    "Usage: dotnet run --project BoneProbe -- [raw|palette] <path-to-glb> [-v|--verbosity full|summary] [-f|--focus <name>]"
+    "Usage: dotnet run --project BoneProbe -- [raw|palette|dimensions] <path> [-v|--verbosity full|summary] [-f|--focus <name>]"
 
   eprintfn ""
   eprintfn "Commands:"
 
   eprintfn
-    "  raw      Dump raw Assimp scene (meshes, bones, animation channels)."
+    "  raw         Dump raw Assimp scene (meshes, bones, animation channels)."
 
   eprintfn
-    "  palette  Build the Mibo.MonoGame bone palette and verify the bind-pose invariant."
+    "  palette     Build the Mibo.MonoGame bone palette and verify the bind-pose invariant."
+
+  eprintfn
+    "  dimensions  Batch report: per-model vertex extents + animation count (dir or .glb file)."
 
   eprintfn ""
   eprintfn "Options:"
@@ -55,6 +58,15 @@ let rec private parseOptions
     }
 
     parseOptions rest (Some opts)
+  | ("dimensions" :: path :: rest), None ->
+    let opts = {
+      Mode = Dimensions
+      Path = path
+      Verbosity = Full
+      Focus = None
+    }
+
+    parseOptions rest (Some opts)
   | ("-v" :: v :: rest), Some opts ->
     match parseVerbosity v with
     | Some verb -> parseOptions rest (Some { opts with Verbosity = verb })
@@ -79,3 +91,4 @@ let main argv =
     match opts.Mode with
     | Raw -> BoneProbe.RawAssimp.probe opts
     | Palette -> BoneProbe.Palette.probe opts
+    | Dimensions -> BoneProbe.Dimensions.probe opts
