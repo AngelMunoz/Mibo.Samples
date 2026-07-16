@@ -16,6 +16,24 @@
 #begin ../../assets/kenney_platformer-kit/License.txt
 /copy:../../assets/kenney_platformer-kit/License.txt
 
+# The skinned character models (DefaultEffect=SkinnedEffect) reference an
+# external colormap texture. ModelProcessor auto-discovers it, but because the
+# .glb sources live in ../../assets/ (shared with the raylib backend), the
+# auto-discovered texture escapes MGCB's output root and is never copied to the
+# app, causing a ContentLoadException for colormap_0.xnb at runtime. Build the
+# texture explicitly so it lands inside the output dir under the same content
+# name the model embeds (assets/.../colormap_0), without moving any sources.
+#begin ../../assets/kenney_platformer-kit/Models/Textures/colormap.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=0,0,0,0
+/processorParam:ColorKeyEnabled=False
+/processorParam:GenerateMipmaps=True
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:TextureFormat=Compressed
+/build:../../assets/kenney_platformer-kit/Models/Textures/colormap.png;assets/kenney_platformer-kit/Models/Textures/colormap_0
+
 #begin ../../assets/kenney_platformer-kit/Models/arrow.glb
 /importer:FbxImporter
 /processor:ModelProcessor
