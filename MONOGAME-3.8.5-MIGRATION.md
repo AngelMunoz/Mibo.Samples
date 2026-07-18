@@ -126,10 +126,25 @@ mgfxc now has **four** profiles (`ShaderProfile.cs:30-36`):
 
 ---
 
-## Part 3 — Templates → DirectX12 & Vulkan (pending — sample migration phase)
+## Part 3 — Templates → DirectX12 & Vulkan (templates DONE; sample migration pending)
 
 **Goal: migrate the MonoGame sample projects to 3.8.5 and switch to Vulkan/DX12 where
 applicable.** The framework shader work (Part 2) is the prerequisite and is now complete.
+
+### Templates — ✅ DONE (2026-07-18)
+
+`Mibo/src/Templates` (`mibo-mg-2d`/`mibo-mg-3d`) now ship three thin clients:
+`DesktopGL` (OpenGL, kept), **`DesktopVK` (Vulkan, new)**, and **`WindowsDX12`
+(replaces the DX11 `WindowsDX` client)**. All MonoGame packages and the pinned mgcb
+dotnet tools bumped 3.8.4.1 → 3.8.5. Verified: templates pack, instantiate
+(`sourceName` substitution OK), and all 6 generated clients build clean.
+
+**Caveat:** the generated `src/` lib references `Mibo.MonoGame Version="2.*"` from
+NuGet — the published 2.2.0 package still embeds only the DX11/OpenGL shader
+variants. The DX12/Vulkan clients compile today but will fail at shader load until
+a new `Mibo.MonoGame` package from this branch is published (the `2.*` wildcard then
+picks it up automatically). Runtime validation of generated DX12/Vulkan clients
+happens after that release.
 
 ### Reference projects for fsproj structure
 
