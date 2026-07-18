@@ -58,6 +58,17 @@ dotnet run --project SpaceBattle
 
 Controls: **Left-click** to select/move units, **Right-click** for unit info, **Scroll** to zoom, **WASD** to pan camera, **Space** to end turn, **R** to restart.
 
+### ModelProbe
+
+A minimal 3D rendering probe for the MonoGame backends: five kenney blocks rendered non-instanced (`Draw3D.drawModel`), the same blocks instanced (`Draw3D.drawInstanced`), and both on a floor with PBR lighting and shadow atlas — three zones in one frame for side-by-side backend comparison.
+
+```bash
+dotnet run --project ModelProbe/WindowsDX12   # DirectX 12
+dotnet run --project ModelProbe/DesktopVK     # Vulkan
+```
+
+Controls: **Arrows** to orbit, **W/S** to zoom, **A/D** and **PageUp/PageDown** to pan, **0–3** camera presets per zone.
+
 ### FPSSample
 
 A horror-themed first-person shooter built with Mibo's **Composable Systems**, **Commands**, and **Service-DI** patterns. The same game logic runs on two backends — raylib-cs and MonoGame — with zero game-logic duplication. Features per-system sub-models, a router-style `update` that translates events into cross-system `Cmd`, a `System` pipeline with a readonly snapshot boundary, and a blended `IAudioService` (one-shot SFX via `Cmd` events, looping footsteps derived from the snapshot). See [FPSSample/README.md](FPSSample/README.md) for the project layout and [FPSSample/Shared/README.md](FPSSample/Shared/README.md) for the full architecture guide.

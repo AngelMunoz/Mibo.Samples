@@ -1,0 +1,131 @@
+
+#----------------------------- Global Properties ----------------------------#
+
+/outputDir:Content
+/intermediateDir:obj
+/platform:WindowsDX12
+/config:
+/profile:HiDef
+/compress:False
+
+#-------------------------------- References --------------------------------#
+
+
+#---------------------------------- Content ---------------------------------#
+
+# .glb sources live in ../../Platformer3D/assets/ (shared with the Platformer3D
+# sample). They build to kenney_platformer-kit/Models/<name> so asset paths
+# match the Platformer3D convention.
+
+# The block models reference an external colormap texture. ModelProcessor
+# auto-discovers it, but because the .glb sources live outside this project,
+# the auto-discovered texture escapes MGCB's output root and is never copied
+# to the app, causing a ContentLoadException for colormap_0.xnb at runtime.
+# Build the texture explicitly so it lands inside the output dir under the
+# same content name the model embeds (Platformer3D/assets/.../colormap_0),
+# without moving any sources.
+#begin ../../Platformer3D/assets/kenney_platformer-kit/Models/Textures/colormap.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=0,0,0,0
+/processorParam:ColorKeyEnabled=False
+/processorParam:GenerateMipmaps=True
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:TextureFormat=Compressed
+/build:../../Platformer3D/assets/kenney_platformer-kit/Models/Textures/colormap.png;Platformer3D/assets/kenney_platformer-kit/Models/Textures/colormap_0
+
+#begin ../../Platformer3D/assets/kenney_platformer-kit/Models/block-grass.glb
+/importer:FbxImporter
+/processor:ModelProcessor
+/processorParam:ColorKeyColor=0,0,0,0
+/processorParam:ColorKeyEnabled=True
+/processorParam:DefaultEffect=BasicEffect
+/processorParam:GenerateMipmaps=True
+/processorParam:GenerateTangentFrames=False
+/processorParam:PremultiplyTextureAlpha=True
+/processorParam:PremultiplyVertexColors=True
+/processorParam:ResizeTexturesToPowerOfTwo=False
+/processorParam:RotationX=0
+/processorParam:RotationY=0
+/processorParam:RotationZ=0
+/processorParam:Scale=1
+/processorParam:SwapWindingOrder=False
+/processorParam:TextureFormat=Compressed
+/build:../../Platformer3D/assets/kenney_platformer-kit/Models/block-grass.glb;kenney_platformer-kit/Models/block-grass
+
+#begin ../../Platformer3D/assets/kenney_platformer-kit/Models/block-grass-corner.glb
+/importer:FbxImporter
+/processor:ModelProcessor
+/processorParam:ColorKeyColor=0,0,0,0
+/processorParam:ColorKeyEnabled=True
+/processorParam:DefaultEffect=BasicEffect
+/processorParam:GenerateMipmaps=True
+/processorParam:GenerateTangentFrames=False
+/processorParam:PremultiplyTextureAlpha=True
+/processorParam:PremultiplyVertexColors=True
+/processorParam:ResizeTexturesToPowerOfTwo=False
+/processorParam:RotationX=0
+/processorParam:RotationY=0
+/processorParam:RotationZ=0
+/processorParam:Scale=1
+/processorParam:SwapWindingOrder=False
+/processorParam:TextureFormat=Compressed
+/build:../../Platformer3D/assets/kenney_platformer-kit/Models/block-grass-corner.glb;kenney_platformer-kit/Models/block-grass-corner
+
+#begin ../../Platformer3D/assets/kenney_platformer-kit/Models/block-grass-curve.glb
+/importer:FbxImporter
+/processor:ModelProcessor
+/processorParam:ColorKeyColor=0,0,0,0
+/processorParam:ColorKeyEnabled=True
+/processorParam:DefaultEffect=BasicEffect
+/processorParam:GenerateMipmaps=True
+/processorParam:GenerateTangentFrames=False
+/processorParam:PremultiplyTextureAlpha=True
+/processorParam:PremultiplyVertexColors=True
+/processorParam:ResizeTexturesToPowerOfTwo=False
+/processorParam:RotationX=0
+/processorParam:RotationY=0
+/processorParam:RotationZ=0
+/processorParam:Scale=1
+/processorParam:SwapWindingOrder=False
+/processorParam:TextureFormat=Compressed
+/build:../../Platformer3D/assets/kenney_platformer-kit/Models/block-grass-curve.glb;kenney_platformer-kit/Models/block-grass-curve
+
+#begin ../../Platformer3D/assets/kenney_platformer-kit/Models/block-grass-hexagon.glb
+/importer:FbxImporter
+/processor:ModelProcessor
+/processorParam:ColorKeyColor=0,0,0,0
+/processorParam:ColorKeyEnabled=True
+/processorParam:DefaultEffect=BasicEffect
+/processorParam:GenerateMipmaps=True
+/processorParam:GenerateTangentFrames=False
+/processorParam:PremultiplyTextureAlpha=True
+/processorParam:PremultiplyVertexColors=True
+/processorParam:ResizeTexturesToPowerOfTwo=False
+/processorParam:RotationX=0
+/processorParam:RotationY=0
+/processorParam:RotationZ=0
+/processorParam:Scale=1
+/processorParam:SwapWindingOrder=False
+/processorParam:TextureFormat=Compressed
+/build:../../Platformer3D/assets/kenney_platformer-kit/Models/block-grass-hexagon.glb;kenney_platformer-kit/Models/block-grass-hexagon
+
+#begin ../../Platformer3D/assets/kenney_platformer-kit/Models/block-grass-large.glb
+/importer:FbxImporter
+/processor:ModelProcessor
+/processorParam:ColorKeyColor=0,0,0,0
+/processorParam:ColorKeyEnabled=True
+/processorParam:DefaultEffect=BasicEffect
+/processorParam:GenerateMipmaps=True
+/processorParam:GenerateTangentFrames=False
+/processorParam:PremultiplyTextureAlpha=True
+/processorParam:PremultiplyVertexColors=True
+/processorParam:ResizeTexturesToPowerOfTwo=False
+/processorParam:RotationX=0
+/processorParam:RotationY=0
+/processorParam:RotationZ=0
+/processorParam:Scale=1
+/processorParam:SwapWindingOrder=False
+/processorParam:TextureFormat=Compressed
+/build:../../Platformer3D/assets/kenney_platformer-kit/Models/block-grass-large.glb;kenney_platformer-kit/Models/block-grass-large

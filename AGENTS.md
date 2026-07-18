@@ -22,24 +22,25 @@ This repo exists for two reasons:
 ```
 Mibo.Samples/
 ├── Mibo/                    ← git submodule — framework source (Mibo.Core, Mibo.Raylib, Mibo.MonoGame)
-├── PlatformerSample/        ← 2D raylib platformer (procedural world, sprite animation, lighting)
-├── ThreeDSample/            ← 3D raylib platformer (voxel terrain, PBR, skeletal animation, shadow atlas)
+├── Platformer/              ← 2D platformer (procedural world, sprite animation, lighting; raylib + MonoGame DX12/Vulkan)
+├── Platformer3D/            ← 3D platformer (voxel terrain, PBR, skeletal animation, shadow atlas; raylib + MonoGame DX12/Vulkan)
+├── ModelProbe/              ← Minimal 3D rendering probe (PBR forward + shadow atlas, instanced vs non-instanced; MonoGame DX12 + Vulkan)
 ├── SpaceBattle/             ← Turn-based hex strategy (fog of war, AI, phased turns)
-├── MonoPlatformer/          ← MonoGame DesktopGL port of PlatformerSample
-├── MonoThreeD/              ← MonoGame DesktopGL port of ThreeDSample
 ├── FPSSample/               ← Cross-backend FPS (shared core, raylib + MonoGame thin clients)
 │   ├── Shared/              ← Backend-agnostic game logic, systems, physics, AI
 │   ├── Raylib/              ← raylib backend
 │   ├── MonoShared/          ← MonoGame shared backend (composition root, View, AudioService)
 │   ├── MonoDesktop/         ← MonoGame DesktopGL thin client
-│   └── MonoWindowsDX/       ← MonoGame WindowsDX thin client
+│   ├── MonoWindowsDX/       ← MonoGame WindowsDX thin client
+│   ├── MonoDX12/            ← MonoGame DX12 thin client
+│   └── MonoVulkan/          ← MonoGame Vulkan thin client
 ├── PingPong/                ← Networked multiplayer (client/server, WebSockets)
 ├── BoneProbe/               ← CLI diagnostic tool (raw Assimp dump + bind-pose invariant check)
 ├── Mibo.Samples.slnx        ← solution file
 └── README.md
 ```
 
-**Backend matrix:** raylib-cs and MonoGame (DesktopGL + WindowsDX). Cross-backend samples (`FPSSample`, `PingPong`) isolate backend-specific code in thin client projects while sharing all game logic.
+**Backend matrix:** raylib-cs and MonoGame (DesktopGL, WindowsDX12, DesktopVK/Vulkan). Cross-backend samples (`FPSSample`, `PingPong`) isolate backend-specific code in thin client projects while sharing all game logic.
 
 ## Sample Architecture (Enforced)
 
