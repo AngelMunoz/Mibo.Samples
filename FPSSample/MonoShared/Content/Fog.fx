@@ -26,16 +26,25 @@
 #if OPENGL
   #define VS_SHADERMODEL vs_3_0
   #define PS_SHADERMODEL ps_3_0
+#elif defined(SM6)
+  #define VS_SHADERMODEL vs_6_0
+  #define PS_SHADERMODEL ps_6_0
 #else
   #define VS_SHADERMODEL vs_5_0
   #define PS_SHADERMODEL ps_5_0
 #endif
 
-Texture2D SceneTexture;
-sampler2D SceneSampler = sampler_state { Texture = <SceneTexture>; };
+// Cross-profile texture/sampler declarations (see ForwardPbr.fx for rationale).
+#if OPENGL
+  #define DECLARE_TEX(name, slot) sampler2D name : register(s##slot)
+  #define SAMPLE_TEX(name, uv) tex2D(name, uv)
+#else
+  #define DECLARE_TEX(name, slot) Texture2D name : register(t##slot); SamplerState name##Sampler : register(s##slot)
+  #define SAMPLE_TEX(name, uv) name.Sample(name##Sampler, uv)
+#endif
 
-Texture2D DepthTexture;
-sampler2D DepthSampler = sampler_state { Texture = <DepthTexture>; };
+DECLARE_TEX(SceneTexture, 0);
+DECLARE_TEX(DepthTexture, 1);
 
 float3 fogColor;
 float fogNear;
@@ -58,7 +67,7 @@ struct VSInput {
 };
 
 struct VSOutput {
-    float4 Position : POSITION0;
+    float4 Position : SV_POSITION;
     float2 TexCoord : TEXCOORD0;
 };
 
@@ -69,9 +78,9 @@ VSOutput FogVS(VSInput input) {
     return output;
 }
 
-float4 FogPS(VSOutput input) : COLOR0 {
-    float4 scene = tex2D(SceneSampler, input.TexCoord);
-    float ndcZ = tex2D(DepthSampler, input.TexCoord).r;
+float4 FogPS(VSOutput input) : SV_TARGET {
+    float4 scene = SAMPLE_TEX(SceneTexture, input.TexCoord);
+    float ndcZ = SAMPLE_TEX(DepthTexture, input.TexCoord).r;
 
     // Skybox / uncovered pixels: depth ≈ 1.0 (far plane), skip fog so the sky stays visible.
     // On DesktopGL the depth pre-pass writes clip.z/clip.w in [-1,1]; far plane = 1.0.

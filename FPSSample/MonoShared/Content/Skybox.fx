@@ -12,6 +12,9 @@
 #if OPENGL
   #define VS_SHADERMODEL vs_3_0
   #define PS_SHADERMODEL ps_3_0
+#elif defined(SM6)
+  #define VS_SHADERMODEL vs_6_0
+  #define PS_SHADERMODEL ps_6_0
 #else
   #define VS_SHADERMODEL vs_5_0
   #define PS_SHADERMODEL ps_5_0
@@ -28,7 +31,7 @@ struct VSInput {
 };
 
 struct VSOutput {
-    float4 Position : POSITION0;
+    float4 Position : SV_POSITION;
     float3 Dir      : TEXCOORD0;
 };
 
@@ -96,7 +99,7 @@ float starField(float3 dir, float density, float brightness) {
     return (star + glow) * brightness * twinkle;
 }
 
-float4 SkyboxPS(VSOutput input) : COLOR0 {
+float4 SkyboxPS(VSOutput input) : SV_TARGET {
     float3 dir = normalize(input.Dir);
 
     // Gradient sky.

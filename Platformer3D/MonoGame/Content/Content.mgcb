@@ -3,7 +3,7 @@
 
 /outputDir:Content
 /intermediateDir:obj
-/platform:Windows
+/platform:WindowsDX12
 /config:
 /profile:HiDef
 /compress:False

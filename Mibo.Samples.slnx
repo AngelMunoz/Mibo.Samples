@@ -18,6 +18,8 @@
     <Project Path="FPSSample/MonoShared/MonoShared.fsproj" />
     <Project Path="FPSSample/MonoDesktop/MonoDesktop.fsproj" />
     <Project Path="FPSSample/MonoWindowsDX/MonoWindowsDX.fsproj" />
+    <Project Path="FPSSample/MonoVulkan/MonoVulkan.fsproj" />
+    <Project Path="FPSSample/MonoDX12/MonoDX12.fsproj" />
   </Folder>
   <Folder Name="/Platformer/">
     <Project Path="Platformer/Shared/Shared.fsproj" />
@@ -30,6 +32,7 @@
     <Project Path="Platformer3D/Shared.Tests/Shared.Tests.fsproj" />
     <Project Path="Platformer3D/Raylib/Raylib.fsproj" />
     <Project Path="Platformer3D/MonoGame/MonoGame.fsproj" />
+    <Project Path="Platformer3D/MonoVulkan/MonoVulkan.fsproj" />
   </Folder>
   <Project Path="SpaceBattle/SpaceBattle.fsproj" />
   <Project Path="BoneProbe/BoneProbe.fsproj" />

@@ -16,6 +16,9 @@
 #if OPENGL
   #define VS_SHADERMODEL vs_3_0
   #define PS_SHADERMODEL ps_3_0
+#elif defined(SM6)
+  #define VS_SHADERMODEL vs_6_0
+  #define PS_SHADERMODEL ps_6_0
 #else
   #define VS_SHADERMODEL vs_5_0
   #define PS_SHADERMODEL ps_5_0
@@ -24,11 +27,22 @@
 #define MAX_BONES 128
 #define MAX_SHADOW_CASTERS 16
 
+// Cross-profile texture/sampler declarations (see ForwardPbr.fx for rationale).
+#if OPENGL
+  #define DECLARE_TEX(name, slot) sampler2D name : register(s##slot)
+  #define SAMPLE_TEX(name, uv) tex2D(name, uv)
+  #define SAMPLE_TEX_LOD(name, uv, lod) tex2Dlod(name, float4(uv, 0.0, lod))
+#else
+  #define DECLARE_TEX(name, slot) Texture2D name : register(t##slot); SamplerState name##Sampler : register(s##slot)
+  #define SAMPLE_TEX(name, uv) name.Sample(name##Sampler, uv)
+  #define SAMPLE_TEX_LOD(name, uv, lod) name.SampleLevel(name##Sampler, uv, lod)
+#endif
+
 // ------------------------------------------------------------------
 // Samplers + material (SceneUpload uploads these by name when declared)
 // ------------------------------------------------------------------
 
-sampler2D texture0 : register(s0); // albedo
+DECLARE_TEX(texture0, 0); // albedo
 
 float4 albedoColor;
 float opacity;
@@ -51,7 +65,11 @@ int dirLightCastsShadows;
 // (tex2Dlod), matching ForwardPbr.fx so a toon-scoped draw can sample shadows.
 // ------------------------------------------------------------------
 
+#if OPENGL
 sampler2D shadowAtlas : register(s5);
+#else
+DECLARE_TEX(shadowAtlas, 5);
+#endif
 float4x4 shadowViewProjs[MAX_SHADOW_CASTERS];
 float4 shadowUVOffsets[MAX_SHADOW_CASTERS];
 float2 shadowTexelSize;
@@ -81,7 +99,7 @@ float computeDirShadow(float3 worldPos) {
     [unroll]
     for (int y = -1; y <= 1; y++) {
       float2 sampleUV = atlasUV + float2(float(x), float(y)) * shadowTexelSize;
-      float d = tex2Dlod(shadowAtlas, float4(sampleUV, 0.0, 0.0)).r;
+      float d = SAMPLE_TEX_LOD(shadowAtlas, sampleUV, 0.0).r;
       shadow += (ndc.z > d) ? 0.0 : 1.0;
     }
   }
@@ -169,7 +187,7 @@ float toonBand(float NdotL) {
 
 float4 PS_Main(VS_OUTPUT input) : SV_TARGET {
   float2 uv = input.TexCoord * tiling;
-  float4 texColor = tex2D(texture0, uv) * albedoColor;
+  float4 texColor = SAMPLE_TEX(texture0, uv) * albedoColor;
   float3 albedo = texColor.rgb;
 
   float3 N = normalize(input.Normal);

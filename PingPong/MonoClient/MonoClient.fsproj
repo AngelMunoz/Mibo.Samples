@@ -16,6 +16,6 @@
     <ProjectReference Include="..\..\Mibo\src\Mibo.MonoGame\Mibo.MonoGame.fsproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.4.1" />
+    <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.5" />
   </ItemGroup>
 </Project>

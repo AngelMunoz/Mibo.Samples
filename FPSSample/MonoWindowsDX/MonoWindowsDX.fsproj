@@ -19,8 +19,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MonoShared\MonoShared.fsproj" />
-    <PackageReference Include="MonoGame.Framework.WindowsDX" Version="3.8.4.1" />
-    <PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.4.1" />
+    <PackageReference Include="MonoGame.Framework.WindowsDX" Version="3.8.5" />
+    <PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.5" />
   </ItemGroup>
   <ItemGroup>
     <MonoGameContentReference Include="..\MonoShared\Content\Content.mgcb">
