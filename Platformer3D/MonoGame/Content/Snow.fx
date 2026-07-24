@@ -1,18 +1,20 @@
-// Toon (cel) shader — a minimal custom shading effect for the MonoThreeD sample,
-// exercised via Draw3D.beginEffect / Draw3D.endEffect (use case 2 of the v2 pipeline
-// staging). Proves a user effect can inherit scene DATA (camera, lights, material,
-// bones, shadows) by declaring the matching uniforms — it does NOT inherit the PBR
-// shader itself (v2 spec §3).
+// Snow shader — frosty/crystallized instanced look for snow biome blocks.
 //
-// The shading model is banded N·L + a rim term (cheap, reads clearly as "toon"). It
-// declares the directional + ambient lights, the albedo map/colour, the bone palette,
-// and the shadow-sampling uniforms — so a toon-scoped draw inherits lighting,
-// animation, and shadows by name, with absent uniforms no-op'd by SceneUpload.
+// Validation shader for the grid-instanced-shaders feature: applies a custom
+// effect to a whole biome (snow) via the per-key resolver on instanced grid
+// draws, distinct from the banded toon shader used on grass LargeBlocks. Like
+// Toon.fx it inherits scene DATA (camera, lights, material, shadows) by name
+// via SceneUpload and writes only its shading term — it does NOT inherit the
+// PBR shader itself.
 //
-// §6 compliance (same as ForwardPbr.fx):
+// The shading model is a cool frosty base + a fresnel crystalline rim + a
+// time-driven sparkle (specular glints that drift across the surface), so snow
+// reads as icy/crystalline rather than flat matte. Declares `time` + camera
+// (fresnel/sparkle) in addition to the light/material uniforms.
+//
+// §6 compliance (same as ForwardPbr.fx / Toon.fx):
 //  - §6.1: plain float4x4, mul(position, matrix) vector-LEFT.
-//  - §6.3: OpenGL capped at SM3.0. Shadow sampling uses tex2Dlod (gradient-free) so it
-//          composes with [loop]+break light loops; texel size comes in as a uniform.
+//  - §6.3: OpenGL capped at SM3.0. Shadow sampling uses tex2Dlod (gradient-free).
 #if OPENGL
   #define VS_SHADERMODEL vs_3_0
   #define PS_SHADERMODEL ps_3_0
@@ -24,7 +26,6 @@
   #define PS_SHADERMODEL ps_5_0
 #endif
 
-#define MAX_BONES 128
 #define MAX_SHADOW_CASTERS 16
 
 // Cross-profile texture/sampler declarations (see ForwardPbr.fx for rationale).
@@ -49,7 +50,7 @@ float opacity;
 float2 tiling;
 
 // ------------------------------------------------------------------
-// Lights (ambient + 1 directional — the toon model only uses these)
+// Lights (ambient + 1 directional — the snow model only uses these)
 // ------------------------------------------------------------------
 
 float3 ambientColor;
@@ -62,7 +63,8 @@ int dirLightCastsShadows;
 
 // ------------------------------------------------------------------
 // Shadow atlas (opt-in by declaration). Manual 3x3 PCF, gradient-free
-// (tex2Dlod), matching ForwardPbr.fx so a toon-scoped draw can sample shadows.
+// (tex2Dlod), matching ForwardPbr.fx / Toon.fx so a snow-scoped draw samples
+// shadows.
 // ------------------------------------------------------------------
 
 #if OPENGL
@@ -119,83 +121,22 @@ float computeDirShadow(float3 worldPos) {
 }
 
 // ------------------------------------------------------------------
-// Matrices + camera
+// Matrices + camera + clock
 // ------------------------------------------------------------------
 
 float4x4 matModel;
 float4x4 viewProj;
 float4x4 normalMatrix;
 float3 cameraPos;
-
-struct VS_INPUT {
-  float3 Position : POSITION0;
-  float2 TexCoord : TEXCOORD0;
-  float3 Normal   : NORMAL0;
-};
-
-struct VS_OUTPUT {
-  float4 Position : SV_POSITION;
-  float2 TexCoord : TEXCOORD0;
-  float3 Normal   : TEXCOORD1;
-  float3 WorldPos : TEXCOORD2;
-};
-
-VS_OUTPUT VS_Standard(VS_INPUT input) {
-  VS_OUTPUT output;
-  float4 world = mul(float4(input.Position, 1.0), matModel);
-  output.Position = mul(world, viewProj);
-  output.TexCoord = input.TexCoord;
-  output.Normal = mul(input.Normal, (float3x3) normalMatrix);
-  output.WorldPos = world.xyz;
-  return output;
-}
-
-// ------------------------------------------------------------------
-// Skinned vertex shader — 4-bone linear blend skinning, mirrors ForwardPbr.fx
-// VS_Skinned so a toon-scoped AnimatedModel inherits its bone palette.
-// ------------------------------------------------------------------
-
-float4x4 boneMatrices[MAX_BONES];
-
-struct VS_INPUT_SKINNED {
-  float3 Position   : POSITION0;
-  float2 TexCoord   : TEXCOORD0;
-  float3 Normal     : NORMAL0;
-  float4 BoneWeights: BLENDWEIGHT0;
-  int4   BoneIndices: BLENDINDICES0;
-};
-
-VS_OUTPUT VS_Skinned(VS_INPUT_SKINNED input) {
-  VS_OUTPUT output;
-
-  float4x4 skin =
-    input.BoneWeights.x * boneMatrices[input.BoneIndices.x] +
-    input.BoneWeights.y * boneMatrices[input.BoneIndices.y] +
-    input.BoneWeights.z * boneMatrices[input.BoneIndices.z] +
-    input.BoneWeights.w * boneMatrices[input.BoneIndices.w];
-
-  float4 skinnedPos = mul(float4(input.Position, 1.0), skin);
-  float3 skinnedN = mul(input.Normal, (float3x3) skin);
-
-  float4 world = mul(skinnedPos, matModel);
-  output.Position = mul(world, viewProj);
-  output.TexCoord = input.TexCoord;
-  output.Normal = mul(skinnedN, (float3x3) normalMatrix);
-  output.WorldPos = world.xyz;
-  return output;
-}
+float time;
 
 // ------------------------------------------------------------------
 // Instanced vertex shader — per-sub-mesh instancing opt-in.
 //
-// The pipeline selects `technique Instanced` for instanced draws (see
-// docs/graphics3d/instancing.md and docs/shader-uniforms.md § Instancing).
-// The per-instance 4×4 world matrix arrives as four float4 rows on
-// TEXCOORD1..4 (stream 1, usage indices 1-4 so they don't collide with the
-// mesh's TEXCOORD0 on stream 0). `matModel`/`normalMatrix` are uploaded as
-// identity for instanced draws, so the world + normal transforms are derived
-// in-shader from the instance matrix — matching Instanced.fx and
-// forwardVertexInstanced. PS_Main is reused unchanged.
+// `technique Instanced` is selected for instanced draws. The per-instance 4×4
+// world arrives as four float4 rows on TEXCOORD1..4 (stream 1). matModel /
+// normalMatrix are identity for instanced draws, so the world + normal are
+// derived in-shader from the instance matrix.
 // ------------------------------------------------------------------
 
 struct VS_INPUT_INSTANCED {
@@ -207,6 +148,13 @@ struct VS_INPUT_INSTANCED {
   float4 Row1     : TEXCOORD2;
   float4 Row2     : TEXCOORD3;
   float4 Row3     : TEXCOORD4;
+};
+
+struct VS_OUTPUT {
+  float4 Position : SV_POSITION;
+  float2 TexCoord : TEXCOORD0;
+  float3 Normal   : TEXCOORD1;
+  float3 WorldPos : TEXCOORD2;
 };
 
 VS_OUTPUT VS_Instanced(VS_INPUT_INSTANCED input) {
@@ -221,15 +169,14 @@ VS_OUTPUT VS_Instanced(VS_INPUT_INSTANCED input) {
 }
 
 // ------------------------------------------------------------------
-// Fragment: banded N·L toon shading + rim term.
+// Fragment: frosty/crystallized snow shading.
 // ------------------------------------------------------------------
 
-// Quantise the diffuse term into discrete bands → the cel-shaded look.
-float toonBand(float NdotL) {
-  // 3 bands: shadow / mid / lit. Smoothstep softens the step edges.
-  float b = smoothstep(0.0, 0.05, NdotL) * 0.4;       // mid band
-  b += smoothstep(0.5, 0.55, NdotL) * 0.6;            // lit band
-  return b;
+// Pseudo-random hash for per-surface sparkle variation (cheap, no texture).
+float hash23(float3 p) {
+  float3 q = frac(p * 0.1031);
+  q = q + dot(q, q.yzx + 33.33);
+  return frac((q.x + q.y) * q.z);
 }
 
 float4 PS_Main(VS_OUTPUT input) : SV_TARGET {
@@ -239,43 +186,42 @@ float4 PS_Main(VS_OUTPUT input) : SV_TARGET {
 
   float3 N = normalize(input.Normal);
   float3 V = normalize(cameraPos - input.WorldPos);
+  float3 L = normalize(-dirLightDir);
+
+  // Frosty cool tint — bias the albedo toward an icy blue-white.
+  float3 frostTint = float3(0.80, 0.88, 1.0);
+  float3 frosty = lerp(albedo, albedo * frostTint + float3(0.05, 0.07, 0.10), 0.5);
 
   // Ambient base.
-  float3 ambient = ambientColor * albedo * ambientIntensity;
+  float3 ambient = ambientColor * frosty * ambientIntensity;
 
-  // Directional (L points toward the light; dirLightDir points along travel).
-  float3 L = normalize(-dirLightDir);
-  float NdotL = dot(N, L);
-  float band = toonBand(max(NdotL, 0.0));
+  // Soft diffuse (not banded — snow is smooth, unlike the toon look).
+  float NdotL = max(dot(N, L), 0.0);
   float shadow = computeDirShadow(input.WorldPos);
-  float3 dir = dirLightColor * dirLightIntensity * albedo * band * shadow;
+  float3 diffuse = dirLightColor * dirLightIntensity * frosty * NdotL * shadow;
 
-  // Rim: brighten edges facing away from the camera for a toon outline feel.
-  float rim = 1.0 - max(dot(N, V), 0.0);
-  rim = smoothstep(0.6, 1.0, rim);
-  float3 rimColor = dirLightColor * rim * 0.4;
+  // Crystalline fresnel rim — brightens glancing angles for an icy sheen.
+  float fresnel = pow(1.0 - max(dot(N, V), 0.0), 3.0);
+  float3 rim = dirLightColor * fresnel * 0.6;
 
-  float3 result = ambient + dir + rimColor;
+  // Time-driven sparkle: drifting specular glints keyed off world position so
+  // they sit on the surface rather than sliding with the camera. Quantise the
+  // position to discrete crystal cells; a glint fires when its phase aligns.
+  float3 cell = floor(input.WorldPos * 8.0);
+  float h = hash23(cell);
+  float phase = h * 6.2831853 + time * 2.0;
+  float glint = pow(max(0.0, sin(phase)), 32.0);
+  // Only glint where the surface faces the view-ish direction.
+  glint *= smoothstep(0.2, 0.8, dot(N, V));
+  float3 sparkle = dirLightColor * glint * 0.8;
+
+  float3 result = ambient + diffuse + rim + sparkle;
   return float4(result, texColor.a * opacity);
 }
 
 // ------------------------------------------------------------------
-// Techniques
+// Technique
 // ------------------------------------------------------------------
-
-technique Standard {
-  pass P0 {
-    VertexShader = compile VS_SHADERMODEL VS_Standard();
-    PixelShader = compile PS_SHADERMODEL PS_Main();
-  }
-};
-
-technique Skinned {
-  pass P0 {
-    VertexShader = compile VS_SHADERMODEL VS_Skinned();
-    PixelShader = compile PS_SHADERMODEL PS_Main();
-  }
-};
 
 technique Instanced {
   pass P0 {

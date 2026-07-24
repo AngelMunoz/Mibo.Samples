@@ -377,9 +377,16 @@ let tests =
     }
 
     // ── Slope surface tests ──
+    // The slope mesh is centered on its footprint (CenterOffsetX/Z = cellSize/2),
+    // so the analytical surface's footprint starts at cellWorldX + cellSize/2,
+    // not at the cell corner. Player positions below are footprint-relative.
 
     test "slopeSurfaceY: XPos at low end returns worldY" {
-      let sy = slopeSurfaceY (Slope(Grass, XPos)) 0.0f 0.0f 0.0f 0.0f 0.0f
+      // Footprint is centered: spans [cellSize/2, cellSize/2 + run] on X and
+      // [cellSize/2, cellSize/2 + width] on Z. Low end of the run + an interior Z.
+      let px = cellSize * 0.5f
+      let pz = cellSize * 0.5f + 1.0f
+      let sy = slopeSurfaceY (Slope(Grass, XPos)) 0.0f 0.0f 0.0f px pz
 
       match sy with
       | ValueSome h ->
@@ -391,7 +398,10 @@ let tests =
       let info = lookup(Slope(Grass, XPos))
       let run = info.ExtentW
       let rise = info.ExtentH
-      let sy = slopeSurfaceY (Slope(Grass, XPos)) 0.0f 0.0f 0.0f run 0.0f
+      // High end is at footprint start + run.
+      let px = cellSize * 0.5f + run
+      let pz = cellSize * 0.5f + 1.0f
+      let sy = slopeSurfaceY (Slope(Grass, XPos)) 0.0f 0.0f 0.0f px pz
 
       match sy with
       | ValueSome h ->
@@ -407,9 +417,11 @@ let tests =
       let info = lookup(Slope(Grass, XPos))
       let run = info.ExtentW
       let rise = info.ExtentH
+      // Midpoint is at footprint start + run/2.
+      let px = cellSize * 0.5f + run / 2.0f
+      let pz = cellSize * 0.5f + 1.0f
 
-      let sy =
-        slopeSurfaceY (Slope(Grass, XPos)) 0.0f 0.0f 0.0f (run / 2.0f) 0.0f
+      let sy = slopeSurfaceY (Slope(Grass, XPos)) 0.0f 0.0f 0.0f px pz
 
       match sy with
       | ValueSome h ->
@@ -422,7 +434,8 @@ let tests =
     }
 
     test "slopeSurfaceY: outside footprint returns ValueNone" {
-      let sy = slopeSurfaceY (Slope(Grass, XPos)) 0.0f 0.0f 0.0f -1.0f 0.0f
+      // px well before the centered footprint (which starts at cellSize/2).
+      let sy = slopeSurfaceY (Slope(Grass, XPos)) 0.0f 0.0f 0.0f -1.0f 1.0f
       Expect.isTrue sy.IsNone "should be outside footprint"
     }
 
@@ -435,12 +448,16 @@ let tests =
       let info = lookup(Slope(Grass, XNeg))
       let run = info.ExtentW
       let rise = info.ExtentH
+      // Footprint is centered: spans [cellSize/2, cellSize/2 + run] on X.
+      let lowX = cellSize * 0.5f
+      let highX = cellSize * 0.5f + run
+      let pz = cellSize * 0.5f + 1.0f
 
-      // At px=0 (leftmost): should be HIGH (worldY + rise)
-      let syHigh = slopeSurfaceY (Slope(Grass, XNeg)) 0.0f 0.0f 0.0f 0.0f 0.0f
+      // At the footprint's low end: should be HIGH (worldY + rise)
+      let syHigh = slopeSurfaceY (Slope(Grass, XNeg)) 0.0f 0.0f 0.0f lowX pz
 
-      // At px=run (rightmost): should be LOW (worldY)
-      let syLow = slopeSurfaceY (Slope(Grass, XNeg)) 0.0f 0.0f 0.0f run 0.0f
+      // At the footprint's high end: should be LOW (worldY)
+      let syLow = slopeSurfaceY (Slope(Grass, XNeg)) 0.0f 0.0f 0.0f highX pz
 
       match syHigh, syLow with
       | ValueSome hH, ValueSome hL ->

@@ -244,15 +244,19 @@ let resolveCollision
                   let coneR = r + depth * coneTanAngle
                   let struct (ew, _, ed) = BlockData.colliderExtents blockType
 
+                  // Multi-cell blocks are centered on their footprint, so the
+                  // collider rect shifts by the same XZ offset as the mesh.
+                  let struct (cx, cz) = BlockData.colliderCenterOffset blockType
+
                   let struct (overlaps, _, _, _) =
                     circleVsRectXZ
                       pos.X
                       pos.Z
                       coneR
-                      worldX
-                      (worldX + ew)
-                      worldZ
-                      (worldZ + ed)
+                      (worldX + cx)
+                      (worldX + cx + ew)
+                      (worldZ + cz)
+                      (worldZ + cz + ed)
 
                   if overlaps && surfaceY > groundY then
                     groundY <- surfaceY
@@ -312,6 +316,10 @@ let resolveCollision
 
                 let struct (ew, eh, ed) = BlockData.colliderExtents blockType
 
+                // Multi-cell blocks are centered on their footprint, so the
+                // collider rect shifts by the same XZ offset as the mesh.
+                let struct (cx, cz) = BlockData.colliderCenterOffset blockType
+
                 let struct (yOverlaps, yPenUp, yPenDown) =
                   cylinderYOverlap yBottom yTop worldY (worldY + eh)
 
@@ -321,10 +329,10 @@ let resolveCollision
                       pos.X
                       pos.Z
                       r
-                      worldX
-                      (worldX + ew)
-                      worldZ
-                      (worldZ + ed)
+                      (worldX + cx)
+                      (worldX + cx + ew)
+                      (worldZ + cz)
+                      (worldZ + cz + ed)
 
                   if xzOverlaps then
                     let yPen = min yPenUp yPenDown

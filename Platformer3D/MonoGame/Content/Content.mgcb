@@ -2952,6 +2952,11 @@
 /processor:EffectProcessor
 /build:Toon.fx;Toon
 
+#begin Snow.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/build:Snow.fx;Snow
+
 #begin ../../assets/Fonts/Monogram.spritefont
 /importer:FontDescriptionImporter
 /processor:FontDescriptionProcessor

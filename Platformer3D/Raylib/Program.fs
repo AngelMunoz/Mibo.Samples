@@ -100,15 +100,13 @@ let main _ =
       let pipeline =
         ForwardPbrPipeline(
           shadowBiasConfig = {
-            DirectionalBias = 0.002f
-            PointBias = 0.01f
-            SpotBias = 0.001f
-            SlopeScaleBias = 0.001f
+            ShadowBiasConfig.defaults with
+                DirectionalBias = 0.002f
+                SlopeScaleBias = 0.0008f
           },
           shadowAtlasConfig = {
             ShadowAtlasConfig.defaults with
-                Resolution = 4096
-                DirectionalLightSize = ValueSome 30.f
+                Resolution = 1024 * 8
           }
 
         )

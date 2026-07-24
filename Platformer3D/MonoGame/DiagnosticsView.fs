@@ -12,7 +12,7 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
     buffer
     |> Draw.text(
       TextState.create(model.DiagFont, text, Vector2(10.0f, yPos))
-      |> TextState.withScale 0.75f
+      |> TextState.withScale 1f
       |> TextState.withColor Microsoft.Xna.Framework.Color.Yellow
       |> TextState.withLayer 0<RenderLayer>
     )

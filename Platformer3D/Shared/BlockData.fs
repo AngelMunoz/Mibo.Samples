@@ -40,6 +40,15 @@ type BlockInfo = {
   /// Y rotation in degrees.
   RotationY: float32
   Category: BlockCategory
+  /// Horizontal centering offset on X (world units). Kenney block meshes are
+  /// centered on their origin (symmetric ±extent/2 — verified via BoneProbe),
+  /// but blocks are placed at the cell corner. A 1-cell mesh at a corner lands
+  /// centered on its cell by uniformity; a 2-cell-wide mesh does not — it must
+  /// be translated +0.5 along each multi-cell axis to center on its footprint.
+  /// 0.0 for 1-cell-wide-in-X blocks; 0.5 (cellSize/2) for 2-cell-wide-in-X.
+  CenterOffsetX: float32
+  /// Horizontal centering offset on Z (world units). See CenterOffsetX.
+  CenterOffsetZ: float32
 }
 
 // -------------------------------------------------------------
@@ -96,6 +105,8 @@ let private solidTerrain
   (w: float32)
   (h: float32)
   (d: float32)
+  (cx: float32)
+  (cz: float32)
   : BlockInfo =
   {
     ModelName = name
@@ -105,6 +116,8 @@ let private solidTerrain
     VerticalOffset = 0.0f
     RotationY = 0.0f
     Category = Solid
+    CenterOffsetX = cx
+    CenterOffsetZ = cz
   }
 
 let private decoration
@@ -122,6 +135,8 @@ let private decoration
     VerticalOffset = offset
     RotationY = 0.0f
     Category = Decoration
+    CenterOffsetX = 0.0f
+    CenterOffsetZ = 0.0f
   }
 
 let private collectible
@@ -138,6 +153,8 @@ let private collectible
     VerticalOffset = cellSize * 0.5f
     RotationY = 0.0f
     Category = Collectible
+    CenterOffsetX = 0.0f
+    CenterOffsetZ = 0.0f
   }
 
 let private emptyInfo: BlockInfo = {
@@ -148,7 +165,13 @@ let private emptyInfo: BlockInfo = {
   VerticalOffset = 0.0f
   RotationY = 0.0f
   Category = Empty
+  CenterOffsetX = 0.0f
+  CenterOffsetZ = 0.0f
 }
+
+/// Half a cell — the centering translation for a 2-cell-wide mesh to sit on its
+/// footprint (meshes are centered on origin; blocks are placed at the cell corner).
+let private halfCell = cellSize * 0.5f
 
 /// Lookup resolved block data for a BlockType.
 /// Terrain extents are from the BoneProbe dimensions report (grass/snow
@@ -157,13 +180,22 @@ let private emptyInfo: BlockInfo = {
 let lookup(bt: BlockType) : BlockInfo =
   match bt with
   | BlockType.Empty -> emptyInfo
-  // Terrain (biome-as-field) — solid collision
-  | Block biome -> solidTerrain (blockModel biome) 1.082f 1.000f 1.082f
-  | LargeBlock biome -> solidTerrain (largeModel biome) 2.082f 1.000f 2.082f
-  | TallBlock biome -> solidTerrain (tallModel biome) 2.082f 2.000f 2.082f
-  | LongBlock biome -> solidTerrain (longModel biome) 2.082f 1.000f 1.082f
-  | LowBlock biome -> solidTerrain (lowModel biome) 1.082f 0.500f 1.082f
-  | NarrowBlock biome -> solidTerrain (narrowModel biome) 0.782f 1.000f 0.782f
+  // Terrain (biome-as-field) — solid collision.
+  // Center offsets: 1-cell blocks need none (centered mesh at a corner lands on
+  // its cell by uniformity); 2-cell-wide blocks need +0.5 along each multi-cell
+  // axis to center on their footprint (meshes are centered on origin).
+  | Block biome ->
+    solidTerrain (blockModel biome) 1.082f 1.000f 1.082f 0.0f 0.0f
+  | LargeBlock biome ->
+    solidTerrain (largeModel biome) 2.082f 1.000f 2.082f halfCell halfCell
+  | TallBlock biome ->
+    solidTerrain (tallModel biome) 2.082f 2.000f 2.082f halfCell halfCell
+  | LongBlock biome ->
+    solidTerrain (longModel biome) 2.082f 1.000f 1.082f halfCell 0.0f
+  | LowBlock biome ->
+    solidTerrain (lowModel biome) 1.082f 0.500f 1.082f 0.0f 0.0f
+  | NarrowBlock biome ->
+    solidTerrain (narrowModel biome) 0.782f 1.000f 0.782f 0.0f 0.0f
   | Slope(biome, dir) -> {
       ModelName = slopeModel biome
       ExtentW = 2.082f
@@ -172,6 +204,8 @@ let lookup(bt: BlockType) : BlockInfo =
       VerticalOffset = 0.0f
       RotationY = slopeRotationY dir
       Category = Solid
+      CenterOffsetX = halfCell
+      CenterOffsetZ = halfCell
     }
   // Non-terrain — platforms (solid-colliding thin slabs, current behavior)
   | Platform -> {
@@ -182,6 +216,8 @@ let lookup(bt: BlockType) : BlockInfo =
       VerticalOffset = cellSize * 0.5f
       RotationY = 0.0f
       Category = Solid
+      CenterOffsetX = 0.0f
+      CenterOffsetZ = 0.0f
     }
   | PlatformRamp -> {
       ModelName = KenneyModels.platformRamp
@@ -191,6 +227,8 @@ let lookup(bt: BlockType) : BlockInfo =
       VerticalOffset = cellSize * 0.5f
       RotationY = 0.0f
       Category = Solid
+      CenterOffsetX = 0.0f
+      CenterOffsetZ = 0.0f
     }
   // Hazard
   | Spikes -> {
@@ -201,6 +239,8 @@ let lookup(bt: BlockType) : BlockInfo =
       VerticalOffset = 0.0f
       RotationY = 0.0f
       Category = Hazard
+      CenterOffsetX = 0.0f
+      CenterOffsetZ = 0.0f
     }
   // Decorations
   | TreePine -> decoration KenneyModels.treePine 0.948f 1.997f 0.948f 0.0f
@@ -230,6 +270,22 @@ let modelVerticalOffset(bt: BlockType) : float32 = (lookup bt).VerticalOffset
 
 /// Y rotation in degrees.
 let modelRotation(bt: BlockType) : float32 = (lookup bt).RotationY
+
+/// Horizontal centering offset on X (world units). 0.0 for 1-cell-wide-in-X
+/// blocks; cellSize/2 for 2-cell-wide-in-X. Consumed by the render transform
+/// and the physics collider so both move together (see colliderCenterOffset).
+let centerOffsetX(bt: BlockType) : float32 = (lookup bt).CenterOffsetX
+
+/// Horizontal centering offset on Z (world units). See centerOffsetX.
+let centerOffsetZ(bt: BlockType) : float32 = (lookup bt).CenterOffsetZ
+
+/// The (X, Z) centering offset a physics collider must add to its corner origin
+/// so its AABB tracks the rendered mesh. One source of truth shared with the
+/// render transform — keeping them in lockstep is what lets the player stand
+/// correctly on a re-centered multi-cell block.
+let colliderCenterOffset(bt: BlockType) : struct (float32 * float32) =
+  let info = lookup bt
+  struct (info.CenterOffsetX, info.CenterOffsetZ)
 
 /// True when the block collides as a solid. Preserves the pre-consolidation
 /// behavior exactly (terrain + platforms + spikes + trees/rocks/crates/barrels
@@ -306,33 +362,31 @@ let slopeSurfaceY
     let rise = info.ExtentH
     let width = info.ExtentD
 
+    // The rendered slope mesh is centered on its footprint via the center
+    // offset (see lookup), so the analytical surface must use the same shifted
+    // origin — otherwise the ramp lifts the player from the wrong spot.
+    let originX = cellWorldX + info.CenterOffsetX
+    let originZ = cellWorldZ + info.CenterOffsetZ
+
     // Footprint bounds and parametric t along the run axis.
     let xMin, xMax, zMin, zMax, t =
       match dir with
       | XPos ->
-        cellWorldX,
-        cellWorldX + run,
-        cellWorldZ,
-        cellWorldZ + width,
-        (px - cellWorldX) / run
+        originX, originX + run, originZ, originZ + width, (px - originX) / run
       | XNeg ->
-        cellWorldX,
-        cellWorldX + run,
-        cellWorldZ,
-        cellWorldZ + width,
-        (cellWorldX + run - px) / run
+        originX,
+        originX + run,
+        originZ,
+        originZ + width,
+        (originX + run - px) / run
       | ZPos ->
-        cellWorldX,
-        cellWorldX + width,
-        cellWorldZ,
-        cellWorldZ + run,
-        (pz - cellWorldZ) / run
+        originX, originX + width, originZ, originZ + run, (pz - originZ) / run
       | ZNeg ->
-        cellWorldX,
-        cellWorldX + width,
-        cellWorldZ,
-        cellWorldZ + run,
-        (cellWorldZ + run - pz) / run
+        originX,
+        originX + width,
+        originZ,
+        originZ + run,
+        (originZ + run - pz) / run
 
     if px >= xMin && px <= xMax && pz >= zMin && pz <= zMax then
       ValueSome(cellWorldY + rise * Math.Clamp(t, 0.0f, 1.0f))

@@ -112,11 +112,14 @@ let main _ =
     |> Program.withRenderer(fun () ->
       let pipeline =
         ForwardPipeline(
-          shadowBias = ShadowBiasConfig.defaults,
+          shadowBias = {
+            ShadowBiasConfig.defaults with
+                DirectionalBias = 0.002f
+                SlopeScaleBias = 0.0008f
+          },
           shadowAtlas = {
             ShadowAtlasConfig.defaults with
-                Resolution = 1024 * 4
-                GridSnapSize = 16.0f
+                Resolution = 1024 * 8
           }
         )
 

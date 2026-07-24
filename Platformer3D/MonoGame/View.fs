@@ -96,21 +96,34 @@ let private instancedCtx =
         let info = lookup blockType
         let rotAngle = info.RotationY * MathF.PI / 180.0f
         let yOff = info.VerticalOffset
+        // Center multi-cell meshes on their footprint (meshes are centered on
+        // origin; blocks are placed at the cell corner — see BlockData). Folded
+        // into the translation so all three branches pick it up.
+        let placement =
+          Vector3(
+            worldPos.X + info.CenterOffsetX,
+            worldPos.Y,
+            worldPos.Z + info.CenterOffsetZ
+          )
 
         // Build the local-to-world transform from the block's placement.
         let worldMatrix =
           if rotAngle = 0.0f && yOff = 0.0f then
-            Matrix.CreateTranslation(worldPos)
+            Matrix.CreateTranslation(placement)
           elif rotAngle = 0.0f then
-            Matrix.CreateTranslation(worldPos.X, worldPos.Y + yOff, worldPos.Z)
+            Matrix.CreateTranslation(
+              placement.X,
+              placement.Y + yOff,
+              placement.Z
+            )
           else
             let rot = Matrix.CreateRotationY(rotAngle)
 
             let trans =
               Matrix.CreateTranslation(
-                worldPos.X,
-                worldPos.Y + yOff,
-                worldPos.Z
+                placement.X,
+                placement.Y + yOff,
+                placement.Z
               )
 
             rot * trans
@@ -125,6 +138,33 @@ let private instancedCtx =
         | true, bone -> bone * worldMatrix
         | false, _ -> worldMatrix
   )
+
+// -------------------------------------------------------------
+// Per-key custom shader scoping (grid-instanced-shaders feature validation).
+//
+// Two distinct effects exercise the per-key resolver on two key groups:
+//   * Snow biome (any model name containing "snow") → Snow.fx — frosty,
+//     crystalline sparkle.
+//   * LargeBlock grass ("block-grass-large") → Toon.fx — banded cel shading.
+// Everything else falls through to the default PBR instanced path
+// (ValueNone). Both shaders opt into instancing via `technique Instanced`
+// (see Content/Toon.fx, Content/Snow.fx and the Mibo instancing docs); a
+// shader that doesn't opt in would silently fall back to PBR.
+//
+// The context is keyed by model name (getKey = modelName), so the resolver
+// matches on the bare name. Precedence when a block is both snow AND large
+// (e.g. "block-snow-large"): biome wins — the snow branch is checked first.
+// -------------------------------------------------------------
+
+// Lazy-loaded, cached after first use (assets are unavailable at module init).
+let mutable private toonEffect: Effect voption = ValueNone
+let mutable private snowEffect: Effect voption = ValueNone
+
+let private shaderForKey(name: string) : Effect voption =
+  // Biome wins over shape: a snow LargeBlock is snow first.
+  if name.Contains("snow") then snowEffect
+  elif name = KenneyModels.blockGrassLarge then toonEffect
+  else ValueNone
 
 let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
   let l = model.Lighting
@@ -163,6 +203,15 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
   currentGameContext <- ctx
   instancedCtx.ResetFrameBuffers()
 
+  // Lazy-load the custom effects on the first frame (IAssets is unavailable at
+  // module init). Loaded once, cached in the module-level voptions above.
+  match toonEffect, snowEffect with
+  | ValueNone, ValueNone ->
+    let assets = GameContext.getService<IAssets> ctx
+    toonEffect <- ValueSome(assets.Effect "Toon")
+    snowEffect <- ValueSome(assets.Effect "Snow")
+  | _ -> ()
+
   for light in model.VisibleLights do
     Draw3D.addPointLight light buffer |> Draw3D.drop
 
@@ -180,10 +229,11 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
     if (chunkCenter - numericsCamPos).LengthSquared() <= maxChunkDistSq then
       let terrainGrid, _ = LayeredGrid3D.getOrAddLayer Layer.Terrain chunk.Grids
 
-      CellGridRenderer3D.renderVolumeInstanced
+      CellGridRenderer3D.renderVolumeInstancedWithEffect
         instancedCtx
         bounds
         terrainGrid
+        shaderForKey
         buffer
 
   let playerPos = model.Physics.Position
