@@ -22,6 +22,17 @@ open BoneProbe.Scene
 // collected, re-sorted by name, and the report is printed in one pass.
 // --------------------------------------------------------------
 
+/// Per-mesh scan detail (full verbosity only).
+[<Struct>]
+type MeshReport = {
+  MeshName: string
+  NodeName: string
+  ChainTranslation: struct (float32 * float32 * float32)
+  ChainScale: struct (float32 * float32 * float32)
+  LocalMinY: float32
+  LocalMaxY: float32
+}
+
 /// Result of scanning one model file.
 [<Struct>]
 type ModelReport = {
@@ -33,88 +44,160 @@ type ModelReport = {
   MeshCount: int
   AnimationCount: int
   Error: string
+  /// Raw mesh-local min/max per axis (Y = up).
+  RawMin: struct (float32 * float32 * float32)
+  RawMax: struct (float32 * float32 * float32)
+  /// Bounds after applying the scene-graph node transforms (what a
+  /// renderer that bakes node transforms actually draws).
+  SceneMin: struct (float32 * float32 * float32)
+  SceneMax: struct (float32 * float32 * float32)
+  /// Per-mesh detail: mesh name, node chain translations/scales,
+  /// raw local Y range.
+  Meshes: MeshReport[]
 }
 
-/// Fold every vertex across every mesh into per-axis extents. Vertices are
-/// mesh-local (same Assimp flag set as Mibo.MonoGame/Assets.fs, no
-/// PreTransformVertices), so the extent equals the model's size in model
-/// units. Returns ValueNone when the scene has no vertices at all.
-let private measureScene(scene: Scene) : (float32 * float32 * float32) voption =
-  let mutable minX, maxX = Single.MaxValue, Single.MinValue
-  let mutable minY, maxY = Single.MaxValue, Single.MinValue
-  let mutable minZ, maxZ = Single.MaxValue, Single.MinValue
-  let mutable anyVertex = false
 
-  for mi = 0 to scene.MeshCount - 1 do
-    let mesh = scene.Meshes[mi]
+/// Approximate per-axis scale of a matrix (row lengths — node
+/// transforms use the System.Numerics row-vector convention).
+let private scaleOf(m: System.Numerics.Matrix4x4) =
+  struct (System.Numerics.Vector3(m.M11, m.M12, m.M13).Length(),
+          System.Numerics.Vector3(m.M21, m.M22, m.M23).Length(),
+          System.Numerics.Vector3(m.M31, m.M32, m.M33).Length())
 
-    for vi = 0 to mesh.VertexCount - 1 do
-      let v = mesh.Vertices[vi]
-      anyVertex <- true
-      let x, y, z = v.X, v.Y, v.Z
+/// Bounds accumulator for the raw/scene fold below.
+type private BoundsAcc() =
+  member val MinX = Single.MaxValue with get, set
+  member val MinY = Single.MaxValue with get, set
+  member val MinZ = Single.MaxValue with get, set
+  member val MaxX = Single.MinValue with get, set
+  member val MaxY = Single.MinValue with get, set
+  member val MaxZ = Single.MinValue with get, set
+  member val Any = false with get, set
 
-      if x < minX then
-        minX <- x
+  member this.Add(x: float32, y: float32, z: float32) =
+    this.Any <- true
 
-      if x > maxX then
-        maxX <- x
+    if x < this.MinX then
+      this.MinX <- x
 
-      if y < minY then
-        minY <- y
+    if x > this.MaxX then
+      this.MaxX <- x
 
-      if y > maxY then
-        maxY <- y
+    if y < this.MinY then
+      this.MinY <- y
 
-      if z < minZ then
-        minZ <- z
+    if y > this.MaxY then
+      this.MaxY <- y
 
-      if z > maxZ then
-        maxZ <- z
+    if z < this.MinZ then
+      this.MinZ <- z
 
-  if anyVertex then
-    ValueSome(maxX - minX, maxY - minY, maxZ - minZ)
-  else
-    ValueNone
+    if z > this.MaxZ then
+      this.MaxZ <- z
+
+  member this.Min = struct (this.MinX, this.MinY, this.MinZ)
+  member this.Max = struct (this.MaxX, this.MaxY, this.MaxZ)
+
+/// Full measurement of one loaded scene: raw mesh-local bounds,
+/// scene-graph-transformed bounds, and per-mesh detail.
+let private measureSceneFull(scene: Scene) =
+  let raw = BoundsAcc()
+  let world = BoundsAcc()
+  let meshes = ResizeArray<MeshReport>()
+
+  let rec walk (node: Node) (parent: System.Numerics.Matrix4x4) =
+    // Row-vector convention: world = v * node * parent.
+    let m = node.Transform * parent
+
+    for mi in node.MeshIndices do
+      let mesh = scene.Meshes[mi]
+      let mutable minY = Single.MaxValue
+      let mutable maxY = Single.MinValue
+
+      for vi = 0 to mesh.VertexCount - 1 do
+        let v = mesh.Vertices[vi]
+        raw.Add(v.X, v.Y, v.Z)
+
+        if v.Y < minY then
+          minY <- v.Y
+
+        if v.Y > maxY then
+          maxY <- v.Y
+
+        let w =
+          System.Numerics.Vector3.Transform(
+            System.Numerics.Vector3(v.X, v.Y, v.Z),
+            m
+          )
+
+        world.Add(w.X, w.Y, w.Z)
+
+      meshes.Add {
+        MeshName = mesh.Name
+        NodeName = node.Name
+        ChainTranslation = struct (m.M41, m.M42, m.M43)
+        ChainScale = scaleOf m
+        LocalMinY = minY
+        LocalMaxY = maxY
+      }
+
+    for child in node.Children do
+      walk child m
+
+  walk scene.RootNode System.Numerics.Matrix4x4.Identity
+
+  struct (raw, world, meshes.ToArray())
 
 /// Scan one .glb into a ModelReport. Owns its own AssimpContext via
 /// Scene.tryLoad, so it is safe to call concurrently.
 let private scanOne(path: string) : ModelReport =
   let name = Path.GetFileName path
 
+  let empty error loaded scene = {
+    Name = name
+    Loaded = loaded
+    SizeX = 0.0f
+    SizeY = 0.0f
+    SizeZ = 0.0f
+    MeshCount = scene
+    AnimationCount = 0
+    Error = error
+    RawMin = struct (0f, 0f, 0f)
+    RawMax = struct (0f, 0f, 0f)
+    SceneMin = struct (0f, 0f, 0f)
+    SceneMax = struct (0f, 0f, 0f)
+    Meshes = [||]
+  }
+
   match tryLoad path with
-  | ValueNone -> {
-      Name = name
-      Loaded = false
-      SizeX = 0.0f
-      SizeY = 0.0f
-      SizeZ = 0.0f
-      MeshCount = 0
-      AnimationCount = 0
-      Error = "load failed"
-    }
+  | ValueNone -> empty "load failed" false 0
   | ValueSome scene ->
-    match measureScene scene with
-    | ValueNone -> {
+    let struct (raw, world, meshes) = measureSceneFull scene
+
+    if not raw.Any then
+      {
+        empty "no vertices" true scene.MeshCount with
+            AnimationCount = scene.AnimationCount
+      }
+    else
+      let struct (minX, minY, minZ) = raw.Min
+      let struct (maxX, maxY, maxZ) = raw.Max
+
+      {
         Name = name
         Loaded = true
-        SizeX = 0.0f
-        SizeY = 0.0f
-        SizeZ = 0.0f
+        SizeX = maxX - minX
+        SizeY = maxY - minY
+        SizeZ = maxZ - minZ
         MeshCount = scene.MeshCount
         AnimationCount = scene.AnimationCount
-        Error = "no vertices"
+        Error = ""
+        RawMin = raw.Min
+        RawMax = raw.Max
+        SceneMin = world.Min
+        SceneMax = world.Max
+        Meshes = meshes
       }
-    | ValueSome(sx, sy, sz) ->
-        {
-          Name = name
-          Loaded = true
-          SizeX = sx
-          SizeY = sy
-          SizeZ = sz
-          MeshCount = scene.MeshCount
-          AnimationCount = scene.AnimationCount
-          Error = ""
-        }
 
 /// Resolve the input path to a list of .glb files. A directory is scanned
 /// for *.glb (top-level only); a single file is returned as-is. Returns
@@ -135,7 +218,28 @@ let private resolveFiles(path: string) : string[] voption =
   | ValueSome files -> ValueSome files
   | ValueNone -> ValueSome [| path |]
 
-let private printReport(reports: ModelReport[]) =
+let private printDetail(r: ModelReport) =
+  let struct (rawMinX, rawMinY, rawMinZ) = r.RawMin
+  let struct (rawMaxX, rawMaxY, rawMaxZ) = r.RawMax
+  let struct (scMinX, scMinY, scMinZ) = r.SceneMin
+  let struct (scMaxX, scMaxY, scMaxZ) = r.SceneMax
+
+  printfn $"{r.Name}:"
+
+  printfn
+    $"  raw   min ({rawMinX:F3}, {rawMinY:F3}, {rawMinZ:F3})  max ({rawMaxX:F3}, {rawMaxY:F3}, {rawMaxZ:F3})"
+
+  printfn
+    $"  scene min ({scMinX:F3}, {scMinY:F3}, {scMinZ:F3})  max ({scMaxX:F3}, {scMaxY:F3}, {scMaxZ:F3})"
+
+  for m in r.Meshes do
+    let struct (tx, ty, tz) = m.ChainTranslation
+    let struct (sx, sy, sz) = m.ChainScale
+
+    printfn
+      $"  mesh {m.MeshName} (node {m.NodeName}): localY {m.LocalMinY:F3}..{m.LocalMaxY:F3}  nodeT ({tx:F3}, {ty:F3}, {tz:F3})  nodeS ({sx:F3}, {sy:F3}, {sz:F3})"
+
+let private printReport (verbosity: Verbosity) (reports: ModelReport[]) =
   let separator = String.replicate 95 "-"
   // String literals can't appear directly inside interpolation holes, so the
   // header labels are bound first.
@@ -155,6 +259,13 @@ let private printReport(reports: ModelReport[]) =
       printfn $"{r.Name, -44}{r.Error}"
 
   printfn "%s" separator
+
+  if verbosity = Full then
+    for r in reports do
+      if r.Loaded && r.Error = "" then
+        printDetail r
+
+    printfn "%s" separator
 
   let loaded = reports |> Array.filter(fun r -> r.Loaded)
   let failed = reports.Length - loaded.Length
@@ -185,5 +296,5 @@ let probe(options: Options) : int =
       |> Array.Parallel.map scanOne
       |> Array.sortBy(fun r -> r.Name)
 
-    printReport reports
+    printReport options.Verbosity reports
     0
