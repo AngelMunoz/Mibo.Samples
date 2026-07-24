@@ -106,7 +106,7 @@ let main _ =
           },
           shadowAtlasConfig = {
             ShadowAtlasConfig.defaults with
-                Resolution = 1024 * 8
+                Resolution = 1024 * 4
           }
 
         )
