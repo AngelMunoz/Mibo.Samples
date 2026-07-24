@@ -11,7 +11,7 @@ let main _ =
   let mgProgram =
     Program.create()
     |> MonoGameProgram.ofProgram
-    |> MonoGameProgram.withConfig(fun (game, graphics) ->
+    |> MonoGameProgram.withConfig(fun (game, _graphics) ->
       game.Content.RootDirectory <- "Content"
       game.IsMouseVisible <- false)
 

@@ -1158,7 +1158,6 @@ let main _ =
           Width = int Constants.VPWidth
           Height = int Constants.VPHeight
           Title = "Mibo Raylib 2D Game"
-          TargetFPS = 60
     })
     |> Program.withAssetsBasePath AppContext.BaseDirectory
     |> Program.withInput

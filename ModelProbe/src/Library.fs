@@ -482,7 +482,6 @@ let create() : MonoGameProgram<Model, Msg> =
         Width = 1280
         Height = 720
         Title = "ModelProbe"
-        TargetFPS = 60
   })
   |> Program.withInput
   |> Program.withSubscription(fun ctx _model ->

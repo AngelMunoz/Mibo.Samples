@@ -113,8 +113,8 @@ let update (msg: Msg) (model: Model) : struct (Model * Cmd<Msg>) =
         model.Minimap
 
     model.Minimap <- minimapModel
-    // Diagnostics
-    model.Diag <- Platformer.Diagnostics.update dt
+    // Diagnostics are sampled wall-clock in the View (once per Draw), not here:
+    // measuring in Update hides frame drops. See Platformer.Diagnostics.
 
     // Camera follows the player — framing is a camera concern, not physics'.
     let query = {

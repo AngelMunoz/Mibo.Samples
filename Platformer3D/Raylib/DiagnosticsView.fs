@@ -7,13 +7,15 @@ open Raylib_cs
 open Platformer3D.Raylib.Types
 
 let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
+  // Sample the wall-clock interval since the previous Draw — the real render rate.
+  model.Diag.Tick()
   let pos = model.Physics.Position
 
   buffer
   |> Draw.text {
     Font = model.DiagFont
     Text =
-      $"FPS: {model.Diag.Fps}  Chunks: {model.Chunks.Chunks.Count}  Score: {model.Physics.Score}"
+      $"FPS: {model.Diag.Fps}  ({model.Diag.FrameTime:F1}ms)  Chunks: {model.Chunks.Chunks.Count}  Score: {model.Physics.Score}"
     Position = Vector2(10.0f, 10.0f)
     FontSize = 20.0f
     Spacing = 1.0f

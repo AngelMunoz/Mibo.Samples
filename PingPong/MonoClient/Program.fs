@@ -165,7 +165,6 @@ let main _args =
           Title = "Ping Pong - Client"
           Width = 800
           Height = 800
-          TargetFPS = 60
     })
     |> Program.withRenderer(fun () ->
       Renderer2D.create(fun c m b -> view c m.LocalState b))
