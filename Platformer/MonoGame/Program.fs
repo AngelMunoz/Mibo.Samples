@@ -163,7 +163,6 @@ let main _ =
           Width = Constants.viewportWidth
           Height = Constants.viewportHeight
           Title = "Mibo MonoGame Platformer"
-          TargetFPS = 120
     })
     |> Program.withInput
     |> Program.withSubscription subscribe

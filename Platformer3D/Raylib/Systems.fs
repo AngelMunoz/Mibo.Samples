@@ -157,8 +157,8 @@ let update (msg: Msg) (model: Model) : struct (Model * Cmd<Msg>) =
 
     model.Minimap <- minimapModel
 
-    // Diagnostics
-    model.Diag <- Platformer3D.Diagnostics.update dt model.Diag
+    // Diagnostics are sampled wall-clock in DiagnosticsView (once per Draw),
+    // not here: measuring in Update hides frame drops. See Platformer3D.Diagnostics.
 
     // Animation (derives target clip from physics, plays on backend)
     if model.PlayerAnimClips.Clips.Length > 0 then

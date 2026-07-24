@@ -6,6 +6,9 @@ open Mibo.Elmish.Graphics2D
 open Platformer3D.MonoGame.Types
 
 let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
+  // Sample the wall-clock interval since the previous Draw. This is the real
+  // render rate — unlike the fixed-timestep Tick dt, it exposes frame drops.
+  model.Diag.Tick()
   let pos = model.Physics.Position
 
   let inline writeLine (yPos: float32) (text: string) =
@@ -20,7 +23,7 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
 
   writeLine
     30.0f
-    $"FPS: {model.Diag.Fps}  Chunks: {model.Chunks.Chunks.Count}  Score: {model.Physics.Score}"
+    $"FPS: {model.Diag.Fps}  ({model.Diag.FrameTime:F1}ms)  Chunks: {model.Chunks.Chunks.Count}  Score: {model.Physics.Score}"
 
   writeLine
     55.0f

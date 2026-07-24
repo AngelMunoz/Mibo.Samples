@@ -45,7 +45,6 @@ let main _ =
           Width = 1280
           Height = 720
           Title = "Mibo FPS Sample (raylib)"
-          TargetFPS = 120
     })
     |> Program.withInput
     |> Program.withSubscription subscribe

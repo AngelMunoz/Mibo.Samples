@@ -25,6 +25,9 @@ let private nearbyOccluders = ResizeArray<Occluder2D>(256)
 let private nearbyTorches = ResizeArray<PointLight2D>(64)
 
 let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
+  // Sample the wall-clock interval since the previous Draw. This is the real
+  // render rate — unlike the fixed-timestep Tick dt, it exposes frame drops.
+  model.Diag.Tick()
   model.Lighting.Reset()
 
   let playerCenterX = model.Physics.Position.X + playerWidth / 2.0f

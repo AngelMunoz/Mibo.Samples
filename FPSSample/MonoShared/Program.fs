@@ -52,7 +52,6 @@ module Program =
           Width = 1280
           Height = 720
           Title = "Mibo FPS Sample (MonoGame)"
-          TargetFPS = 120
     })
     |> Program.withInput
     |> Program.withSubscription subscribe
