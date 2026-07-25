@@ -61,12 +61,14 @@ let private resolveMeshesAndMaterial(blockType: BlockType) =
     let m = loadOrGetModel currentModelCache path currentGameContext
 
     // Compute and cache the absolute bone transform for this model's first mesh.
-    // Block models are single-mesh, so one bone transform per model path suffices.
+    // Block models are single-mesh, so one bone transform per model name suffices.
+    // Keyed by the bare model name (a static string from BlockData) so the hot
+    // getTransform path can look it up without building the path string per cell.
     if not(isNull m) && m.Meshes.Count > 0 && m.Bones.Count > 0 then
       let boneTransforms = Array.zeroCreate<Matrix> m.Bones.Count
       m.CopyAbsoluteBoneTransformsTo boneTransforms
       let boneIdx = m.Meshes[0].ParentBone.Index
-      boneTransformCache[path] <- boneTransforms[boneIdx]
+      boneTransformCache[name] <- boneTransforms[boneIdx]
 
     let result =
       if not(isNull m) && m.Meshes.Count > 0 then
@@ -132,9 +134,10 @@ let private instancedCtx =
         // vertices are in bone-local space — lands at the correct world
         // position. Without this, MonoGame renders meshes offset from where
         // collision (which uses model-space extents) expects them.
-        let path = AssetPaths.modelPath(modelName blockType)
-
-        match boneTransformCache.TryGetValue path with
+        // Keyed by the model name (info.ModelName is a static string from
+        // BlockData) — building the full path here allocated a fresh string
+        // per occupied cell per frame (~27k strings/frame).
+        match boneTransformCache.TryGetValue info.ModelName with
         | true, bone -> bone * worldMatrix
         | false, _ -> worldMatrix
   )
@@ -210,6 +213,19 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
     let assets = GameContext.getService<IAssets> ctx
     toonEffect <- ValueSome(assets.Effect "Toon")
     snowEffect <- ValueSome(assets.Effect "Snow")
+
+    // Preload every terrain model worldgen can place (Block/LargeBlock/TallBlock/
+    // LowBlock/NarrowBlock × Grass/Snow + Platform — Shared/WorldGen.fs). Without
+    // this, each model loads lazily on first sight — i.e. a render-thread
+    // Content.Load<Model> exactly when a streamed-in chunk reveals a new biome.
+    for biome in [ Biome3D.Grass; Biome3D.Snow ] do
+      resolveMeshesAndMaterial(Block biome) |> ignore
+      resolveMeshesAndMaterial(LargeBlock biome) |> ignore
+      resolveMeshesAndMaterial(TallBlock biome) |> ignore
+      resolveMeshesAndMaterial(LowBlock biome) |> ignore
+      resolveMeshesAndMaterial(NarrowBlock biome) |> ignore
+
+    resolveMeshesAndMaterial Platform |> ignore
   | _ -> ()
 
   for light in model.VisibleLights do
