@@ -34,6 +34,8 @@
     <Project Path="Platformer3D/Raylib/Raylib.fsproj" />
     <Project Path="Platformer3D/MonoGame/MonoGame.fsproj" />
     <Project Path="Platformer3D/MonoVulkan/MonoVulkan.fsproj" />
+    <Project Path="Platformer3D/MonoGL/MonoGL.fsproj" />
+    <Project Path="Platformer3D/MonoDX11/MonoDX11.fsproj" />
   </Folder>
   <Folder Name="/ModelProbe/">
     <Project Path="ModelProbe/src/ModelProbe.fsproj" />

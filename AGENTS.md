@@ -23,7 +23,7 @@ This repo exists for two reasons:
 Mibo.Samples/
 ├── Mibo/                    ← git submodule — framework source (Mibo.Core, Mibo.Raylib, Mibo.MonoGame)
 ├── Platformer/              ← 2D platformer (procedural world, sprite animation, lighting; raylib + MonoGame DX12/Vulkan)
-├── Platformer3D/            ← 3D platformer (voxel terrain, PBR, skeletal animation, shadow atlas; raylib + MonoGame DX12/Vulkan)
+├── Platformer3D/            ← 3D platformer (voxel terrain, PBR, skeletal animation, shadow atlas; raylib + MonoGame DX12/DX11/Vulkan/OpenGL)
 ├── ModelProbe/              ← Minimal 3D rendering probe (PBR forward + shadow atlas, instanced vs non-instanced; MonoGame DX12 + Vulkan)
 ├── SpaceBattle/             ← Turn-based hex strategy (fog of war, AI, phased turns)
 ├── FPSSample/               ← Cross-backend FPS (shared core, raylib + MonoGame thin clients)
@@ -40,7 +40,7 @@ Mibo.Samples/
 └── README.md
 ```
 
-**Backend matrix:** raylib-cs and MonoGame (DesktopGL, WindowsDX12, DesktopVK/Vulkan). Cross-backend samples (`FPSSample`, `PingPong`) isolate backend-specific code in thin client projects while sharing all game logic.
+**Backend matrix:** raylib-cs and MonoGame (DesktopGL/OpenGL, WindowsDX/DX11, WindowsDX12, DesktopVK/Vulkan). Cross-backend samples (`FPSSample`, `PingPong`) isolate backend-specific code in thin client projects while sharing all game logic.
 
 ## Sample Architecture (Enforced)
 

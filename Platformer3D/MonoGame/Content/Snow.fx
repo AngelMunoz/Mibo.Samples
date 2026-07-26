@@ -77,6 +77,17 @@ float4 shadowUVOffsets[MAX_SHADOW_CASTERS];
 float2 shadowTexelSize;
 float shadowBiases[MAX_SHADOW_CASTERS];
 
+// Index for the directional caster (slot 0 by convention; SceneUpload leaves this
+// uniform unset → defaults to 0). The arrays MUST be indexed dynamically here:
+// with a constant [0] index the GL/MojoShader path trims the uniform arrays to a
+// single element, but the effect parameter table still reports MAX_SHADOW_CASTERS
+// elements — MonoGame's GL ConstantBuffer.Update then writes past the end of the
+// shader's constant buffer and crashes in EffectPass.Apply (BlockCopy overflow).
+// DX11/DX12/Vulkan reflection keeps the declared size, which is why only OpenGL
+// crashed. ForwardPbr.fx avoids this by indexing with pointLightShadowIdx[i] /
+// spotLightShadowIdx[j] (dynamic).
+int dirLightShadowIdx;
+
 // Mirrors ForwardPbr.fx's computeShadowAt/computeDirShadow: receiver-side bias
 // (without it a flat caster that is also a receiver — snow ground —
 // self-shadows across the whole frustum), clip-space frustum cull before the
@@ -86,7 +97,7 @@ float computeDirShadow(float3 worldPos) {
     return 1.0;
 
   // Directional caster is registered first (slot 0 by convention).
-  float4 sc = mul(float4(worldPos, 1.0), shadowViewProjs[0]);
+  float4 sc = mul(float4(worldPos, 1.0), shadowViewProjs[dirLightShadowIdx]);
   float3 ndc = sc.xyz / sc.w;
 
   // Outside the shadow frustum → fully lit (no shadow).
@@ -98,14 +109,14 @@ float computeDirShadow(float3 worldPos) {
   if (ndc.x < -1.0 || ndc.x > 1.0 || ndc.y < -1.0 || ndc.y > 1.0)
     return 1.0;
 
-  float4 uvOff = shadowUVOffsets[0];
+  float4 uvOff = shadowUVOffsets[dirLightShadowIdx];
   // Flip y: DirectX viewports map clip.y=1 to the top of the render target,
   // while texture v increases downward.
   float2 atlasUV = float2(ndc.x * 0.5 + 0.5, -ndc.y * 0.5 + 0.5) * uvOff.zw + uvOff.xy;
 
   // Receiver-side bias: shrink the receiver depth so a surface doesn't shadow
   // itself. This is what stops flat snow/ground from self-shadowing.
-  float recvZ = ndc.z - shadowBiases[0];
+  float recvZ = ndc.z - shadowBiases[dirLightShadowIdx];
 
   float shadow = 0.0;
   [unroll]
