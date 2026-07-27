@@ -1,6 +1,7 @@
 module Platformer3D.Raylib.Types
 
 open System.Collections.Generic
+open System.Numerics
 open Raylib_cs
 open Mibo
 open Mibo.Elmish
@@ -18,6 +19,14 @@ module AssetPaths =
   let modelBasePath = "assets/kenney_platformer-kit/Models/"
 
   let modelPath name = modelBasePath + name + ".glb"
+
+// A static prop parented to a skeleton bone at draw time (bone-attachment demo).
+type AttachedProp = {
+  BoneName: string
+  LocalTransform: Matrix4x4
+  Mesh: Mesh
+  Material: Material3D
+}
 
 // -------------------------------------------------------------
 // Root Model — composes shared sub-system models + backend-specific state
@@ -49,6 +58,16 @@ type Model() =
     Unchecked.defaultof<Animation3DClips> with get, set
 
   member val PlayerAnim = Unchecked.defaultof<Animation3DState> with get, set
+
+  // Bone-attachment demo: shared GPU-skinning mesh (used by both player
+  // instances), a second playback state for the multi-pose demo, and weapons
+  // parented to the player's handslot sockets (sword right, wand left).
+  member val PlayerAnimatedMesh: AnimatedMesh voption = ValueNone with get, set
+
+  member val PlayerAnim2 = Unchecked.defaultof<Animation3DState> with get, set
+
+  member val PlayerProps: AttachedProp[] = Array.empty with get, set
+
   member val ModelCache = Dictionary<string, Raylib_cs.Model>() with get, set
   member val VisibleLights = ResizeArray<PointLight3D>() with get, set
   member val JumpSound = Unchecked.defaultof<Sound> with get, set

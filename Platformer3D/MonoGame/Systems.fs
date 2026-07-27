@@ -177,6 +177,9 @@ let update (msg: Msg) (model: Model) : struct (Model * Cmd<Msg>) =
 
       model.PlayerAnim <- anim
 
+      // Second pose instance (multi-pose demo) — runs its fixed clip.
+      model.PlayerAnim2 <- AnimatedModel.update dt model.PlayerAnim2
+
     // Mushroom lights
     mushroomLightFrameCounter <- mushroomLightFrameCounter + 1
 

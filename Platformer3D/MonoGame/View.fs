@@ -6,6 +6,7 @@ open Microsoft.Xna.Framework
 open Microsoft.Xna.Framework.Graphics
 open Mibo
 open Mibo.Elmish
+open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics3D
 open Mibo.Animation
 open Mibo.Layout3D
@@ -272,8 +273,38 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
       buffer
     |> Draw3D.drop
 
-  buffer
-  |> Draw3D.drawAnimatedModel model.PlayerAnim playerTransform
-  |> Draw3D.drop
+  // Share one pose evaluation between the skinned draw and the weapon
+  // attachments on both arm bones (fluent Draw DSL).
+  match AnimatedModel.computePose model.PlayerAnim with
+  | ValueSome pose ->
+    buffer.animatedModel(model.PlayerAnim, playerTransform, pose = pose).drop()
+
+    for prop in model.PlayerProps do
+      buffer
+        .attachedMesh(
+          model.PlayerAnim,
+          BoneRef.ByName prop.BoneName,
+          prop.LocalTransform,
+          prop.Mesh,
+          prop.Material,
+          playerTransform,
+          pose = pose
+        )
+        .drop()
+  | ValueNone ->
+    buffer
+    |> Draw3D.drawAnimatedModel model.PlayerAnim playerTransform
+    |> Draw3D.drop
+
+  // Second instance of the same Model at a different pose — no attachment.
+  let offsetTransform =
+    Matrix.CreateTranslation(playerPos.X + 2.5f, playerPos.Y, playerPos.Z)
+
+  match AnimatedModel.computePose model.PlayerAnim2 with
+  | ValueSome pose2 ->
+    buffer
+      .animatedModel(model.PlayerAnim2, offsetTransform, pose = pose2)
+      .drop()
+  | ValueNone -> buffer.animatedModel(model.PlayerAnim2, offsetTransform).drop()
 
   buffer |> Draw3D.endCamera |> Draw3D.drop

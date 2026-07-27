@@ -51,9 +51,47 @@
   </ItemGroup>
   <!-- Raw .glb for runtime animation loading (same as the DX12 client). -->
   <ItemGroup>
-    <Content Include="..\assets\kenney_platformer-kit\Models\character-oobi.glb">
+    <Content Include="..\assets\kaykit_character_animations\Rig_Medium_MovementBasic.glb">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>animations\character-oobi.glb</Link>
+      <Link>animations\Rig_Medium_MovementBasic.glb</Link>
+    </Content>
+    <Content Include="..\assets\kaykit_character_animations\Rig_Medium_General.glb">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>animations\Rig_Medium_General.glb</Link>
+    </Content>
+    <Content Include="..\assets\kaykit_character_animations\Textures\mannequin_texture.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>animations\mannequin_texture.png</Link>
+    </Content>
+    <!-- Raw kaykit weapons, loaded at runtime via AssimpNetter like the .glb
+         above — deliberately NOT in the .mgcb content pipeline. -->
+    <Content Include="..\assets\kaykit_fantasy_weapons\sword_A.gltf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>weapons\sword_A.gltf</Link>
+    </Content>
+    <Content Include="..\assets\kaykit_fantasy_weapons\sword_A.bin">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>weapons\sword_A.bin</Link>
+    </Content>
+    <Content Include="..\assets\kaykit_fantasy_weapons\wand_A.gltf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>weapons\wand_A.gltf</Link>
+    </Content>
+    <Content Include="..\assets\kaykit_fantasy_weapons\wand_A.bin">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>weapons\wand_A.bin</Link>
+    </Content>
+    <Content Include="..\assets\kaykit_fantasy_weapons\staff_B.gltf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>weapons\staff_B.gltf</Link>
+    </Content>
+    <Content Include="..\assets\kaykit_fantasy_weapons\staff_B.bin">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>weapons\staff_B.bin</Link>
+    </Content>
+    <Content Include="..\assets\kaykit_fantasy_weapons\weapons_bits_texture.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>weapons\weapons_bits_texture.png</Link>
     </Content>
   </ItemGroup>
 </Project>

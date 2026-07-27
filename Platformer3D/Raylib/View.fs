@@ -9,6 +9,7 @@ open FSharp.NativeInterop
 open Raylib_cs
 open Mibo
 open Mibo.Elmish
+open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics3D
 open Mibo.Animation
 open Mibo.Layout3D
@@ -419,8 +420,6 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
         shaderForKey
         buffer
 
-  let playerModel = model.PlayerAnim.Model
-
   let playerTransform =
     let rot = Raymath.MatrixRotateY(model.Physics.Facing)
 
@@ -433,8 +432,6 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
 
     Raymath.MatrixMultiply(rot, trans)
 
-  Animation3DState.applyToModel model.PlayerAnim
-
   let p = model.Particles
 
   for i = 0 to p.Count - 1 do
@@ -446,7 +443,45 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
       buffer
     |> Draw3D.drop
 
-  buffer
-  |> Draw3D.drawModel playerModel playerTransform
-  |> Draw3D.endCamera
-  |> Draw3D.drop
+  // GPU skinning path (non-mutating): one AnimatedMesh shared by both player
+  // instances; the pose is evaluated once and shared between the skinned draw
+  // and the weapon attachments on both handslot sockets.
+  match model.PlayerAnimatedMesh with
+  | ValueSome animMesh ->
+    let am = AnimatedModel.create animMesh model.PlayerAnim
+    let pose = AnimatedModel.computePose am
+
+    buffer.animatedModel(am, playerTransform, pose = pose) |> ignore
+
+    for prop in model.PlayerProps do
+      buffer.attachedMesh(
+        am,
+        BoneRef.ByName prop.BoneName,
+        prop.LocalTransform,
+        prop.Mesh,
+        prop.Material,
+        playerTransform,
+        pose = pose
+      )
+      |> ignore
+
+    // Second instance of the same Model at a different pose — no attachment.
+    let am2 = AnimatedModel.create animMesh model.PlayerAnim2
+
+    let offsetTransform =
+      Raymath.MatrixTranslate(
+        model.Physics.Position.X + 2.5f,
+        model.Physics.Position.Y,
+        model.Physics.Position.Z
+      )
+
+    buffer.animatedModel(am2, offsetTransform) |> ignore
+  | ValueNone ->
+    // Legacy mutating fallback when no AnimatedMesh is available.
+    Animation3DState.applyToModel model.PlayerAnim
+
+    buffer
+    |> Draw3D.drawModel model.PlayerAnim.Model playerTransform
+    |> Draw3D.drop
+
+  buffer |> Draw3D.endCamera |> Draw3D.drop

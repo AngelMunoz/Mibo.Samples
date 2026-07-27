@@ -8,7 +8,9 @@ open Platformer3D.Types
 module Animation =
 
   /// Derives the target animation clip name from physics state.
-  /// Playback (Animation3DState / AnimatedModel) is backend-specific.
+  /// Returns KayKit rig clip names (Rig_Medium_General/MovementBasic.glb) —
+  /// the assets both backends load. Playback (Animation3DState /
+  /// AnimatedModel) is backend-specific.
   let targetClip
     (isGrounded: bool)
     (actions: ActionState<GameAction>)
@@ -19,9 +21,9 @@ module Animation =
       || actions.Held.Contains(GameAction.MoveLeft)
       || actions.Held.Contains(GameAction.MoveRight)
 
-    if not isGrounded then "jump"
-    elif isMoving then "walk"
-    else "idle"
+    if not isGrounded then "Jump_Start"
+    elif isMoving then "Walking_A"
+    else "Idle_A"
 
 // -------------------------------------------------------------
 // Diagnostics Sub-system (backend-agnostic)

@@ -21,6 +21,14 @@ module AssetPaths =
 
   let modelPath name = modelBasePath + name
 
+// A static prop parented to a skeleton bone at draw time (bone-attachment demo).
+type AttachedProp = {
+  BoneName: string
+  LocalTransform: Matrix
+  Mesh: PrimitiveMesh
+  Material: Material3D
+}
+
 // -------------------------------------------------------------
 // Root Model — composes shared sub-system models + backend-specific state
 // -------------------------------------------------------------
@@ -46,6 +54,17 @@ type Model() =
   member val InputMap: InputMap<GameAction> = InputMap.empty with get, set
   // Backend-specific state
   member val PlayerAnim = Unchecked.defaultof<AnimatedModel> with get, set
+
+  // Multi-pose demo: second playback state over the same Model + AnimatedMesh,
+  // rendered alongside the player at a fixed offset (see View.view).
+  member val PlayerAnim2 = Unchecked.defaultof<AnimatedModel> with get, set
+
+  // Bone-attachment demo: weapons parented to the player's handslot bones at
+  // draw time (sword in handslot.r, wand in handslot.l), raw-loaded via
+  // AssimpNetter — see Program.loadWeaponMesh. LocalTransform is a plain grip
+  // offset/scale (raw meshes are in model space, no bone-transform bake
+  // needed); KayKit weapons snap onto handslots with identity.
+  member val PlayerProps: AttachedProp[] = Array.empty with get, set
 
   member val ModelCache =
     Dictionary<string, Microsoft.Xna.Framework.Graphics.Model>() with get, set
