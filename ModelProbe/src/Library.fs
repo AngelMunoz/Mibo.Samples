@@ -24,6 +24,9 @@ open Mibo.Input
 //
 // Camera: orbit — arrows rotate, W/S zoom, A/D pan left/right,
 // PageUp/PageDown raise/lower the target. Presets: 0 overview, 1/2/3 zones.
+// 4 toggles split-screen: two half-screen camera blocks with different light
+// environments (outdoor sun + shadows left, dim indoor right) — the probe for
+// per-camera-block light/shadow scoping.
 // ─────────────────────────────────────────────────────────────
 
 // ─────────────────────────────────────────────────────────────
@@ -46,6 +49,7 @@ type GameAction =
   | ViewZone1
   | ViewZone2
   | ViewZone3
+  | ToggleSplitScreen
 
 let inputMap =
   InputMap.empty
@@ -63,6 +67,7 @@ let inputMap =
   |> InputMap.key ViewZone1 KeyCode.D1
   |> InputMap.key ViewZone2 KeyCode.D2
   |> InputMap.key ViewZone3 KeyCode.D3
+  |> InputMap.key ToggleSplitScreen KeyCode.D4
 
 // ─────────────────────────────────────────────────────────────
 // Assets
@@ -99,6 +104,7 @@ type Model = {
   CamYaw: float32
   CamPitch: float32
   CamDistance: float32
+  SplitScreen: bool
   Input: ActionState<GameAction>
 }
 
@@ -161,6 +167,7 @@ let init(ctx: GameContext) : struct (Model * Cmd<Msg>) =
     CamYaw = 0.f
     CamPitch = 0.65f
     CamDistance = 33.f
+    SplitScreen = false
     Input = ActionState.empty
   }
 
@@ -267,6 +274,15 @@ let update (msg: Msg) (model: Model) : struct (Model * Cmd<Msg>) =
       else
         moved
 
+    let model =
+      if input.Started.Contains ToggleSplitScreen then
+        {
+          model with
+              SplitScreen = not model.SplitScreen
+        }
+      else
+        model
+
     model, Cmd.none
 
 // ─────────────────────────────────────────────────────────────
@@ -323,7 +339,120 @@ let private orbitCamera(model: Model) : Camera3D = {
   Projection = CameraProjection.Perspective
 }
 
-let view (_ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
+// ─────────────────────────────────────────────────────────────
+// Split-screen probe — per-camera-block lights and shadows.
+//
+// One frame, two camera blocks over two half-screen viewports; same orbit
+// camera, same scene (the zone-3 layout: floor + model row + instanced rows).
+//
+//   LEFT  "outdoor": warm ambient + shadow-casting sun. Sky-blue clear.
+//   ── between blocks: a red point light — a frame default, so only camera
+//      blocks after it may see it.
+//   RIGHT "indoor":  dim blue ambient, no sun (no shadows). Near-black clear.
+//
+// Eyeball checklist (per-block scoping semantics):
+//   * Sun shadows on the left half only; the right half's block has no
+//     shadow-casting light, so it must not sample the left block's atlas.
+//   * The red point light glows on the RIGHT half only — the left block
+//     predates it, and the right block (which resets) must see it exactly once.
+//   * The right half stays dim blue — the left block's warm ambient and sun
+//     must not leak across (reset semantics).
+// ─────────────────────────────────────────────────────────────
+
+let private warmAmbient: AmbientLight3D = {
+  Color = Mibo.Color.rgb 255uy 220uy 180uy
+  Intensity = 0.4f
+}
+
+let private indoorAmbient: AmbientLight3D = {
+  Color = Mibo.Color.rgb 90uy 110uy 200uy
+  Intensity = 0.25f
+}
+
+let private sunLight: DirectionalLight3D = {
+  (dirLight true) with
+      Color = Mibo.Color.rgb 255uy 240uy 210uy
+}
+
+let private redPoint: PointLight3D =
+  PointLight3D.create(System.Numerics.Vector3(0.f, 3.f, 14.f), 18.f)
+  |> PointLight3D.withColor Mibo.Color.Red
+  |> PointLight3D.withIntensity 3.f
+
+/// The zone-3 layout: floor slab + non-instanced model row + instanced rows.
+let private drawFloorScene (model: Model) (buffer: RenderBuffer3D) =
+  // Floor: unit cube primitive scaled into a slab, top face at y = 0.
+  let floorTransform =
+    Matrix.CreateScale(26.f, 1.f, 14.f)
+    * Matrix.CreateTranslation(0.f, -0.5f, 14.f)
+
+  let floorMaterial =
+    Material3D.colored(Microsoft.Xna.Framework.Color(110, 112, 120))
+
+  Draw3D.drawPrimitive model.Floor floorTransform floorMaterial buffer
+  |> Draw3D.drop
+
+  for i = 0 to model.Blocks.Length - 1 do
+    let p = zone1Pos i + Vector3(0.f, 0.f, 20.f)
+
+    Draw3D.drawModel model.Blocks[i].Model (Matrix.CreateTranslation p) buffer
+    |> Draw3D.drop
+
+  for i = 0 to model.Blocks.Length - 1 do
+    let block = model.Blocks[i]
+    let z = zone3RowZ i
+
+    let transforms = [|
+      for x in instanceX -> block.Bone * Matrix.CreateTranslation(x, 0.f, z)
+    |]
+
+    for struct (mesh, material) in block.Parts do
+      Draw3D.drawInstanced mesh transforms material transforms.Length buffer
+      |> Draw3D.drop
+
+  buffer
+
+let private splitView
+  (ctx: GameContext)
+  (model: Model)
+  (buffer: RenderBuffer3D)
+  =
+  let camera = orbitCamera model
+  let bounds = Rectangle(0, 0, ctx.WindowWidth, ctx.WindowHeight)
+
+  // ── Left half: outdoor — warm ambient + shadow-casting sun ──
+  buffer
+  |> Draw3D.beginCameraWith(
+    Camera3D.splitScreenLeft
+      camera
+      (Microsoft.Xna.Framework.Color(90, 110, 150))
+      bounds
+  )
+  |> Draw3D.setAmbientLight warmAmbient
+  |> Draw3D.addDirectionalLight sunLight
+  |> drawFloorScene model
+  |> Draw3D.endCamera
+  |> Draw3D.drop
+
+  // ── Between blocks: a red point light. Emitted outside any camera block it
+  // joins the frame defaults — only blocks after this point may see it. ──
+  Draw3D.addPointLight redPoint buffer |> Draw3D.drop
+
+  // ── Right half: indoor — dim blue ambient, no sun (no shadow-casting
+  // light, so this block renders no shadow map). ──
+  buffer
+  |> Draw3D.beginCameraWith(
+    Camera3D.splitScreenRight
+      camera
+      (Microsoft.Xna.Framework.Color(8, 10, 16))
+      bounds
+  )
+  |> Draw3D.setAmbientLight indoorAmbient
+  |> drawFloorScene model
+  |> Draw3D.endCamera
+  |> Draw3D.drop
+
+let private zonesView (model: Model) (buffer: RenderBuffer3D) =
   let camera = orbitCamera model
 
   // ── Steps 1+2: lit (no shadows), no floor ──
@@ -398,6 +527,12 @@ let view (_ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
       |> Draw3D.drop
 
   shadowed |> Draw3D.endCamera |> Draw3D.drop
+
+let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
+  if model.SplitScreen then
+    splitView ctx model buffer
+  else
+    zonesView model buffer
 
 // ─────────────────────────────────────────────────────────────
 // Plain pipeline — TEMPORARY isolation harness.
