@@ -37,6 +37,14 @@
     <Project Path="Platformer3D/MonoGL/MonoGL.fsproj" />
     <Project Path="Platformer3D/MonoDX11/MonoDX11.fsproj" />
   </Folder>
+  <Folder Name="/AnimatedInstancing/">
+    <Project Path="AnimatedInstancing/Shared/Shared.fsproj" />
+    <Project Path="AnimatedInstancing/Raylib/Raylib.fsproj" />
+    <Project Path="AnimatedInstancing/MonoGame/MonoGame.fsproj" />
+    <Project Path="AnimatedInstancing/MonoGL/MonoGL.fsproj" />
+    <Project Path="AnimatedInstancing/MonoVulkan/MonoVulkan.fsproj" />
+    <Project Path="AnimatedInstancing/MonoDX11/MonoDX11.fsproj" />
+  </Folder>
   <Folder Name="/ModelProbe/">
     <Project Path="ModelProbe/src/ModelProbe.fsproj" />
     <Project Path="ModelProbe/DesktopVK/DesktopVK.fsproj" />

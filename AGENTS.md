@@ -36,6 +36,7 @@ Mibo.Samples/
 │   └── MonoVulkan/          ← MonoGame Vulkan thin client
 ├── PingPong/                ← Networked multiplayer (client/server, WebSockets)
 ├── BoneProbe/               ← CLI diagnostic tool (raw Assimp dump + bind-pose invariant check)
+├── AnimatedInstancing/      ← Skinned+instanced perf probe (crowd tiers 500–10k, animatedModelInstanced; raylib + MonoGame DX12/DesktopGL)
 ├── Mibo.Samples.slnx        ← solution file
 └── README.md
 ```

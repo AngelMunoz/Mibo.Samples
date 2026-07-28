@@ -1,0 +1,66 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Vulkan (DesktopVK) thin client for AnimatedInstancing.
+    Shares all sources with the DX12 client (../MonoGame) via linked files;
+    only the runtime packages and MonoGamePlatform differ. Mirrors
+    Platformer3D/MonoVulkan.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RollForward>Major</RollForward>
+    <PublishReadyToRun>false</PublishReadyToRun>
+    <TieredCompilation>false</TieredCompilation>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <IsPackable>false</IsPackable>
+    <MonoGamePlatform>DesktopVK</MonoGamePlatform>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\MonoGame\Types.fs">
+      <Link>Types.fs</Link>
+    </Compile>
+    <Compile Include="..\MonoGame\Systems.fs">
+      <Link>Systems.fs</Link>
+    </Compile>
+    <Compile Include="..\MonoGame\View.fs">
+      <Link>View.fs</Link>
+    </Compile>
+    <Compile Include="..\MonoGame\Program.fs">
+      <Link>Program.fs</Link>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Shared\Shared.fsproj" />
+    <ProjectReference Include="..\..\Mibo\src\Mibo.MonoGame\Mibo.MonoGame.fsproj" />
+    <PackageReference Include="MonoGame.Framework.Native" Version="3.8.5" />
+    <PackageReference Include="MonoGame.Runtime.Windows.Vulkan" Version="3.8.5" />
+    <PackageReference Include="MonoGame.Runtime.Mac.Vulkan" Version="3.8.5" />
+    <PackageReference Include="MonoGame.Runtime.Linux.Vulkan" Version="3.8.5" />
+    <PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.5" />
+  </ItemGroup>
+  <ItemGroup>
+    <MonoGameContentReference Include="..\MonoGame\Content\Content.mgcb">
+      <Link>Content\Content.mgcb</Link>
+    </MonoGameContentReference>
+  </ItemGroup>
+  <!-- Raw .glbs + mannequin texture for runtime animation loading (same as
+       the DX12 client — referenced from Platformer3D, never duplicated). -->
+  <ItemGroup>
+    <Content Include="..\..\Platformer3D\assets\kaykit_character_animations\Rig_Medium_MovementBasic.glb">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>animations\Rig_Medium_MovementBasic.glb</Link>
+    </Content>
+    <Content Include="..\..\Platformer3D\assets\kaykit_character_animations\Rig_Medium_General.glb">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>animations\Rig_Medium_General.glb</Link>
+    </Content>
+    <Content Include="..\..\Platformer3D\assets\kaykit_character_animations\Rig_Large_MovementBasic.glb">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>animations\Rig_Large_MovementBasic.glb</Link>
+    </Content>
+    <Content Include="..\..\Platformer3D\assets\kaykit_character_animations\Rig_Large_General.glb">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>animations\Rig_Large_General.glb</Link>
+    </Content>
+  </ItemGroup>
+</Project>
