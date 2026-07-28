@@ -5,6 +5,7 @@ open Microsoft.Xna.Framework
 open Microsoft.Xna.Framework.Graphics
 open Mibo
 open Mibo.Elmish
+open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics3D
 open Mibo.Elmish.Graphics3D.Pipelines
 open Mibo.Input
@@ -162,7 +163,7 @@ let init(ctx: GameContext) : struct (Model * Cmd<Msg>) =
 
   let model = {
     Blocks = [| for name in blockNames -> loadBlock assets name |]
-    Floor = primitives.Cube
+    Floor = primitives.Cylinder
     CamTarget = Vector3(0.f, 0.f, 4.f)
     CamYaw = 0.f
     CamPitch = 0.65f
@@ -389,14 +390,12 @@ let private drawFloorScene (model: Model) (buffer: RenderBuffer3D) =
   let floorMaterial =
     Material3D.colored(Microsoft.Xna.Framework.Color(110, 112, 120))
 
-  Draw3D.drawPrimitive model.Floor floorTransform floorMaterial buffer
-  |> Draw3D.drop
+  buffer.mesh(model.Floor, floorTransform, floorMaterial).drop()
 
   for i = 0 to model.Blocks.Length - 1 do
     let p = zone1Pos i + Vector3(0.f, 0.f, 20.f)
 
-    Draw3D.drawModel model.Blocks[i].Model (Matrix.CreateTranslation p) buffer
-    |> Draw3D.drop
+    buffer.model(model.Blocks[i].Model, Matrix.CreateTranslation p).drop()
 
   for i = 0 to model.Blocks.Length - 1 do
     let block = model.Blocks[i]
@@ -407,8 +406,7 @@ let private drawFloorScene (model: Model) (buffer: RenderBuffer3D) =
     |]
 
     for struct (mesh, material) in block.Parts do
-      Draw3D.drawInstanced mesh transforms material transforms.Length buffer
-      |> Draw3D.drop
+      buffer.instanced(mesh, transforms, material, transforms.Length).drop()
 
   buffer
 
@@ -421,36 +419,37 @@ let private splitView
   let bounds = Rectangle(0, 0, ctx.WindowWidth, ctx.WindowHeight)
 
   // ── Left half: outdoor — warm ambient + shadow-casting sun ──
-  buffer
-  |> Draw3D.beginCameraWith(
-    Camera3D.splitScreenLeft
-      camera
-      (Microsoft.Xna.Framework.Color(90, 110, 150))
-      bounds
-  )
-  |> Draw3D.setAmbientLight warmAmbient
-  |> Draw3D.addDirectionalLight sunLight
-  |> drawFloorScene model
-  |> Draw3D.endCamera
-  |> Draw3D.drop
+  (buffer
+    .beginCameraWith(
+      Camera3D.splitScreenLeft
+        camera
+        (Microsoft.Xna.Framework.Color(90, 110, 150))
+        bounds
+    )
+    .setAmbientLight(warmAmbient)
+    .addDirectionalLight
+     sunLight
+   |> drawFloorScene model)
+    .endCamera()
+    .drop()
 
   // ── Between blocks: a red point light. Emitted outside any camera block it
   // joins the frame defaults — only blocks after this point may see it. ──
-  Draw3D.addPointLight redPoint buffer |> Draw3D.drop
+  buffer.addPointLight(redPoint).drop()
 
   // ── Right half: indoor — dim blue ambient, no sun (no shadow-casting
   // light, so this block renders no shadow map). ──
-  buffer
-  |> Draw3D.beginCameraWith(
-    Camera3D.splitScreenRight
-      camera
-      (Microsoft.Xna.Framework.Color(8, 10, 16))
-      bounds
-  )
-  |> Draw3D.setAmbientLight indoorAmbient
-  |> drawFloorScene model
-  |> Draw3D.endCamera
-  |> Draw3D.drop
+  (buffer
+    .beginCameraWith(
+      Camera3D.splitScreenRight
+        camera
+        (Microsoft.Xna.Framework.Color(8, 10, 16))
+        bounds
+    )
+    .setAmbientLight(indoorAmbient)
+   |> drawFloorScene model)
+    .endCamera()
+    .drop()
 
 let private zonesView (model: Model) (buffer: RenderBuffer3D) =
   let camera = orbitCamera model
@@ -458,19 +457,18 @@ let private zonesView (model: Model) (buffer: RenderBuffer3D) =
   // ── Steps 1+2: lit (no shadows), no floor ──
   let noShadow =
     buffer
-    |> Draw3D.beginCameraWith(
-      Camera3D.render camera
-      |> Camera3D.withClear(Microsoft.Xna.Framework.Color(30, 34, 40))
-    )
-    |> Draw3D.setAmbientLight ambient
-    |> Draw3D.addDirectionalLight(dirLight false)
+      .beginCameraWith(
+        Camera3D.render camera
+        |> Camera3D.withClear(Microsoft.Xna.Framework.Color(30, 34, 40))
+      )
+      .setAmbientLight(ambient)
+      .addDirectionalLight(dirLight false)
 
   // Step 1 — non-instanced
   for i = 0 to model.Blocks.Length - 1 do
     let p = zone1Pos i
 
-    Draw3D.drawModel model.Blocks[i].Model (Matrix.CreateTranslation p) noShadow
-    |> Draw3D.drop
+    noShadow.model(model.Blocks[i].Model, Matrix.CreateTranslation p).drop()
 
   // Step 2 — instanced, different positions
   for i = 0 to model.Blocks.Length - 1 do
@@ -482,18 +480,17 @@ let private zonesView (model: Model) (buffer: RenderBuffer3D) =
     |]
 
     for struct (mesh, material) in block.Parts do
-      Draw3D.drawInstanced mesh transforms material transforms.Length noShadow
-      |> Draw3D.drop
+      noShadow.instanced(mesh, transforms, material, transforms.Length).drop()
 
-  noShadow |> Draw3D.endCamera |> Draw3D.drop
+  noShadow.endCamera().drop()
 
   // ── Step 3: same setup + floor + shadows. Same camera, NO clear — this
   // block composites over the previous one keeping color and depth. ──
   let shadowed =
     buffer
-    |> Draw3D.beginCamera camera
-    |> Draw3D.setAmbientLight ambient
-    |> Draw3D.addDirectionalLight(dirLight true)
+      .beginCamera(camera)
+      .setAmbientLight(ambient)
+      .addDirectionalLight(dirLight true)
 
   // Floor: unit cube primitive scaled into a slab, top face at y = 0.
   let floorTransform =
@@ -503,15 +500,13 @@ let private zonesView (model: Model) (buffer: RenderBuffer3D) =
   let floorMaterial =
     Material3D.colored(Microsoft.Xna.Framework.Color(110, 112, 120))
 
-  Draw3D.drawPrimitive model.Floor floorTransform floorMaterial shadowed
-  |> Draw3D.drop
+  shadowed.mesh(model.Floor, floorTransform, floorMaterial).drop()
 
   // Non-instanced row on the floor
   for i = 0 to model.Blocks.Length - 1 do
     let p = zone1Pos i + Vector3(0.f, 0.f, 20.f)
 
-    Draw3D.drawModel model.Blocks[i].Model (Matrix.CreateTranslation p) shadowed
-    |> Draw3D.drop
+    shadowed.model(model.Blocks[i].Model, Matrix.CreateTranslation p).drop()
 
   // Instanced rows on the floor
   for i = 0 to model.Blocks.Length - 1 do
@@ -523,10 +518,9 @@ let private zonesView (model: Model) (buffer: RenderBuffer3D) =
     |]
 
     for struct (mesh, material) in block.Parts do
-      Draw3D.drawInstanced mesh transforms material transforms.Length shadowed
-      |> Draw3D.drop
+      shadowed.instanced(mesh, transforms, material, transforms.Length).drop()
 
-  shadowed |> Draw3D.endCamera |> Draw3D.drop
+  shadowed.endCamera().drop()
 
 let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
   if model.SplitScreen then
@@ -588,16 +582,14 @@ type PlainPipeline() =
 
 /// Zone 1 only, one camera — the minimal input for PlainPipeline.
 let plainView (_ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
-  let cam = buffer |> Draw3D.beginCamera(orbitCamera model)
+  let cam = buffer.beginCamera(orbitCamera model)
 
   for i = 0 to model.Blocks.Length - 1 do
-    Draw3D.drawModel
-      model.Blocks[i].Model
-      (Matrix.CreateTranslation(zone1Pos i))
-      cam
-    |> Draw3D.drop
+    buffer
+      .model(model.Blocks[i].Model, Matrix.CreateTranslation(zone1Pos i))
+      .drop()
 
-  cam |> Draw3D.endCamera |> Draw3D.drop
+  cam.endCamera().drop()
 
 /// Debugging aid: true renders zone 1 through PlainPipeline (raw MonoGame),
 /// false renders the full three-zone scene through the PBR forward pipeline.
