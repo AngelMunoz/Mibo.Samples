@@ -48,7 +48,10 @@
   <Folder Name="/ModelProbe/">
     <Project Path="ModelProbe/src/ModelProbe.fsproj" />
     <Project Path="ModelProbe/DesktopVK/DesktopVK.fsproj" />
+    <Project Path="ModelProbe/Raylib/Raylib.fsproj" />
     <Project Path="ModelProbe/WindowsDX12/WindowsDX12.fsproj" />
+    <Project Path="ModelProbe/MonoDX11/MonoDX11.fsproj" />
+    <Project Path="ModelProbe/MonoGL/MonoGL.fsproj" />
   </Folder>
   <Project Path="SpaceBattle/SpaceBattle.fsproj" />
   <Project Path="BoneProbe/BoneProbe.fsproj" />
