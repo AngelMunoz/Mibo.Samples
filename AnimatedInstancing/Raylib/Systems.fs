@@ -63,7 +63,7 @@ module Crowd =
       CameraAngle = 0.0f
       States = Array.init count (buildState rig)
       Transforms = buildTransforms count
-      Poses = Array.zeroCreate count
+      Poses = Array.init count (fun _ -> BonePose.empty)
     }
 
   let private clampTier i =
@@ -129,6 +129,9 @@ let update (msg: Msg) (model: Model) : struct (Model * Cmd<Msg>) =
         Crowd.update model.Rig Crowd.TogglePause crowd
       else
         crowd
+
+    if started.Contains GameAction.ToggleShadows then
+      model.ShadowsOn <- not model.ShadowsOn
 
     model.Crowd <- crowd
     model, Cmd.none

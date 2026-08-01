@@ -56,6 +56,9 @@ type Model() =
   member val AnimMesh: AnimatedMesh voption = ValueNone with get, set
   member val GroundMesh = Unchecked.defaultof<Mesh> with get, set
   member val DiagFont = Raylib.GetFontDefault() with get, set
+  /// Whether the directional light casts shadows (S toggles; the shadow pass
+  /// is the biggest per-frame cost at high crowd tiers).
+  member val ShadowsOn = true with get, set
 
 // -------------------------------------------------------------
 // Root Msg

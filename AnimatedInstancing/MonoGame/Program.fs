@@ -56,6 +56,7 @@ let init(ctx: GameContext) =
     |> InputMap.key TierUp KeyCode.Equal
     |> InputMap.key TierDown KeyCode.Minus
     |> InputMap.key TogglePause KeyCode.Space
+    |> InputMap.key ToggleShadows KeyCode.S
 
   let model = Model()
   model.InputMap <- inputMap

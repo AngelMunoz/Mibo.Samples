@@ -64,3 +64,4 @@ type GameAction =
   | TierUp
   | TierDown
   | TogglePause
+  | ToggleShadows

@@ -58,6 +58,9 @@ type Model() =
   member val Rig = Unchecked.defaultof<Rig> with get, set
   member val GroundMesh = Unchecked.defaultof<PrimitiveMesh> with get, set
   member val DiagFont = Unchecked.defaultof<SpriteFont> with get, set
+  /// Whether the directional light casts shadows (S toggles; the shadow pass
+  /// is the biggest per-frame cost at high crowd tiers).
+  member val ShadowsOn = true with get, set
 
 // -------------------------------------------------------------
 // Root Msg

@@ -55,7 +55,7 @@ let view (_ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
     Direction = Vector3(0.6f, -1.0f, 0.35f)
     Color = Mibo.Color.White
     Intensity = 1.0f
-    CastsShadows = true
+    CastsShadows = model.ShadowsOn
   }
   |> Draw3D.drop
 
@@ -88,7 +88,10 @@ let view (_ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
         crowd.Count,
         fun i ->
           crowd.Poses[i] <-
-            Animation3DState.computePose animMesh crowd.States[i]
+            Animation3DState.computePoseInto
+              animMesh
+              crowd.States[i]
+              crowd.Poses[i]
       )
       |> ignore
 
@@ -129,8 +132,12 @@ let viewHud (_ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
     10.0f
     $"FPS: {model.Diag.Fps}  ({model.Diag.FrameTime:F1}ms)  Backend: raylib"
 
+  let shadows = if model.ShadowsOn then "on" else "off"
+
   line
     35.0f
-    $"Instances: {crowd.Count}  Tier: {crowd.TierIndex + 1}/{CrowdSpec.counts.Length}  Clips: Walking_A/Running_A/Idle_A (i mod 3)  Anim: {paused}"
+    $"Instances: {crowd.Count}  Tier: {crowd.TierIndex + 1}/{CrowdSpec.counts.Length}  Clips: Walking_A/Running_A/Idle_A (i mod 3)"
 
-  line 60.0f "1-4 tiers | +/- step | Space pause"
+  line 60f $"Anim: {paused}  Shadows: {shadows}"
+
+  line 85.0f "1-4 tiers | +/- step | Space pause | S shadows"
