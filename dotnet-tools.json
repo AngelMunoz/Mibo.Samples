@@ -36,6 +36,20 @@
         "mgcb-editor-windows"
       ],
       "rollForward": false
+    },
+    "dotnet-trace": {
+      "version": "9.0.661903",
+      "commands": [
+        "dotnet-trace"
+      ],
+      "rollForward": false
+    },
+    "dotnet-counters": {
+      "version": "9.0.661903",
+      "commands": [
+        "dotnet-counters"
+      ],
+      "rollForward": false
     }
   }
 }
