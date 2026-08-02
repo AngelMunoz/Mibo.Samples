@@ -3,6 +3,7 @@ namespace FPSSample
 open System
 open System.Numerics
 open Mibo.Elmish.Graphics3D
+open Mibo.Layout3D
 open FPSSample.Types
 
 /// <summary>
@@ -35,6 +36,48 @@ module ViewMath =
     let fwd = cameraForward yaw pitch
     let right = cameraRightPitched yaw pitch
     Vector3.Cross(right, fwd)
+
+  /// Builds the world-space axis-aligned bounds that fully encloses the current
+  /// perspective camera frustum.
+  let cameraFrustumBounds
+    (camPos: Vector3)
+    (yaw: float32)
+    (pitch: float32)
+    (fovY: float32)
+    (aspect: float32)
+    (nearPlane: float32)
+    (farPlane: float32)
+    : BoundingBox =
+    let forward = cameraForward yaw pitch
+    let right = cameraRightPitched yaw pitch
+    let up = cameraUp yaw pitch
+
+    let tanHalfFov = MathF.Tan(fovY * 0.5f)
+    let halfHeightNear = nearPlane * tanHalfFov
+    let halfWidthNear = halfHeightNear * aspect
+
+    let halfHeightFar = farPlane * tanHalfFov
+    let halfWidthFar = halfHeightFar * aspect
+
+    let nearCenter = camPos + forward * nearPlane
+    let farCenter = camPos + forward * farPlane
+
+    let corners = [|
+      nearCenter + right * halfWidthNear + up * halfHeightNear
+      nearCenter + right * halfWidthNear - up * halfHeightNear
+      nearCenter - right * halfWidthNear + up * halfHeightNear
+      nearCenter - right * halfWidthNear - up * halfHeightNear
+
+      farCenter + right * halfWidthFar + up * halfHeightFar
+      farCenter + right * halfWidthFar - up * halfHeightFar
+      farCenter - right * halfWidthFar + up * halfHeightFar
+      farCenter - right * halfWidthFar - up * halfHeightFar
+    |]
+
+    let minCorner = corners |> Array.reduce(fun a b -> Vector3.Min(a, b))
+    let maxCorner = corners |> Array.reduce(fun a b -> Vector3.Max(a, b))
+
+    { Min = minCorner; Max = maxCorner }
 
   /// Pickup bobbing offset at a given total time.
   let inline pickupBob(totalTime: float32) : float32 =

@@ -5,6 +5,7 @@ open System.Diagnostics
 open Microsoft.Xna.Framework
 open Microsoft.Xna.Framework.Graphics
 open Mibo.Elmish
+open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics3D
 open Mibo.Elmish.Graphics3D.Pipelines
 open FPSSample
@@ -126,71 +127,71 @@ module Skybox =
       Vector3(cameraPosNumerics.X, cameraPosNumerics.Y, cameraPosNumerics.Z)
 
     buffer
-    |> Draw3D.drawImmediate(fun scene ->
-      let s = ensureState assets scene.Device
-      let effect = s.Effect
-      let gd = scene.Device
+      .drawImmediate(fun scene ->
+        let s = ensureState assets scene.Device
+        let effect = s.Effect
+        let gd = scene.Device
 
-      // Upload uniforms.
-      let horizonLoc = effect.Parameters.["horizonColor"]
+        // Upload uniforms.
+        let horizonLoc = effect.Parameters.["horizonColor"]
 
-      if horizonLoc <> null then
-        horizonLoc.SetValue(
-          Vector3(
-            float32 ViewMath.skyHorizonColor.R / 255.0f,
-            float32 ViewMath.skyHorizonColor.G / 255.0f,
-            float32 ViewMath.skyHorizonColor.B / 255.0f
+        if horizonLoc <> null then
+          horizonLoc.SetValue(
+            Vector3(
+              float32 ViewMath.skyHorizonColor.R / 255.0f,
+              float32 ViewMath.skyHorizonColor.G / 255.0f,
+              float32 ViewMath.skyHorizonColor.B / 255.0f
+            )
           )
-        )
 
-      let zenithLoc = effect.Parameters.["zenithColor"]
+        let zenithLoc = effect.Parameters.["zenithColor"]
 
-      if zenithLoc <> null then
-        zenithLoc.SetValue(
-          Vector3(
-            float32 ViewMath.skyZenithColor.R / 255.0f,
-            float32 ViewMath.skyZenithColor.G / 255.0f,
-            float32 ViewMath.skyZenithColor.B / 255.0f
+        if zenithLoc <> null then
+          zenithLoc.SetValue(
+            Vector3(
+              float32 ViewMath.skyZenithColor.R / 255.0f,
+              float32 ViewMath.skyZenithColor.G / 255.0f,
+              float32 ViewMath.skyZenithColor.B / 255.0f
+            )
           )
-        )
 
-      let timeLoc = effect.Parameters.["time"]
+        let timeLoc = effect.Parameters.["time"]
 
-      if timeLoc <> null then
-        timeLoc.SetValue(totalTime)
+        if timeLoc <> null then
+          timeLoc.SetValue(totalTime)
 
-      let vpLoc = effect.Parameters.["viewProj"]
+        let vpLoc = effect.Parameters.["viewProj"]
 
-      if vpLoc <> null then
-        vpLoc.SetValue(scene.View * scene.Projection)
+        if vpLoc <> null then
+          vpLoc.SetValue(scene.View * scene.Projection)
 
-      let modelLoc = effect.Parameters.["matModel"]
+        let modelLoc = effect.Parameters.["matModel"]
 
-      if modelLoc <> null then
-        modelLoc.SetValue(
-          Matrix.CreateScale(500.0f) * Matrix.CreateTranslation(camPos)
-        )
+        if modelLoc <> null then
+          modelLoc.SetValue(
+            Matrix.CreateScale(500.0f) * Matrix.CreateTranslation(camPos)
+          )
 
-      // Save + set render states: no culling (inside sphere), no depth write.
-      let prevRS = gd.RasterizerState
-      let prevDS = gd.DepthStencilState
-      gd.RasterizerState <- s.NoCullNoDepth
-      gd.DepthStencilState <- s.DepthOff
+        // Save + set render states: no culling (inside sphere), no depth write.
+        let prevRS = gd.RasterizerState
+        let prevDS = gd.DepthStencilState
+        gd.RasterizerState <- s.NoCullNoDepth
+        gd.DepthStencilState <- s.DepthOff
 
-      gd.SetVertexBuffer(s.SphereVerts)
-      gd.Indices <- s.SphereIndices
+        gd.SetVertexBuffer(s.SphereVerts)
+        gd.Indices <- s.SphereIndices
 
-      for pass in effect.CurrentTechnique.Passes do
-        pass.Apply()
+        for pass in effect.CurrentTechnique.Passes do
+          pass.Apply()
 
-        gd.DrawIndexedPrimitives(
-          PrimitiveType.TriangleList,
-          0,
-          0,
-          s.SpherePrimCount
-        )
+          gd.DrawIndexedPrimitives(
+            PrimitiveType.TriangleList,
+            0,
+            0,
+            s.SpherePrimCount
+          )
 
-      // Restore render states.
-      gd.RasterizerState <- prevRS
-      gd.DepthStencilState <- prevDS)
-    |> Draw3D.drop
+        // Restore render states.
+        gd.RasterizerState <- prevRS
+        gd.DepthStencilState <- prevDS)
+      .drop()

@@ -2,12 +2,14 @@ module FPSSample.Raylib.View
 
 #nowarn "9"
 
+
 open System
 open System.Collections.Generic
 open System.Numerics
 open FSharp.NativeInterop
 open Raylib_cs
 open Mibo.Elmish
+open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics3D
 open Mibo.Animation
 open Mibo.Layout3D
@@ -110,7 +112,9 @@ type EnemyAnimationService() =
         let animClips = assets.ModelAnimations(path)
         let clips = Animation3DClips.fromModelAnimations animClips
         let model = assets.Model(path)
+
         let state = Animation3DState.create model clips "idle" 60.0f
+
         states.Add(state)
 
     member _.Update(dt: float32, enemies: Enemy[]) : unit =
@@ -530,13 +534,13 @@ let view
     )
 
   buffer
-  |> Draw3D.beginCameraWith(
-    Camera3D.render camera
-    |> Camera3D.withClear(Mibo.RaylibColor.toRaylibColor ViewMath.clearColor)
-  )
-  |> Draw3D.setAmbientLight ViewMath.ambientLight
-  |> Draw3D.addDirectionalLight ViewMath.directionalLight
-  |> Draw3D.drop
+    .beginCameraWith(
+      Camera3D.render camera
+      |> Camera3D.withClear(Mibo.RaylibColor.toRaylibColor ViewMath.clearColor)
+    )
+    .setAmbientLight(ViewMath.ambientLight)
+    .addDirectionalLight(ViewMath.directionalLight)
+    .drop()
 
   // ── Starry skybox (drawn first inside camera so scene renders on top) ─────
   buffer
@@ -555,9 +559,7 @@ let view
         model.Player.Pitch
         model.Player.Yaw
 
-    buffer
-    |> Draw3D.addPointLight(ViewMath.muzzleFlashLight flashPos)
-    |> Draw3D.drop
+    buffer.addPointLight(ViewMath.muzzleFlashLight flashPos).drop()
   // ── Static torches (flickering point lights around the arena) ───────────────
   let torches = ViewMath.torchPositions
 
@@ -567,9 +569,7 @@ let view
     let phase = float32 i * 1.7f
     let flicker = MathF.Sin(model.TotalTime * 7.0f + phase) * 0.25f
 
-    buffer
-    |> Draw3D.addPointLight(ViewMath.torchLight pos flicker)
-    |> Draw3D.drop
+    buffer.addPointLight(ViewMath.torchLight pos flicker).drop()
 
   // ── Level geometry (instanced) ────────────────────────────────────────────
   currentGameContext <- ctx
@@ -586,14 +586,12 @@ let view
       let animState = animService.States[i]
       let pos = enemy.Position
 
-      Animation3DState.applyToModel animState
-
       let transform =
         let rot = Raymath.MatrixRotateY(enemy.Facing)
         let trans = Raymath.MatrixTranslate(pos.X, pos.Y, pos.Z)
         Raymath.MatrixMultiply(rot, trans)
 
-      buffer |> Draw3D.drawModel animState.Model transform |> Draw3D.drop
+      buffer.animatedModel(animState, transform).drop()
 
   // ── Pickups ───────────────────────────────────────────────────────────────
   let healthModel = loadOrGetModel currentModelCache Assets.heart ctx
@@ -608,7 +606,7 @@ let view
 
       let bobY = MathF.Sin(model.TotalTime * 3.0f) * 0.2f
       let transform = Raymath.MatrixTranslate(pos.X, pos.Y + bobY, pos.Z)
-      buffer |> Draw3D.drawModel mdl transform |> Draw3D.drop
+      buffer.model(mdl, transform).drop()
 
   // ── Muzzle smoke puffs ────────────────────────────────────────────────────
   let smokeModel = loadOrGetModel currentModelCache Assets.smoke ctx
@@ -662,7 +660,7 @@ let view
             Raymath.MatrixMultiply(scaleMat, trans)
 
         if smokeModel.MeshCount > 0 then
-          buffer |> Draw3D.drawModel smokeModel smokeTransform |> Draw3D.drop
+          buffer.model(smokeModel, smokeTransform).drop()
 
   // ── Bullet tracers ────────────────────────────────────────────────────────
   let bulletModel = loadOrGetModel currentModelCache Assets.bulletFoamTip ctx
@@ -694,7 +692,7 @@ let view
           Raymath.MatrixTranslate(pos.X, pos.Y, pos.Z)
 
       if bulletModel.MeshCount > 0 then
-        buffer |> Draw3D.drawModel bulletModel bulletTransform |> Draw3D.drop
+        buffer.model(bulletModel, bulletTransform).drop()
 
   // ── Ejected shell casings ─────────────────────────────────────────────────
   let shellModel = loadOrGetModel currentModelCache Assets.bulletFoam ctx
@@ -720,7 +718,7 @@ let view
         )
 
       if shellModel.MeshCount > 0 then
-        buffer |> Draw3D.drawModel shellModel shellTransform |> Draw3D.drop
+        buffer.model(shellModel, shellTransform).drop()
 
   // ── Weapon viewmodel (blaster) ────────────────────────────────────────────
   let blasterModel =
@@ -743,26 +741,24 @@ let view
       let trans = Raymath.MatrixTranslate(weaponPos.X, weaponPos.Y, weaponPos.Z)
       Raymath.MatrixMultiply(Raymath.MatrixMultiply(pitchRot, yawRot), trans)
 
-    buffer |> Draw3D.drawModel blasterModel weaponTransform |> Draw3D.drop
+    buffer.model(blasterModel, weaponTransform).drop()
 
-  buffer |> Draw3D.endCamera |> Draw3D.drop
+  buffer.endCamera().drop()
 
   // ── Distance fog: blend the lit scene toward fogColor by view-space distance ──
   buffer
-  |> Draw3D.postProcessWithDepth(fun pp ->
-    applyFog
-      model.Player.Position
-      forward
-      (ViewMath.cameraRightPitched model.Player.Yaw model.Player.Pitch)
-      (ViewMath.cameraUp model.Player.Yaw model.Player.Pitch)
-      (75.0f * MathF.PI / 180.0f)
-      pp)
-  |> Draw3D.drop
+    .postProcessWithDepth(fun pp ->
+      applyFog
+        model.Player.Position
+        forward
+        (ViewMath.cameraRightPitched model.Player.Yaw model.Player.Pitch)
+        (ViewMath.cameraUp model.Player.Yaw model.Player.Pitch)
+        (75.0f * MathF.PI / 180.0f)
+        pp)
+    .drop()
 
   // ── Hit-flash post-process: desaturate the scene while the effect timer runs ──
   if HudLayout.isHitFlash model then
     let intensity = model.Effect.HitEffectTimer / Constants.HitEffectDuration
 
-    buffer
-    |> Draw3D.postProcess(fun pp -> applyGrayscale pp intensity)
-    |> Draw3D.drop
+    buffer.postProcess(fun pp -> applyGrayscale pp intensity).drop()

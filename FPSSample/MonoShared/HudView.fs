@@ -6,6 +6,7 @@ open Microsoft.Xna.Framework
 open Microsoft.Xna.Framework.Graphics
 open Mibo.Elmish
 open Mibo.Elmish.Graphics2D
+open Mibo.Elmish.Graphics
 open FPSSample
 open FPSSample.Types
 
@@ -57,91 +58,91 @@ let view
   let crossSize = HudLayout.crosshairSize
 
   buffer
-  |> Draw.line
-    (0<RenderLayer>, crossColor)
-    (Vector2(cx - crossSize, cy), Vector2(cx + crossSize, cy))
-  |> ignore
-
-  buffer
-  |> Draw.line
-    (0<RenderLayer>, crossColor)
-    (Vector2(cx, cy - crossSize), Vector2(cx, cy + crossSize))
-  |> ignore
+    .line(
+      Vector2(cx - crossSize, cy).ToNumerics(),
+      Vector2(cx + crossSize, cy).ToNumerics(),
+      crossColor |> Mibo.MonoGameColor.fromMonoGameColor
+    )
+    .line(
+      Vector2(cx, cy - crossSize).ToNumerics(),
+      Vector2(cx, cy + crossSize).ToNumerics(),
+      crossColor |> Mibo.MonoGameColor.fromMonoGameColor
+    )
+    .drop()
 
   // ── Health bar ────────────────────────────────────────────────────────────
-  let barX = int HudLayout.healthBarX
-  let barY = int(HudLayout.healthBarY screenH)
-  let barW = int HudLayout.healthBarW
-  let barH = int HudLayout.healthBarH
+  let barX = HudLayout.healthBarX
+  let barY = HudLayout.healthBarY screenH
+  let barW = HudLayout.healthBarW
+  let barH = HudLayout.healthBarH
 
   buffer
-  |> Draw.fillRect
-    (0<RenderLayer>,
-     Mibo.MonoGameColor.toMonoGameColor HudLayout.healthBarBackdrop)
-    (Rectangle(barX, barY, barW, barH))
-  |> ignore
+    .fillRect(
+      HudLayout.healthBarX,
+      HudLayout.healthBarY screenH,
+      HudLayout.healthBarW,
+      HudLayout.healthBarH,
+      HudLayout.healthBarBackdrop
+    )
+    .drop()
 
   let healthPct = HudLayout.healthPercent model
 
   buffer
-  |> Draw.fillRect
-    (0<RenderLayer>,
-     Mibo.MonoGameColor.toMonoGameColor(HudLayout.healthColor healthPct))
-    (Rectangle(barX, barY, int(float32 barW * healthPct), barH))
-  |> ignore
-
-  // ── Ammo counter ──────────────────────────────────────────────────────────
-  buffer
-  |> Draw.text {
-    Font = font
-    Text = HudLayout.ammoText model
-    Position = Vector2(screenW - 180.0f, screenH - 35.0f)
-    Scale = 1.0f
-    Color = Color.White
-    Layer = 0<RenderLayer>
-  }
-  |> ignore
-
-  // ── Score ─────────────────────────────────────────────────────────────────
-  buffer
-  |> Draw.text {
-    Font = font
-    Text = HudLayout.scoreText model
-    Position = Vector2(20.0f, 20.0f)
-    Scale = 1.2f
-    Color = Color.White
-    Layer = 0<RenderLayer>
-  }
-  |> ignore
-
-  // ── FPS (wall-clock render rate) ──────────────────────────────────────────
-  buffer
-  |> Draw.text {
-    Font = font
-    Text = $"FPS: {int smoothedFps}  ({frameTimeMs:F1}ms)"
-    Position = Vector2(20.0f, 48.0f)
-    Scale = 1.0f
-    Color = Color.White
-    Layer = 0<RenderLayer>
-  }
-  |> ignore
+    .fillRect(
+      barX,
+      barY,
+      barW * healthPct,
+      barH,
+      HudLayout.healthColor healthPct
+    )
+    .text(
+      {
+        // ── Ammo counter ──────────────────────────────────────────────────────────
+        Font = font
+        Text = HudLayout.ammoText model
+        Position = Vector2(screenW - 180.0f, screenH - 35.0f)
+        Scale = 1.0f
+        Color = Color.White
+        Layer = 0<RenderLayer>
+      }
+    )
+    .text(
+      {
+        // ── Score ─────────────────────────────────────────────────────────────────
+        Font = font
+        Text = HudLayout.scoreText model
+        Position = Vector2(20.0f, 20.0f)
+        Scale = 1.2f
+        Color = Color.White
+        Layer = 0<RenderLayer>
+      }
+    )
+    .text(
+      {
+        // ── FPS (wall-clock render rate) ──────────────────────────────────────────
+        Font = font
+        Text = $"FPS: {int smoothedFps}  ({frameTimeMs:F1}ms)"
+        Position = Vector2(20.0f, 48.0f)
+        Scale = 1.0f
+        Color = Color.White
+        Layer = 0<RenderLayer>
+      }
+    )
+    .drop()
 
   // ── Game over overlay ─────────────────────────────────────────────────────
   if HudLayout.isGameOver model then
     buffer
-    |> Draw.fillRect
-      (0<RenderLayer>,
-       Mibo.MonoGameColor.toMonoGameColor HudLayout.gameOverOverlayColor)
-      (Rectangle(0, 0, int screenW, int screenH))
-    |> ignore
-
-    buffer
-    |> Draw.text {
-      Font = font
-      Text = HudLayout.gameOverText
-      Position = Vector2(cx - 160.0f, cy + 40.0f)
-      Scale = 1.4f
-      Color = Color.White
-      Layer = 0<RenderLayer>
-    }
-    |> ignore
+      .fillRect(0f, 0f, screenW, screenH, HudLayout.gameOverOverlayColor)
+      .text(
+        {
+          Font = font
+          Text = HudLayout.gameOverText
+          Position = Vector2(cx - 160.0f, cy + 40.0f)
+          Scale = 1.4f
+          Color = Color.White
+          Layer = 0<RenderLayer>
+        }
+      )
+      .drop()

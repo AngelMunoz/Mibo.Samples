@@ -6,6 +6,7 @@ open Microsoft.Xna.Framework
 open Microsoft.Xna.Framework.Audio
 open Microsoft.Xna.Framework.Graphics
 open Mibo.Elmish
+open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics3D
 open Mibo.Animation
 open Mibo.Layout3D
@@ -219,15 +220,15 @@ let view
   }
 
   buffer
-  |> Draw3D.beginCameraWith(
-    Camera3D.render camera
-    |> Camera3D.withClear(
-      Mibo.MonoGameColor.toMonoGameColor ViewMath.clearColor
+    .beginCameraWith(
+      Camera3D.render camera
+      |> Camera3D.withClear(
+        Mibo.MonoGameColor.toMonoGameColor ViewMath.clearColor
+      )
     )
-  )
-  |> Draw3D.setAmbientLight ViewMath.ambientLight
-  |> Draw3D.addDirectionalLight ViewMath.directionalLight
-  |> Draw3D.drop
+    .setAmbientLight(ViewMath.ambientLight)
+    .addDirectionalLight(ViewMath.directionalLight)
+    .drop()
 
   // ── Starry skybox (drawn first inside camera so scene renders on top) ─────
   buffer |> Skybox.render assets model.TotalTime model.Player.Position
@@ -241,9 +242,7 @@ let view
         model.Player.Pitch
         model.Player.Yaw
 
-    buffer
-    |> Draw3D.addPointLight(ViewMath.muzzleFlashLight flashPosNumerics)
-    |> Draw3D.drop
+    buffer.addPointLight(ViewMath.muzzleFlashLight flashPosNumerics).drop()
 
   // ── Static torches (flickering point lights around the arena) ───────────────
   let torches = ViewMath.torchPositions
@@ -253,15 +252,31 @@ let view
     let phase = float32 i * 1.7f
     let flicker = MathF.Sin(model.TotalTime * 7.0f + phase) * 0.25f
 
-    buffer
-    |> Draw3D.addPointLight(ViewMath.torchLight tPos flicker)
-    |> Draw3D.drop
+    buffer.addPointLight(ViewMath.torchLight tPos flicker).drop()
 
   // ── Level geometry (instanced) ────────────────────────────────────────────
   currentGameContext <- ctx
   instancedCtx.ResetFrameBuffers()
 
-  CellGridRenderer3D.renderInstanced instancedCtx model.Level.Grid buffer
+  let graphicsDevice = GameContext.getService<GraphicsDevice> ctx
+
+  let aspect =
+    float32 graphicsDevice.Viewport.Width
+    / float32 graphicsDevice.Viewport.Height
+
+  let box =
+    ViewMath.cameraFrustumBounds
+      (pos.ToNumerics())
+      model.Player.Yaw
+      model.Player.Pitch
+      (MathHelper.ToRadians(75.0f))
+      aspect
+      cameraNear
+      cameraFar
+
+  buffer
+    .renderCellGridVolumeInstanced(instancedCtx, box, model.Level.Grid)
+    .drop()
 
   // ── Enemies (animated models) ─────────────────────────────────────────────
   for i = 0 to model.Enemy.Enemies.Length - 1 do
@@ -276,7 +291,7 @@ let view
         let trans = Matrix.CreateTranslation(ePos.X, ePos.Y, ePos.Z)
         rot * trans
 
-      buffer |> Draw3D.drawAnimatedModel am transform |> Draw3D.drop
+      buffer.animatedModel(am, transform).drop()
 
   // ── Pickups ───────────────────────────────────────────────────────────────
   let healthModel = loadOrGetModel Assets.heart ctx
@@ -292,7 +307,7 @@ let view
       if not(isNull mdl) && mdl.Meshes.Count > 0 then
         let bobY = ViewMath.pickupBob model.TotalTime
         let transform = Matrix.CreateTranslation(p.X, p.Y + bobY, p.Z)
-        buffer |> Draw3D.drawModel mdl transform |> Draw3D.drop
+        buffer.model(mdl, transform).drop()
 
   // ── Muzzle smoke puffs ────────────────────────────────────────────────────
   let smokeModel = loadOrGetModel Assets.smoke ctx
@@ -312,7 +327,7 @@ let view
           * Matrix.CreateTranslation(pos)
 
         if not(isNull smokeModel) && smokeModel.Meshes.Count > 0 then
-          buffer |> Draw3D.drawModel smokeModel smokeTransform |> Draw3D.drop
+          buffer.model(smokeModel, smokeTransform).drop()
 
   // ── Bullet tracers ────────────────────────────────────────────────────────
   let bulletModel = loadOrGetModel Assets.bulletFoamTip ctx
@@ -330,7 +345,7 @@ let view
         orientAlong(toXnaV bullet.Direction) * Matrix.CreateTranslation(pos)
 
       if not(isNull bulletModel) && bulletModel.Meshes.Count > 0 then
-        buffer |> Draw3D.drawModel bulletModel bulletTransform |> Draw3D.drop
+        buffer.model(bulletModel, bulletTransform).drop()
 
   // ── Ejected shell casings ─────────────────────────────────────────────────
   let shellModel = loadOrGetModel Assets.bulletFoam ctx
@@ -345,7 +360,7 @@ let view
         * Matrix.CreateTranslation(pos)
 
       if not(isNull shellModel) && shellModel.Meshes.Count > 0 then
-        buffer |> Draw3D.drawModel shellModel shellTransform |> Draw3D.drop
+        buffer.model(shellModel, shellTransform).drop()
 
   // ── Weapon viewmodel (blaster) ────────────────────────────────────────────
   let blasterModel = loadOrGetModel model.Weapon.EquippedWeapon ctx
@@ -367,81 +382,77 @@ let view
       let trans = Matrix.CreateTranslation(weaponPos)
       pitchRot * yawRot * trans
 
-    buffer |> Draw3D.drawModel blasterModel transform |> Draw3D.drop
+    buffer.model(blasterModel, transform).drop()
 
-  buffer |> Draw3D.endCamera |> Draw3D.drop
+  buffer.endCamera().drop()
 
-  // ── Distance fog: blend the lit scene toward fogColor by view-space distance ──
-  // Runs before the hit-flash so a desaturated frame still shows the fog. Always draws (never
-  // a no-op): when the pipeline couldn't produce depth, fogStrength=0 passes the scene through
-  // unchanged so the back-buffer is never left blank.
   // ── Distance fog: blend the lit scene toward fogColor by view-space distance ──
   // Runs before the hit-flash so a desaturated frame still shows the fog. Always draws (never
   // a no-op): when the pipeline couldn't produce depth, fogStrength=0 passes the scene through
   // unchanged so the back-buffer is never left blank.
   buffer
-  |> Draw3D.postProcessWithDepth(fun pp ->
-    let e =
-      match fogEffect with
-      | ValueSome e -> e
+    .postProcessWithDepth(fun pp ->
+      let e =
+        match fogEffect with
+        | ValueSome e -> e
+        | ValueNone ->
+          let e = assets.Effect("Fog")
+          fogEffect <- ValueSome e
+          e
+
+      e.Parameters["SceneTexture"].SetValue(pp.Source)
+
+      match pp.Depth with
+      | ValueSome depthTex ->
+        e.Parameters["DepthTexture"].SetValue(depthTex)
+        e.Parameters["fogStrength"].SetValue(1.0f)
       | ValueNone ->
-        let e = assets.Effect("Fog")
-        fogEffect <- ValueSome e
-        e
+        // No depth this frame — bind the scene itself so the depth sampler is valid, and disable
+        // the fog blend (fogStrength=0 → scene passes through unchanged).
+        e.Parameters["DepthTexture"].SetValue(pp.Source)
+        e.Parameters["fogStrength"].SetValue(0.0f)
 
-    e.Parameters["SceneTexture"].SetValue(pp.Source)
+      e.Parameters["fogColor"].SetValue(fogColor)
+      e.Parameters["fogNear"].SetValue(fogNear)
+      e.Parameters["fogFar"].SetValue(fogFar)
+      e.Parameters["cameraNear"].SetValue(cameraNear)
+      e.Parameters["cameraFar"].SetValue(cameraFar)
 
-    match pp.Depth with
-    | ValueSome depthTex ->
-      e.Parameters["DepthTexture"].SetValue(depthTex)
-      e.Parameters["fogStrength"].SetValue(1.0f)
-    | ValueNone ->
-      // No depth this frame — bind the scene itself so the depth sampler is valid, and disable
-      // the fog blend (fogStrength=0 → scene passes through unchanged).
-      e.Parameters["DepthTexture"].SetValue(pp.Source)
-      e.Parameters["fogStrength"].SetValue(0.0f)
+      // Camera basis vectors for height-fog world-position reconstruction.
+      // Use pitch-aware orthonormal basis so world Y is correct when looking up/down.
+      let yaw = model.Player.Yaw
+      let pitch = model.Player.Pitch
 
-    e.Parameters["fogColor"].SetValue(fogColor)
-    e.Parameters["fogNear"].SetValue(fogNear)
-    e.Parameters["fogFar"].SetValue(fogFar)
-    e.Parameters["cameraNear"].SetValue(cameraNear)
-    e.Parameters["cameraFar"].SetValue(cameraFar)
+      e.Parameters["camPos"].SetValue(pos)
+      e.Parameters["camForward"].SetValue(forward)
 
-    // Camera basis vectors for height-fog world-position reconstruction.
-    // Use pitch-aware orthonormal basis so world Y is correct when looking up/down.
-    let yaw = model.Player.Yaw
-    let pitch = model.Player.Pitch
+      e.Parameters["camRight"]
+        .SetValue(toXnaV(ViewMath.cameraRightPitched yaw pitch))
 
-    e.Parameters["camPos"].SetValue(pos)
-    e.Parameters["camForward"].SetValue(forward)
+      e.Parameters["camUp"].SetValue(toXnaV(ViewMath.cameraUp yaw pitch))
+      e.Parameters["fovY"].SetValue(MathHelper.ToRadians(75.0f))
+      e.Parameters["aspect"].SetValue(float32 pp.Width / float32 pp.Height)
+      e.Parameters["fogCeiling"].SetValue(fogCeiling)
+      e.Parameters["fogDensity"].SetValue(fogDensity)
 
-    e.Parameters["camRight"]
-      .SetValue(toXnaV(ViewMath.cameraRightPitched yaw pitch))
-
-    e.Parameters["camUp"].SetValue(toXnaV(ViewMath.cameraUp yaw pitch))
-    e.Parameters["fovY"].SetValue(MathHelper.ToRadians(75.0f))
-    e.Parameters["aspect"].SetValue(float32 pp.Width / float32 pp.Height)
-    e.Parameters["fogCeiling"].SetValue(fogCeiling)
-    e.Parameters["fogDensity"].SetValue(fogDensity)
-
-    pp.Quad.Draw(e))
-  |> Draw3D.drop
+      pp.Quad.Draw e)
+    .drop()
 
   // ── Hit-flash post-process: desaturate the scene while the effect timer runs ──
   if HudLayout.isHitFlash model then
     let intensity = model.Effect.HitEffectTimer / Constants.HitEffectDuration
 
     buffer
-    |> Draw3D.postProcess(fun pp ->
-      match grayscaleEffect with
-      | ValueNone ->
-        let e = assets.Effect("Grayscale")
-        grayscaleEffect <- ValueSome e
-        e.Parameters["SceneTexture"].SetValue(pp.Source)
-        e.Parameters["intensity"].SetValue(intensity)
-        pp.Quad.Draw(e)
-      | ValueSome e ->
-        e.Parameters["SceneTexture"].SetValue(pp.Source)
-        e.Parameters["intensity"].SetValue(intensity)
-        pp.Quad.Draw(e))
-    |> Draw3D.drop
+      .postProcess(fun pp ->
+        match grayscaleEffect with
+        | ValueNone ->
+          let e = assets.Effect("Grayscale")
+          grayscaleEffect <- ValueSome e
+          e.Parameters["SceneTexture"].SetValue(pp.Source)
+          e.Parameters["intensity"].SetValue(intensity)
+          pp.Quad.Draw(e)
+        | ValueSome e ->
+          e.Parameters["SceneTexture"].SetValue(pp.Source)
+          e.Parameters["intensity"].SetValue(intensity)
+          pp.Quad.Draw(e))
+      .drop()
