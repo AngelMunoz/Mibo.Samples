@@ -379,6 +379,7 @@ let private redPoint: PointLight3D =
   PointLight3D.create(System.Numerics.Vector3(0.f, 3.f, 14.f), 18.f)
   |> PointLight3D.withColor Mibo.Color.Red
   |> PointLight3D.withIntensity 3.f
+  |> PointLight3D.withCastsShadows true
 
 /// The zone-3 layout: floor slab + non-instanced model row + instanced rows.
 let private drawFloorScene (model: Model) (buffer: RenderBuffer3D) =

@@ -148,8 +148,6 @@ type EnemyAnimationService() =
 
           states[i] <- AnimatedModel.update dt newAm
 
-/// Converts a System.Numerics.Vector3 to an XNA Vector3.
-let inline toXnaV(v: System.Numerics.Vector3) = Vector3(v.X, v.Y, v.Z)
 
 /// Builds a rotation matrix that maps +Y to the given direction (for orienting
 /// models that point up by default along a travel vector).
@@ -204,9 +202,9 @@ let view
   let forwardNumerics =
     ViewMath.cameraForward model.Player.Yaw model.Player.Pitch
 
-  let forward = toXnaV forwardNumerics
+  let forward = Vector3.op_Implicit forwardNumerics
 
-  let pos = toXnaV model.Player.Position
+  let pos = Vector3.op_Implicit model.Player.Position
   let target = pos + forward
 
   let camera: Camera3D = {
@@ -318,8 +316,8 @@ let view
       let alpha = 1.0f - life
 
       if alpha > 0.01f then
-        let pos = toXnaV puff.Position
-        let dir = toXnaV puff.Velocity
+        let pos = Vector3.op_Implicit puff.Position
+        let dir = Vector3.op_Implicit puff.Velocity
 
         let smokeTransform =
           orientAlong dir
@@ -336,13 +334,11 @@ let view
     if bullet.Active then
       let progress = 1.0f - bullet.Timer / Bullet.duration
 
-      let pos =
-        toXnaV(
-          System.Numerics.Vector3.Lerp(bullet.Start, bullet.EndPos, progress)
-        )
+      let pos = Vector3.Lerp(bullet.Start, bullet.EndPos, progress)
+
 
       let bulletTransform =
-        orientAlong(toXnaV bullet.Direction) * Matrix.CreateTranslation(pos)
+        orientAlong bullet.Direction * Matrix.CreateTranslation(pos)
 
       if not(isNull bulletModel) && bulletModel.Meshes.Count > 0 then
         buffer.model(bulletModel, bulletTransform).drop()
@@ -352,8 +348,8 @@ let view
 
   for shell in model.Effect.Shells do
     if shell.Active then
-      let pos = toXnaV shell.Position
-      let rot = toXnaV shell.Rotation
+      let pos = Vector3.op_Implicit shell.Position
+      let rot = Vector3.op_Implicit shell.Rotation
 
       let shellTransform =
         Matrix.CreateFromYawPitchRoll(rot.Y, rot.X, rot.Z)
@@ -374,7 +370,7 @@ let view
         model.Player.Yaw
         model.Weapon.RecoilOffset
 
-    let weaponPos = toXnaV weaponPosNumerics
+    let weaponPos = Vector3.op_Implicit weaponPosNumerics
 
     let transform =
       let yawRot = Matrix.CreateRotationY(model.Player.Yaw)
@@ -391,7 +387,7 @@ let view
   // a no-op): when the pipeline couldn't produce depth, fogStrength=0 passes the scene through
   // unchanged so the back-buffer is never left blank.
   buffer
-    .postProcessWithDepth(fun pp ->
+    .postProcessWithDepth(fun (pp: PostProcessContext3D) ->
       let e =
         match fogEffect with
         | ValueSome e -> e
@@ -400,16 +396,16 @@ let view
           fogEffect <- ValueSome e
           e
 
-      e.Parameters["SceneTexture"].SetValue(pp.Source)
+      e.Parameters["SceneTexture"].SetValue pp.Source
 
       match pp.Depth with
       | ValueSome depthTex ->
-        e.Parameters["DepthTexture"].SetValue(depthTex)
+        e.Parameters["DepthTexture"].SetValue depthTex
         e.Parameters["fogStrength"].SetValue(1.0f)
       | ValueNone ->
         // No depth this frame — bind the scene itself so the depth sampler is valid, and disable
         // the fog blend (fogStrength=0 → scene passes through unchanged).
-        e.Parameters["DepthTexture"].SetValue(pp.Source)
+        e.Parameters["DepthTexture"].SetValue pp.Source
         e.Parameters["fogStrength"].SetValue(0.0f)
 
       e.Parameters["fogColor"].SetValue(fogColor)
@@ -426,14 +422,13 @@ let view
       e.Parameters["camPos"].SetValue(pos)
       e.Parameters["camForward"].SetValue(forward)
 
-      e.Parameters["camRight"]
-        .SetValue(toXnaV(ViewMath.cameraRightPitched yaw pitch))
+      e.Parameters["camRight"].SetValue(ViewMath.cameraRightPitched yaw pitch)
 
-      e.Parameters["camUp"].SetValue(toXnaV(ViewMath.cameraUp yaw pitch))
+      e.Parameters["camUp"].SetValue(ViewMath.cameraUp yaw pitch)
       e.Parameters["fovY"].SetValue(MathHelper.ToRadians(75.0f))
       e.Parameters["aspect"].SetValue(float32 pp.Width / float32 pp.Height)
-      e.Parameters["fogCeiling"].SetValue(fogCeiling)
-      e.Parameters["fogDensity"].SetValue(fogDensity)
+      e.Parameters["fogCeiling"].SetValue fogCeiling
+      e.Parameters["fogDensity"].SetValue fogDensity
 
       pp.Quad.Draw e)
     .drop()
