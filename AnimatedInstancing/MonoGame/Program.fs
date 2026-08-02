@@ -118,12 +118,11 @@ let subscribe (ctx: GameContext) (model: Model) =
 let main _ =
   let program =
     Program.mkProgram init update
-    |> Program.withConfig(fun cfg -> {
-      cfg with
-          Width = 1280
-          Height = 720
-          Title = "Mibo Animated Instancing (MonoGame)"
-    })
+    |> Program.withConfig(
+      GameConfig.withWidth 1280
+      >> GameConfig.withHeight 720
+      >> GameConfig.withTitle "Mibo Animated Instancing (MonoGame)"
+    )
     |> Program.withInput
     |> Program.withSubscription subscribe
     |> Program.withTick Tick
@@ -138,8 +137,9 @@ let main _ =
     |> Program.withRenderer(fun () ->
       Renderer2D.createWith Renderer2DConfig.noClear View.viewHud)
     |> MonoGameProgram.ofProgram
+    |> MonoGameProgram.withConfig(fun (game, _) ->
+      game.Content.RootDirectory <- "Content")
 
   let game = new MiboGame<Model, Msg>(program)
-  game.Content.RootDirectory <- "Content"
   game.Run()
   0

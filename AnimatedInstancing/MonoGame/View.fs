@@ -78,8 +78,9 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
 
   // THE probe: one pose evaluation per instance into the reused pose array,
   // then a single skinned+instanced draw call (DrawAnimatedModelInstanced).
-  // Pose evaluation is parallelized — computePose only reads the clip data +
-  // per-instance state and allocates each pose, and each iteration writes a
+  // Pose evaluation is parallelized — computePoseInto only reads the clip
+  // data + per-instance state and reuses each pose's backing arrays (grown
+  // once, then no per-frame allocation), and each iteration writes a
   // distinct Poses slot. Skipped while paused: the states (and therefore the
   // poses) don't change.
   match model.Rig.Mesh with

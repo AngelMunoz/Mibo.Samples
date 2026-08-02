@@ -75,11 +75,11 @@ let view (_ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
 
   // THE probe: one pose evaluation per instance into the reused pose array,
   // then a single skinned+instanced draw call (one DrawSkinnedMeshInstanced
-  // per sub-mesh). Pose arrays are allocated per pose by computePose — the
-  // outer array is reused; only tier changes reallocate it. Pose evaluation
-  // is parallelized (computePose only reads the clip data + per-instance
-  // state; each iteration writes a distinct Poses slot) and skipped while
-  // paused (the states, and therefore the poses, don't change).
+  // per sub-mesh). computePoseInto grows each pose's backing arrays once and
+  // reuses them thereafter — no per-frame allocation; only tier changes
+  // reallocate the outer array. Pose evaluation is parallelized (each
+  // iteration writes a distinct Poses slot) and skipped while paused (the
+  // states, and therefore the poses, don't change).
   match model.AnimMesh with
   | ValueSome animMesh when crowd.Count > 0 ->
     if not crowd.Paused then
