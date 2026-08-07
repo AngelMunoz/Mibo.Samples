@@ -244,7 +244,7 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
     let chunkCenter = System.Numerics.Vector3(centerX, centerY, centerZ)
 
     if (chunkCenter - numericsCamPos).LengthSquared() <= maxChunkDistSq then
-      let terrainGrid, _ = LayeredGrid3D.getOrAddLayer Layer.Terrain chunk.Grids
+      let struct (terrainGrid, _) = LayeredGrid3D.getOrAddLayer Layer.Terrain chunk.Grids
 
       CellGridRenderer3D.renderVolumeInstancedWithEffect
         instancedCtx

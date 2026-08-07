@@ -227,7 +227,7 @@ module PhysicsSystem =
 
       match chunks.TryGetValue key with
       | true, chunk ->
-        let terrainGrid, _ =
+        let struct (terrainGrid, _) =
           LayeredGrid2D.getOrAddLayer Layer.Terrain chunk.Grids
 
         let cellX =

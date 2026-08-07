@@ -184,7 +184,7 @@ let resolveCollision
 
   for KeyValue(struct (cx, cz), chunk) in chunks do
     if abs(cx - pcx) <= 2 && abs(cz - pcz) <= 2 then
-      let terrainGrid, _ = LayeredGrid3D.getOrAddLayer Layer.Terrain chunk.Grids
+      let struct (terrainGrid, _) = LayeredGrid3D.getOrAddLayer Layer.Terrain chunk.Grids
 
       let origin = terrainGrid.Origin
       let blockOriginX = int origin.X
@@ -287,7 +287,7 @@ let resolveCollision
   // on the block the player stands on would re-ground them every frame.
   for KeyValue(struct (cx, cz), chunk) in chunks do
     if abs(cx - pcx) <= 2 && abs(cz - pcz) <= 2 then
-      let terrainGrid, _ = LayeredGrid3D.getOrAddLayer Layer.Terrain chunk.Grids
+      let struct (terrainGrid, _) = LayeredGrid3D.getOrAddLayer Layer.Terrain chunk.Grids
 
       let origin = terrainGrid.Origin
       let blockOriginX = int origin.X
@@ -380,7 +380,7 @@ let resolveCollision
 
   for KeyValue(struct (cx, cz), chunk) in chunks do
     if abs(cx - pcx) <= 2 && abs(cz - pcz) <= 2 then
-      let terrainGrid, _ = LayeredGrid3D.getOrAddLayer Layer.Terrain chunk.Grids
+      let struct (terrainGrid, _) = LayeredGrid3D.getOrAddLayer Layer.Terrain chunk.Grids
 
       let origin = terrainGrid.Origin
       let blockOriginX = int origin.X

@@ -961,7 +961,7 @@ let generateChunk (cx: int) (cy: int) (worldSeed: int) : Chunk =
 
   // 3. Plan + stamp platforms (reads grid for spatial validation,
   //    stamps as each platform is validated)
-  let terrainGrid, _ = LayeredGrid2D.getOrAddLayer Layer.Terrain grid
+  let struct (terrainGrid, _) = LayeredGrid2D.getOrAddLayer Layer.Terrain grid
 
   terrainGrid
   |> Layout.run(

@@ -67,7 +67,7 @@ module Minimap =
            >= playerPos.Y - minimapWorldRadius
         && chunk.Bounds.Y <= playerPos.Y + minimapWorldRadius
       then
-        let terrainGrid, _ =
+        let struct (terrainGrid, _) =
           LayeredGrid2D.getOrAddLayer Layer.Terrain chunk.Grids
 
         let cellW = terrainGrid.CellSize.X

@@ -187,7 +187,7 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
       let chunkBounds = toRect chunk.Bounds
 
       if Culling.isVisible2D viewBounds chunkBounds then
-        let terrainGrid, _ =
+        let struct (terrainGrid, _) =
           LayeredGrid2D.getOrAddLayer Layer.Terrain chunk.Grids
 
         CellGrid2D.iterVisible
