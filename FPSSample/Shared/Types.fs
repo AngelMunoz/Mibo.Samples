@@ -211,6 +211,40 @@ module Types =
       Active = true
     }
 
+  // ── Bullet-impact Decals ───────────────────────────────────────────────────
+
+  /// A textured, semi-transparent decal placed where a bullet impacts a surface.
+  /// Drawn as a flat plane oriented to the impact normal, with a Material3D whose
+  /// Opacity fades over its lifetime. This exercises PR #99's sorted alpha-blend
+  /// path with a textured surface (alpha = texColor.a * opacity), so a decal with
+  /// an alpha channel keeps its shape while blending.
+  [<Struct>]
+  type Decal = {
+    Position: Vector3
+    /// Impact surface normal — the plane's +Z is aligned to this so the decal
+    /// lies flat against the hit surface.
+    Normal: Vector3
+    mutable Timer: float32
+    mutable Active: bool
+  }
+
+  module Decal =
+    let empty: Decal = {
+      Position = Vector3.Zero
+      Normal = Vector3.UnitY
+      Timer = 0.0f
+      Active = false
+    }
+
+    let duration = 6.0f
+
+    let inline create (pos: Vector3) (normal: Vector3) : Decal = {
+      Position = pos
+      Normal = normal
+      Timer = duration
+      Active = true
+    }
+
   // ── Audio Messages ────────────────────────────────────────────────────────
 
   /// Rich one-shot audio event. Carries everything a backend needs to play with
@@ -258,6 +292,7 @@ module Types =
     | SpawnSmoke of position: Vector3 * direction: Vector3
     | SpawnBullet of startPos: Vector3 * endPos: Vector3 * direction: Vector3
     | SpawnShell of position: Vector3 * right: Vector3
+    | SpawnDecal of position: Vector3 * normal: Vector3
     | MuzzleFlash
     | TriggerHitFlash
 
@@ -355,6 +390,7 @@ module Types =
     member val SmokePuffs: SmokePuff[] = Array.zeroCreate 8 with get, set
     member val Bullets: Bullet[] = Array.zeroCreate 4 with get, set
     member val Shells: ShellCasing[] = Array.zeroCreate 8 with get, set
+    member val Decals: Decal[] = Array.zeroCreate 32 with get, set
 
   /// Enemy subsystem model. Owns the enemies array (and a reference to the
   /// shared colliders array used for enemy-vs-wall resolution).

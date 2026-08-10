@@ -3797,3 +3797,14 @@
 /importer:WavImporter
 /processor:SoundEffectProcessor
 /build:horror_sfx/Laugh_spooky_4.wav;horror_sfx/Laugh_spooky_4
+
+#begin ../../assets/decals/laser1.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=0,0,0,0
+/processorParam:ColorKeyEnabled=False
+/processorParam:GenerateMipmaps=True
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeTexturesToPowerOfTwo=False
+/processorParam:TextureFormat=Compressed
+/build:../../assets/decals/laser1.png;decals/laser1

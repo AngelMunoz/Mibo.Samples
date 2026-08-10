@@ -101,6 +101,10 @@ type BlockEntry = {
 type Model = {
   Blocks: BlockEntry[]
   Floor: PrimitiveMesh
+  /// Unit cube used for the transparency probe (PR #99): drawn with a
+  /// semi-transparent material so it routes through the deferred, sorted
+  /// alpha-blend pass and is excluded from shadow/scene-depth collection.
+  TransparentCube: PrimitiveMesh
   CamTarget: Vector3
   CamYaw: float32
   CamPitch: float32
@@ -164,6 +168,7 @@ let init(ctx: GameContext) : struct (Model * Cmd<Msg>) =
   let model = {
     Blocks = [| for name in blockNames -> loadBlock assets name |]
     Floor = primitives.Cylinder
+    TransparentCube = primitives.Cube
     CamTarget = Vector3(0.f, 0.f, 4.f)
     CamYaw = 0.f
     CamPitch = 0.65f
@@ -383,7 +388,11 @@ let private redPoint: PointLight3D =
 
 /// The zone-3 layout: floor slab + non-instanced model row + instanced rows.
 let private drawFloorScene (model: Model) (buffer: RenderBuffer3D) =
-  // Floor: unit cube primitive scaled into a slab, top face at y = 0.
+  // Floor: unit cube primitive scaled into a slab, top face at y = 0. Made
+  // semi-transparent (Opacity < 1) so it routes through PR #99's deferred,
+  // far-to-near sorted alpha-blend pass with depth writes off. Because the
+  // depth pass is binary, it is also excluded from shadow + scene-depth
+  // collection — eyeball that the slab casts no shadow under the sun.
   let floorTransform =
     Matrix.CreateScale(26.f, 1.f, 14.f)
     * Matrix.CreateTranslation(0.f, -0.5f, 14.f)
@@ -391,7 +400,9 @@ let private drawFloorScene (model: Model) (buffer: RenderBuffer3D) =
   let floorMaterial =
     Material3D.colored(Microsoft.Xna.Framework.Color(110, 112, 120))
 
-  buffer.mesh(model.Floor, floorTransform, floorMaterial).drop()
+  let transparentFloor = { floorMaterial with Opacity = 0.6f }
+
+  buffer.mesh(model.Floor, floorTransform, transparentFloor).drop()
 
   for i = 0 to model.Blocks.Length - 1 do
     let p = zone1Pos i + Vector3(0.f, 0.f, 20.f)
@@ -408,6 +419,32 @@ let private drawFloorScene (model: Model) (buffer: RenderBuffer3D) =
 
     for struct (mesh, material) in block.Parts do
       buffer.instanced(mesh, transforms, material, transforms.Length).drop()
+
+  // Transparency probe (PR #99): a stack of three semi-transparent cubes at
+  // differing depths, drawn after the opaque/transparent geometry above. Each
+  // has a distinct opacity so the far-to-near sort is visible: the nearest
+  // cube blends over the farther ones, and all blend over the transparent
+  // floor. They cast no shadows and write no depth — verify against the sun's
+  // shadow on the floor and against the opaque block row behind them.
+  let probeMat opacity = {
+    Material3D.colored(Microsoft.Xna.Framework.Color(80, 180, 240)) with
+        Opacity = opacity
+  }
+
+  let probeTransform(x, y, z) =
+    Matrix.CreateScale(2.f) * Matrix.CreateTranslation(x, y, z)
+
+  buffer
+    .mesh(model.TransparentCube, probeTransform(-3.f, 1.f, 16.f), probeMat 0.3f)
+    .drop()
+
+  buffer
+    .mesh(model.TransparentCube, probeTransform(0.f, 1.5f, 14.f), probeMat 0.5f)
+    .drop()
+
+  buffer
+    .mesh(model.TransparentCube, probeTransform(3.f, 2.f, 12.f), probeMat 0.8f)
+    .drop()
 
   buffer
 

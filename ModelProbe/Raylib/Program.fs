@@ -94,6 +94,7 @@ type BlockEntry = { Model: Model }
 type ProbeModel = {
   Blocks: BlockEntry[]
   Floor: Model
+  TransparentCube: Mesh
   CamTarget: Vector3
   CamYaw: float32
   CamPitch: float32
@@ -175,6 +176,7 @@ let init(_ctx: GameContext) : struct (ProbeModel * Cmd<Msg>) =
   let model = {
     Blocks = [| for name in blockNames -> loadBlock name |]
     Floor = Raylib.LoadModelFromMesh(Raylib.GenMeshCube(26.0f, 1.0f, 14.0f))
+    TransparentCube = Raylib.GenMeshCube(1.0f, 1.0f, 1.0f)
     CamTarget = Vector3(0.0f, 0.0f, 4.0f)
     CamYaw = 0.0f
     CamPitch = 0.65f
@@ -298,7 +300,22 @@ let update (msg: Msg) (model: ProbeModel) : struct (ProbeModel * Cmd<Msg>) =
 // ── View ──
 
 let private drawFloorScene (model: ProbeModel) (buffer: RenderBuffer3D) =
-  buffer.model(model.Floor, Raymath.MatrixTranslate(0.0f, -0.5f, 14.0f)).drop()
+  // Floor: made semi-transparent (Opacity < 1) so it routes through PR #99's
+  // deferred, far-to-near sorted alpha-blend pass with depth writes off. Because
+  // the depth pass is binary, it is also excluded from shadow + scene-depth
+  // collection — eyeball that the slab casts no shadow under the sun.
+  let floorMaterial = {
+    Material3D.colored(Color(110, 112, 120, 255)) with
+      Opacity = 0.6f
+  }
+
+  buffer
+    .modelWith(
+      model.Floor,
+      Raymath.MatrixTranslate(0.0f, -0.5f, 14.0f),
+      floorMaterial
+    )
+    .drop()
 
   for i = 0 to model.Blocks.Length - 1 do
     let p = zone1Pos i + Vector3(0.0f, 0.0f, 20.0f)
@@ -314,6 +331,33 @@ let private drawFloorScene (model: ProbeModel) (buffer: RenderBuffer3D) =
       buffer
         .model(model.Blocks[i].Model, Raymath.MatrixTranslate(x, 0.0f, z))
         .drop()
+
+  // Transparency probe (PR #99): a stack of three semi-transparent cubes at
+  // differing depths. Each has a distinct opacity so the far-to-near sort is
+  // visible: the nearest cube blends over the farther ones, and all blend over
+  // the transparent floor. They cast no shadows and write no depth.
+  let probeMat opacity = {
+    Material3D.colored(Color(80, 180, 240, 255)) with
+      Opacity = opacity
+  }
+
+  let probeTransform (x: float32, y: float32, z: float32) =
+    Raymath.MatrixMultiply(
+      Raymath.MatrixScale(2.0f, 2.0f, 2.0f),
+      Raymath.MatrixTranslate(x, y, z)
+    )
+
+  buffer
+    .mesh(model.TransparentCube, probeTransform (-3.0f, 1.0f, 16.0f), probeMat 0.3f)
+    .drop()
+
+  buffer
+    .mesh(model.TransparentCube, probeTransform (0.0f, 1.5f, 14.0f), probeMat 0.5f)
+    .drop()
+
+  buffer
+    .mesh(model.TransparentCube, probeTransform (3.0f, 2.0f, 12.0f), probeMat 0.8f)
+    .drop()
 
   buffer
 

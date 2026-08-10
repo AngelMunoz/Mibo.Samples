@@ -512,6 +512,110 @@ let private applyFog
     Raylib.EndShaderMode()
   | ValueNone -> ()
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Bullet-impact decals — textured, semi-transparent planes (PR #99 probe).
+//
+// A decal is a flat Primitive3D.plane oriented so its +Y normal aligns to the
+// impact normal (raylib's GenMeshPlane lies on XZ, normal +Y), drawn with a
+// Material3D whose Opacity < 1. The PBR shader outputs
+// alpha = texColor.a * opacity, so the decal keeps its alpha outline while
+// blending through the sorted, depth-write-off pass. The texture is loaded
+// once and reused across frames; the plane is a shared module-level mesh.
+// ─────────────────────────────────────────────────────────────────────────────
+
+let mutable private decalTexture: Texture2D voption = ValueNone
+let mutable private decalMaterial: Material3D voption = ValueNone
+
+/// Base opacity for a fresh impact decal; the per-draw opacity fades with the
+/// decal's remaining lifetime.
+let private decalBaseOpacity = 0.85f
+
+/// Scale of the decal plane (world units along each edge).
+let private decalScale = 1.0f
+
+/// Small offset along the impact normal to avoid z-fighting with the surface.
+let private decalOffset = 0.02f
+
+/// Loads the laser sprite sheet and crops frame (0,0): the sheet is 180×120
+/// with 60×60 frames (3 cols × 2 rows — the same grid SpaceBattle animates).
+/// Cropping gives the decal a single bolt instead of all six ghost frames
+/// spread over the quad.
+let private loadDecalTexture (assets: IAssets) : Texture2D =
+  let sheet = assets.Texture Assets.decalLaser1
+  let mutable img = Raylib.LoadImageFromTexture(sheet)
+  Raylib.ImageCrop(&img, Rectangle(0.0f, 0.0f, 60.0f, 60.0f))
+  let tex = Raylib.LoadTextureFromImage(img)
+  Raylib.UnloadImage(img)
+  tex
+
+/// Ensures the decal texture and base material are created (once). The material
+/// is opaque-albedo + Opacity < 1 so draws route through the sorted alpha-blend
+/// pass. The emission map repeats the albedo texture at full strength, so the
+/// bolt glows with its own colors instead of vanishing under the night
+/// lighting — the PBR shader adds `emissionColor * emissionMap` to the lit
+/// result on both backends.
+let private ensureDecalResources(assets: IAssets) =
+  match decalMaterial with
+  | ValueNone ->
+    let tex = loadDecalTexture assets
+    decalTexture <- ValueSome tex
+
+    let mat =
+      Material3D.defaults
+      |> Material3D.withAlbedoMap tex
+      |> fun m -> {
+          m with
+              EmissionMap = ValueSome tex
+              Opacity = decalBaseOpacity
+              EmissionColor = Color(255, 255, 255, 255)
+        }
+
+    decalMaterial <- ValueSome mat
+  | ValueSome _ -> ()
+
+/// Builds a world matrix that lays a unit plane flat against a surface: the
+/// plane's +Y normal maps to `normal`, the plane is scaled to `decalScale`,
+/// and nudged by `decalOffset` along the normal to avoid z-fighting. raylib's
+/// GenMeshPlane lies on XZ with normal +Y, so the floor case is identity.
+let private decalTransform(position: Vector3, normal: Vector3) : Matrix4x4 =
+  let n =
+    if normal.LengthSquared() > 0.001f then
+      Vector3.Normalize normal
+    else
+      Vector3.UnitY
+
+  // Rotate the plane's local +Y onto the impact normal. For the common floor
+  // case (n ≈ +Y) the rotation is identity; for a wall we rotate about the
+  // cross axis by the angle between +Y and n. Fallback to identity when +Y
+  // and n are parallel (cross product degenerate).
+  let rot =
+    let src = Vector3.UnitY
+    let dot = Math.Clamp(Vector3.Dot(src, n), -1.0f, 1.0f)
+
+    if dot > 0.9999f then
+      Matrix4x4.Identity
+    elif dot < -0.9999f then
+      // n ≈ -Y: rotate 180° about X (ceiling).
+      Raymath.MatrixRotateX(MathF.PI)
+    else
+      let axis = Vector3.Cross(src, n)
+      Raymath.MatrixRotate(Vector3.Normalize axis, MathF.Acos dot)
+
+  let scale = Raymath.MatrixScale(decalScale, decalScale, decalScale)
+  let trans = Raymath.MatrixTranslate(position.X, position.Y, position.Z)
+  // Offset along the normal to lift the decal off the surface.
+  let offset =
+    Raymath.MatrixTranslate(
+      n.X * decalOffset,
+      n.Y * decalOffset,
+      n.Z * decalOffset
+    )
+
+  Raymath.MatrixMultiply(
+    Raymath.MatrixMultiply(scale, rot),
+    Raymath.MatrixMultiply(trans, offset)
+  )
+
 /// Renders the 3D scene from a first-person camera.
 let view
   (animService: EnemyAnimationService)
@@ -742,6 +846,30 @@ let view
       Raymath.MatrixMultiply(Raymath.MatrixMultiply(pitchRot, yawRot), trans)
 
     buffer.model(blasterModel, weaponTransform).drop()
+
+  // ── Decals (PR #99 transparency probe) ────────────────────────────────────
+  // Textured, semi-transparent planes. Each Material3D with Opacity < 1 routes
+  // through the sorted alpha-blend pass (depth write off, depth test on). Drawn
+  // inside the camera scope so they sort against the scene geometry. The plane
+  // is the shared Primitive3D.plane (raylib GenMeshPlane: XZ, normal +Y).
+  ensureDecalResources(GameContext.getService<IAssets> ctx)
+
+  match decalMaterial with
+  | ValueSome baseMat ->
+    // Bullet-impact decals — fade opacity over their lifetime.
+    for decal in model.Effect.Decals do
+      if decal.Active then
+        let life = decal.Timer / Decal.duration
+
+        let mat = {
+          baseMat with
+              Opacity = decalBaseOpacity * life
+        }
+
+        let tf = decalTransform(decal.Position, decal.Normal)
+
+        buffer.mesh(Primitive3D.plane, tf, mat).drop()
+  | ValueNone -> ()
 
   buffer.endCamera().drop()
 

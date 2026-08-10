@@ -58,7 +58,8 @@ let private collectMushroomLights
 
   for KeyValue(struct (_cx, _cz), chunk) in chunks do
     if lights.Count < 8 then
-      let struct (terrainGrid, _) = LayeredGrid3D.getOrAddLayer Layer.Terrain chunk.Grids
+      let struct (terrainGrid, _) =
+        LayeredGrid3D.getOrAddLayer Layer.Terrain chunk.Grids
 
       CellGridRenderer3D.renderVolume
         chunk.Bounds

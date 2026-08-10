@@ -105,6 +105,20 @@ module Systems =
                 Rotation = s.Rotation + s.AngularVel * dt
           }
 
+    // Bullet-impact decals — tick down lifetime, deactivate when expired. The
+    // view fades opacity by the remaining fraction (Timer / duration).
+    let decals = effect.Decals
+
+    for i = 0 to decals.Length - 1 do
+      if decals[i].Active then
+        let mutable d = decals[i]
+        d.Timer <- d.Timer - dt
+
+        if d.Timer <= 0.0f then
+          d.Active <- false
+
+        decals[i] <- d
+
     model, Cmd.none
 
   // ── Weapon System ──────────────────────────────────────────────────────────
@@ -155,6 +169,12 @@ module Systems =
         Cmd.ofMsg(Msg.EffectMsg EffectMsg.MuzzleFlash)
         Cmd.ofMsg(Msg.EffectMsg(EffectMsg.SpawnBullet(muzzlePos, hitPos, dir)))
         Cmd.ofMsg(Msg.EffectMsg(EffectMsg.SpawnShell(muzzlePos, right)))
+        // Place a textured decal at the impact point. The plane normal faces
+        // back along the shot (-dir): using the shot direction faces the plane
+        // AWAY from the camera (backface-culled on raylib) and the +normal
+        // offset would sink it into the surface. Routes through PR #99's
+        // sorted alpha-blend pass via a Material3D with Opacity < 1.
+        Cmd.ofMsg(Msg.EffectMsg(EffectMsg.SpawnDecal(hitPos, -dir)))
       |]
     | WeaponEvent.ReloadStarted path ->
       // Non-positional: backend ignores position, plays at full volume centered.
@@ -303,6 +323,9 @@ module Systems =
 
     for i = 0 to model.Effect.Shells.Length - 1 do
       model.Effect.Shells[i] <- ShellCasing.empty
+
+    for i = 0 to model.Effect.Decals.Length - 1 do
+      model.Effect.Decals[i] <- Decal.empty
 
     // Enemy
     model.Enemy.Enemies <-
@@ -473,6 +496,17 @@ module Systems =
           shSlot <- 0
 
         model.Effect.Shells[shSlot] <- ShellCasing.create pos right
+      | EffectMsg.SpawnDecal(pos, normal) ->
+        let mutable dSlot = -1
+
+        for i = 0 to model.Effect.Decals.Length - 1 do
+          if dSlot < 0 && not model.Effect.Decals[i].Active then
+            dSlot <- i
+
+        if dSlot < 0 then
+          dSlot <- 0
+
+        model.Effect.Decals[dSlot] <- Decal.create pos normal
       | EffectMsg.MuzzleFlash ->
         model.Weapon.MuzzleFlash <- {
           Timer = Constants.MuzzleFlashDuration

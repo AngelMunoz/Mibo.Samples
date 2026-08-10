@@ -29,6 +29,7 @@ let mgAssetPath(path: string) =
     .Replace("assets/", "")
     .Replace(".glb", "")
     .Replace(".fbx", "")
+    .Replace(".png", "")
     .Replace(".mp3", "")
     .Replace(".wav", "")
 
@@ -188,6 +189,113 @@ let private cameraFar = 1000.0f
 // fog so distant ground is fully fogged while the skybox stays clear.
 let private fogCeiling = 4.0f
 let private fogDensity = 2.5f
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Bullet-impact decals — textured, semi-transparent planes (PR #99 probe).
+//
+// A decal is a flat Primitive3D.Plane oriented so its +Z normal aligns to the
+// impact surface normal, drawn with a Material3D whose Opacity < 1. The PBR
+// shader outputs alpha = texColor.a * opacity, so the decal keeps its alpha
+// outline while blending through the sorted, depth-write-off pass. The plane
+// primitive and texture are built/loaded once and reused across frames.
+// ─────────────────────────────────────────────────────────────────────────────
+
+let mutable private decalPlane: PrimitiveMesh voption = ValueNone
+let mutable private decalTexture: Texture2D voption = ValueNone
+let mutable private decalMaterial: Material3D voption = ValueNone
+
+/// Base opacity for a fresh impact decal; the per-draw opacity fades with the
+/// decal's remaining lifetime.
+let private decalBaseOpacity = 0.85f
+
+/// Scale of the decal plane (world units along each edge).
+let private decalScale = 1.0f
+
+/// Small offset along the impact normal to avoid z-fighting with the surface.
+let private decalOffset = 0.02f
+
+/// Loads the laser sprite sheet and crops frame (0,0): the sheet is 180×120
+/// with 60×60 frames (3 cols × 2 rows — the same grid SpaceBattle animates).
+/// Cropping gives the decal a single bolt instead of all six ghost frames
+/// spread over the quad.
+let private loadDecalTexture (gd: GraphicsDevice) (assets: IAssets) : Texture2D =
+  let sheet = assets.Texture(mgAssetPath Assets.decalLaser1)
+
+  let data =
+    Array.zeroCreate<Microsoft.Xna.Framework.Color>(60 * 60)
+
+  sheet.GetData(
+    0,
+    Microsoft.Xna.Framework.Rectangle(0, 0, 60, 60),
+    data,
+    0,
+    data.Length
+  )
+
+  let tex = new Texture2D(gd, 60, 60, false, SurfaceFormat.Color)
+  tex.SetData(data)
+  tex
+
+/// Ensures the decal plane primitive, texture, and base material are built
+/// (once). The plane is a unit Primitive3D.Plane (1×1 on XY, normal +Z); the
+/// material is opaque-albedo + Opacity < 1 so draws route through the sorted
+/// alpha-blend pass. The emission map repeats the albedo texture at full
+/// strength, so the bolt glows with its own colors instead of vanishing under
+/// the night lighting — the PBR shader adds `emissionColor * emissionMap` to
+/// the lit result on both backends.
+let private ensureDecalResources (gd: GraphicsDevice) (assets: IAssets) =
+  match decalPlane with
+  | ValueNone ->
+    let primitives = Primitive3D.create gd
+    decalPlane <- ValueSome primitives.Plane
+
+    let tex = loadDecalTexture gd assets
+    decalTexture <- ValueSome tex
+
+    let mat =
+      Material3D.defaults
+      |> Material3D.withAlbedoMap tex
+      |> fun m -> {
+          m with
+              EmissionMap = ValueSome tex
+              Opacity = decalBaseOpacity
+              EmissionColor = Microsoft.Xna.Framework.Color(255, 255, 255, 255)
+        }
+
+    decalMaterial <- ValueSome mat
+  | ValueSome _ -> ()
+
+/// Builds a world matrix that lays a unit plane flat against a surface: the
+/// plane's +Z normal maps to `normal`, the plane is scaled to `decalScale`,
+/// and nudged by `decalOffset` along the normal to avoid z-fighting. The plane
+/// primitive lives on XY with normal +Z.
+let private decalTransform(position: Vector3, normal: Vector3) : Matrix =
+  let n =
+    if normal.LengthSquared() > 0.001f then
+      Vector3.Normalize normal
+    else
+      Vector3.Up
+
+  // Build a rotation that maps the plane's local +Z onto the impact normal.
+  // For the common floor case (n ≈ +Y) this is a -90° pitch about X; for a
+  // general direction we rotate about the cross axis by the angle between
+  // +Z and n. Fallback to identity when +Z and n are (anti-)parallel, where
+  // the cross product is degenerate.
+  let rot =
+    let src = Vector3.UnitZ
+    let dot = Math.Clamp(Vector3.Dot(src, n), -1.0f, 1.0f)
+    let axis = Vector3.Cross(src, n)
+
+    if axis.LengthSquared() > 0.0001f then
+      Matrix.CreateFromAxisAngle(Vector3.Normalize axis, MathF.Acos dot)
+    elif dot > 0.f then
+      Matrix.Identity // +Z already aligned
+    else
+      Matrix.CreateRotationX(MathF.PI) // n ≈ -Z: flip about X
+
+  Matrix.CreateScale(decalScale)
+  * rot
+  * Matrix.CreateTranslation(position + n * decalOffset)
 
 /// Renders the 3D scene from a first-person camera.
 let view
@@ -379,6 +487,33 @@ let view
       pitchRot * yawRot * trans
 
     buffer.model(blasterModel, transform).drop()
+
+  // ── Decals (PR #99 transparency probe) ────────────────────────────────────
+  // Textured, semi-transparent planes. Each Material3D with Opacity < 1 routes
+  // through the sorted alpha-blend pass (depth write off, depth test on). Drawn
+  // inside the camera scope so they sort against the scene geometry.
+  ensureDecalResources graphicsDevice assets
+
+  match decalPlane, decalMaterial with
+  | ValueSome plane, ValueSome baseMat ->
+    // Bullet-impact decals — fade opacity over their lifetime.
+    for decal in model.Effect.Decals do
+      if decal.Active then
+        let life = decal.Timer / Decal.duration
+
+        let mat = {
+          baseMat with
+              Opacity = decalBaseOpacity * life
+        }
+
+        let tf =
+          decalTransform(
+            Vector3.op_Implicit decal.Position,
+            Vector3.op_Implicit decal.Normal
+          )
+
+        buffer.mesh(plane, tf, mat).drop()
+  | _ -> ()
 
   buffer.endCamera().drop()
 

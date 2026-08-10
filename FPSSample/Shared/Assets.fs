@@ -75,6 +75,18 @@ module Assets =
   // ── Effects ─────────────────────────────────────────────────────────────────
   let smoke = blasterPath + "smoke.glb"
 
+  // ── Decals ──────────────────────────────────────────────────────────────────
+  // 180×120 sprite sheet of 60×60 laser-bolt frames (3 cols × 2 rows — the
+  // same grid SpaceBattle animates via SpriteSheet.fromGrid 60 60 3). The
+  // decal material crops frame (0,0) at load time so a draw shows one bolt,
+  // not all six ghost frames. The PBR shader outputs
+  // alpha = texColor.a * opacity, so a Material3D with Opacity < 1 routes this
+  // through PR #99's sorted alpha-blend pass while keeping the bolt's outline.
+  // raylib loads it as a loose file (assets/decals/laser1.png); MonoGame loads
+  // it via the content pipeline (logical name "decals/laser1", built in
+  // MonoShared/Content/Content.mgcb).
+  let decalLaser1 = "assets/decals/laser1.png"
+
   // ── Gun Sounds ───────────────────────────────────────────────────────────────
   let gunSounds = "assets/gun_sounds/7.62x39/"
 

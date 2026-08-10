@@ -869,7 +869,7 @@ let translationTests =
           )
           |> drainCmd
 
-        Expect.equal msgs.Length 5 "Five messages emitted"
+        Expect.equal msgs.Length 6 "Six messages emitted"
 
         let hasFireAudio =
           msgs
@@ -910,6 +910,15 @@ let translationTests =
             | Msg.EffectMsg EffectMsg.MuzzleFlash -> true
             | _ -> false)
 
+        let hasDecal =
+          msgs
+          |> List.exists (function
+            | Msg.EffectMsg(EffectMsg.SpawnDecal(p, n)) when
+              p = hitPos && n = dir
+              ->
+              true
+            | _ -> false)
+
         Expect.isTrue hasFireAudio "Fire AudioMsg emitted (non-positional)"
         Expect.isTrue hasSmoke "SpawnSmoke EffectMsg emitted with position+dir"
 
@@ -922,6 +931,10 @@ let translationTests =
           "SpawnShell EffectMsg emitted with position+right"
 
         Expect.isTrue hasMuzzle "MuzzleFlash EffectMsg emitted"
+
+        Expect.isTrue
+          hasDecal
+          "SpawnDecal EffectMsg emitted with hit position+dir (impact normal)"
 
       testCase "ReloadStarted emits non-positional reload AudioMsg"
       <| fun _ ->
