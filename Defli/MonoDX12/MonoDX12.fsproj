@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    DirectX 12 (WindowsDX12) client for Defli — the canonical MonoGame
+    client. The other MonoGame clients (MonoVK/MonoGL/MonoDX11) link ALL of
+    its sources and the Content.mgcb; only the runtime package and
+    MonoGamePlatform differ (mirrors Platformer3D).
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RollForward>Major</RollForward>
+    <PublishReadyToRun>false</PublishReadyToRun>
+    <TieredCompilation>false</TieredCompilation>
+    <UseWindowsForms>true</UseWindowsForms>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <IsPackable>false</IsPackable>
+    <MonoGamePlatform>WindowsDX12</MonoGamePlatform>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Types.fs" />
+    <Compile Include="Shell.fs" />
+    <Compile Include="CameraView.fs" />
+    <Compile Include="MapView.fs" />
+    <Compile Include="EnemiesView.fs" />
+    <Compile Include="TowersView.fs" />
+    <Compile Include="ProjectilesView.fs" />
+    <Compile Include="VfxView.fs" />
+    <Compile Include="DiagnosticsView.fs" />
+    <Compile Include="WorldView.fs" />
+    <Compile Include="Systems.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Shared\Shared.fsproj" />
+    <ProjectReference Include="..\..\Mibo\src\Mibo.MonoGame\Mibo.MonoGame.fsproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="MonoGame.Framework.Native" Version="3.8.5" />
+    <PackageReference Include="MonoGame.Runtime.Windows.DX12" Version="3.8.5" />
+    <PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.5" />
+  </ItemGroup>
+  <ItemGroup>
+    <MonoGameContentReference Include="Content\Content.mgcb" />
+  </ItemGroup>
+</Project>

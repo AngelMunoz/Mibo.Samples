@@ -83,6 +83,28 @@ dotnet run --project ModelProbe/MonoVK       # Vulkan
 
 Controls: **Arrows** to orbit, **W/S** to zoom, **A/D** and **PageUp/PageDown** to pan, **0–3** camera presets per zone.
 
+### Defli
+
+A tower-defense game running on Mibo's **adaptive data** architecture (`Mibo.Adaptive` — AdaptiveSlop-powered roots/projections with no `Msg`/`Cmd`/`Sub`): the sim is a composition root of adaptive roots and projections, the router translates system events in place, and the renderers read a forced `RenderFrame` snapshot — no graph access at draw time. The same sim runs on raylib and four MonoGame backends. See [Defli/README.md](Defli/README.md) for the adaptive trace assessment.
+
+```bash
+# raylib backend (any platform)
+dotnet run --project Defli/Raylib
+
+# MonoGame backends
+dotnet run --project Defli/MonoDX12   # DirectX 12 (Windows)
+dotnet run --project Defli/MonoDX11   # DirectX 11 (Windows)
+dotnet run --project Defli/MonoGL     # OpenGL
+dotnet run --project Defli/MonoVK     # Vulkan
+```
+
+Controls: **Left-click** to build the selected tower, **1/2/3** to select arrow/frost/cannon, **right-click** to upgrade, **Space/Enter** to start the next wave, **WASD/arrows or middle-drag** to pan, **wheel** to zoom, **Home** to reset the camera, **F3** diagnostics, **R** to restart after game over.
+
+```bash
+# Run the test suite
+dotnet test Defli/Shared.Tests
+```
+
 ### FPSSample
 
 A horror-themed first-person shooter built with Mibo's **Composable Systems**, **Commands**, and **Service-DI** patterns. The same game logic runs on two backends — raylib-cs and MonoGame — with zero game-logic duplication. Features per-system sub-models, a router-style `update` that translates events into cross-system `Cmd`, a `System` pipeline with a readonly snapshot boundary, and a blended `IAudioService` (one-shot SFX via `Cmd` events, looping footsteps derived from the snapshot). See [FPSSample/README.md](FPSSample/README.md) for the project layout and [FPSSample/Shared/README.md](FPSSample/Shared/README.md) for the full architecture guide.

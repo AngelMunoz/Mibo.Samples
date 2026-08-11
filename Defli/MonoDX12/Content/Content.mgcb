@@ -1,0 +1,58 @@
+
+#----------------------------- Global Properties ----------------------------#
+
+/outputDir:Content
+/intermediateDir:obj
+/platform:WindowsDX12
+/config:
+/profile:HiDef
+/compress:False
+
+#-------------------------------- References --------------------------------#
+
+
+#---------------------------------- Content ---------------------------------#
+
+# The Defli atlas + VFX textures, built from the repo-root shared assets dir.
+# The /build asset name mirrors the raylib loose path minus the extension, so
+# the MonoGame views can resolve the same logical keys through IAssets
+# (see Defli/MonoDX12/Types.fs).
+
+#begin ../../../assets/kenney_tower-defense-top-down/towerDefense_tilesheet.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/build:../../../assets/kenney_tower-defense-top-down/towerDefense_tilesheet.png;kenney_tower-defense-top-down/towerDefense_tilesheet
+
+#begin ../../../assets/kenney_particle_pack/spark_01.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/build:../../../assets/kenney_particle_pack/spark_01.png;kenney_particle_pack/spark_01
+
+#begin ../../../assets/kenney_particle_pack/dirt_01.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/build:../../../assets/kenney_particle_pack/dirt_01.png;kenney_particle_pack/dirt_01
+
+#begin ../../../assets/kenney_smoke_particles/Explosion/explosion03.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/build:../../../assets/kenney_smoke_particles/Explosion/explosion03.png;kenney_smoke_particles/Explosion/explosion03
+
+#begin ../../../assets/kenney_smoke_particles/Black smoke/blackSmoke05.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/build:../../../assets/kenney_smoke_particles/Black smoke/blackSmoke05.png;kenney_smoke_particles/Black smoke/blackSmoke05
+
+#begin ../../../assets/kenney_smoke_particles/Flash/flash00.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/build:../../../assets/kenney_smoke_particles/Flash/flash00.png;kenney_smoke_particles/Flash/flash00
+
+# The HUD font (shared Monogram spritefont — same one the raylib client
+# renders with its default font; here it is built into XNB).
+#begin ../../../assets/Fonts/Monogram.spritefont
+/importer:FontDescriptionImporter
+/processor:FontDescriptionProcessor
+/processorParam:PremultiplyAlpha=True
+/processorParam:TextureFormat=Compressed
+/build:../../../assets/Fonts/Monogram.spritefont;Fonts/Monogram

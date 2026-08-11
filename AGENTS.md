@@ -26,6 +26,14 @@ Mibo.Samples/
 ├── Platformer/              ← 2D platformer (procedural world, sprite animation, lighting; raylib + MonoDX12/MonoVK)
 ├── Platformer3D/            ← 3D platformer (voxel terrain, PBR, skeletal animation, shadow atlas; raylib + MonoDX12/MonoDX11/MonoVK/MonoGL)
 ├── ModelProbe/              ← Minimal 3D rendering probe (PBR forward + shadow atlas, instanced vs non-instanced; MonoDX12 + MonoVK)
+├── Defli/                   ← Adaptive tower defense (Mibo.Adaptive roots/projections, forced RenderFrame; raylib + MonoDX12/MonoDX11/MonoVK/MonoGL)
+│   ├── Shared/              ← Adaptive sim (World composition root, Router, Frame, 9 systems)
+│   ├── Shared.Tests/        ← Expecto test suite
+│   ├── Raylib/              ← raylib backend
+│   ├── MonoDX12/            ← MonoGame WindowsDX12 client (canonical — other MonoGame clients link its sources)
+│   ├── MonoVK/              ← MonoGame Vulkan thin client (linked)
+│   ├── MonoGL/              ← MonoGame DesktopGL thin client (linked)
+│   └── MonoDX11/            ← MonoGame WindowsDX11 thin client (linked)
 ├── SpaceBattle/             ← Turn-based hex strategy (fog of war, AI, phased turns)
 ├── FPSSample/               ← Cross-backend FPS (shared core, raylib + MonoGame thin clients)
 │   ├── Shared/              ← Backend-agnostic game logic, systems, physics, AI
