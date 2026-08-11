@@ -35,7 +35,12 @@ All samples share a single repo-root `assets/` directory (referenced, never dupl
 A 2D side-scrolling platformer with procedural world generation, sprite animation, lighting, particles, and sound. Uses Mibo's Elmish architecture with `InputMap`, `AnimatedSprite`, `CellGrid2D`, and `LightContext2D`.
 
 ```bash
+# raylib backend (any platform)
 dotnet run --project Platformer/Raylib
+
+# MonoGame backends
+dotnet run --project Platformer/MonoDX12   # DirectX 12 (Windows)
+dotnet run --project Platformer/MonoVK     # Vulkan
 ```
 
 Controls: **WASD/Arrows** to move, **Space** to jump, **R** to respawn.
@@ -45,7 +50,14 @@ Controls: **WASD/Arrows** to move, **Space** to jump, **R** to respawn.
 A 3D platformer with procedurally generated voxel terrain, PBR lighting, shadow atlas, 3D character animation, minimap overlay, and physics. Showcases Mibo's `Renderer3D`, `ForwardPbrPipeline`, and `Animation3DState`.
 
 ```bash
+# raylib backend (any platform)
 dotnet run --project Platformer3D/Raylib
+
+# MonoGame backends
+dotnet run --project Platformer3D/MonoDX12   # DirectX 12 (Windows)
+dotnet run --project Platformer3D/MonoDX11   # DirectX 11 (Windows)
+dotnet run --project Platformer3D/MonoGL     # OpenGL
+dotnet run --project Platformer3D/MonoVK     # Vulkan
 ```
 
 Controls: **WASD** (camera-relative movement), **Space** to jump, **Q/E** rotate camera, **PageUp/PageDown** tilt camera, **R** to respawn.
@@ -84,6 +96,12 @@ dotnet run --project FPSSample/MonoGL
 
 # MonoGame WindowsDX (DirectX 11) backend (Windows only)
 dotnet run --project FPSSample/MonoDX11
+
+# MonoGame DirectX 12 backend (Windows only)
+dotnet run --project FPSSample/MonoDX12
+
+# MonoGame Vulkan backend
+dotnet run --project FPSSample/MonoVK
 ```
 
 Controls: **WASD/Arrows** to move, **Mouse** to look, **Left-click** to shoot, **Right-click/R** to reload (also restart on game over), **Space** to jump, **Left Shift** to sprint.
@@ -125,6 +143,21 @@ dotnet run --project BoneProbe -- raw assets/kenney_platformer-kit/Models/charac
 Controls: **`-v full|summary`** (detail level), **`-f <name>`** (substring filter on node/bone/clip names).
 
 > Uses the `MonoGame.Framework.DesktopGL` (OpenGL) backend, so `BoneProbe` runs cross-platform on any .NET 8+ runtime.
+
+### AnimatedInstancing
+
+A skinned + instanced rendering probe: crowds of 500–10k animated mannequins drawn with `animatedModelInstanced` to measure vertex-texture-fetch skinning throughput. On the OpenGL backend the instanced skinning silently falls back to per-instance skinned draws (the MonoGL client exists to verify that path).
+
+```bash
+# raylib backend (any platform)
+dotnet run --project AnimatedInstancing/Raylib
+
+# MonoGame backends
+dotnet run --project AnimatedInstancing/MonoDX12   # DirectX 12 (Windows)
+dotnet run --project AnimatedInstancing/MonoDX11   # DirectX 11 (Windows)
+dotnet run --project AnimatedInstancing/MonoGL     # OpenGL (fallback path)
+dotnet run --project AnimatedInstancing/MonoVK     # Vulkan
+```
 
 ## Building
 

@@ -18,12 +18,15 @@ For the full architecture walkthrough — router diagram, systems table, Intent/
 FPSSample/
 ├── Shared/         ← Backend-agnostic game logic (the core architecture lives here)
 ├── Raylib/         ← raylib-cs backend (3D rendering, audio, composition root)
-├── MonoShared/     ← MonoGame backend (3D rendering, audio — shared by the two clients below)
+├── MonoShared/     ← MonoGame backend (3D rendering, audio — shared by the MonoGL/MonoDX11/MonoDX12/MonoVK clients)
 ├── MonoGL/         ← MonoGame DesktopGL (OpenGL) thin client
 ├── MonoDX11/       ← MonoGame WindowsDX (DirectX 11) thin client
-├── Shared.Tests/   ← Expecto tests (subsystem correctness, Msg processing, Event→Cmd translation)
-└── assets/         ← Shared game assets (models, sounds)
+├── MonoDX12/       ← MonoGame DirectX 12 thin client
+├── MonoVK/         ← MonoGame Vulkan thin client
+└── Shared.Tests/   ← Expecto tests (subsystem correctness, Msg processing, Event→Cmd translation)
 ```
+
+> Assets are **not** stored here — every sample references the repo-root `assets/` dir (see the top-level README).
 
 ### Why `Shared/`?
 
@@ -33,9 +36,9 @@ FPSSample/
 
 MonoGame requires platform-specific host packages (`MonoGame.Framework.DesktopGL` vs `MonoGame.Framework.WindowsDX`) that can't coexist in a single project. `MonoShared/` holds all the MonoGame-specific rendering, audio, and animation code **once**, then the thin client projects (`MonoGL/`, `MonoDX11/`, `MonoDX12/`, `MonoVK/`) each reference it and pull in their respective framework package. Each client is a 3-file entry point (`Program.fs`, `app.manifest` for WindowsDX) — no game logic duplicated.
 
-### Why two MonoGame clients?
+### Why the MonoGame thin clients?
 
-`MonoGL` (DesktopGL) runs on any .NET 10 platform (Windows, Linux, macOS) using OpenGL. `MonoDX11` targets Windows specifically with DirectX 11. They share the same `MonoShared/` code and differ only in the framework package and a Windows-only `.fsproj` configuration. This lets you choose your native backend without touching game code.
+MonoGame requires platform-specific host packages (`MonoGame.Framework.DesktopGL` vs `MonoGame.Framework.WindowsDX` etc.) that can't coexist in a single project. `MonoGL` (DesktopGL) runs on any .NET 10 platform (Windows, Linux, macOS) using OpenGL; `MonoDX11` and `MonoDX12` target Windows with DirectX; `MonoVK` targets Vulkan. They all share the same `MonoShared/` code and differ only in the framework package and a Windows-only `.fsproj` configuration. This lets you choose your native backend without touching game code.
 
 ## Running
 
@@ -51,10 +54,22 @@ dotnet run --project FPSSample/Raylib
 dotnet run --project FPSSample/MonoGL
 ```
 
-### MonoGame (WindowsDX — Windows only, DirectX)
+### MonoGame (WindowsDX — Windows only, DirectX 11)
 
 ```bash
 dotnet run --project FPSSample/MonoDX11
+```
+
+### MonoGame (DirectX 12 — Windows only)
+
+```bash
+dotnet run --project FPSSample/MonoDX12
+```
+
+### MonoGame (Vulkan)
+
+```bash
+dotnet run --project FPSSample/MonoVK
 ```
 
 ## Controls
