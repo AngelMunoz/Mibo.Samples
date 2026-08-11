@@ -25,9 +25,17 @@
     <Compile Include="PreStart.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
+  <!-- Assets are referenced from the repo-root shared assets dir — never
+       duplicated. RecursiveDir does not include the anchored subdir, so the
+       Link re-adds it explicitly. -->
   <ItemGroup>
-    <Content Include="assets\**\*">
+    <Content Include="..\assets\prerendered-spaceships\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\prerendered-spaceships\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
+    <Content Include="..\assets\Fonts\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\Fonts\%(RecursiveDir)%(Filename)%(Extension)</Link>
     </Content>
   </ItemGroup>
   <ItemGroup>

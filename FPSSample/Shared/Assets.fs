@@ -3,7 +3,7 @@ namespace FPSSample
 open System
 
 /// Logical asset paths shared across backends.
-/// The actual files live under <c>FPSSample/assets/kenney_platformer-kit/Models/</c>.
+/// The actual files live in the repo-root <c>assets/kenney_platformer-kit/Models/</c> dir.
 /// Each backend resolves these logical paths to its own loading mechanism
 /// (raylib loads at runtime; MonoGame uses the content pipeline).
 module Assets =
@@ -82,10 +82,11 @@ module Assets =
   // not all six ghost frames. The PBR shader outputs
   // alpha = texColor.a * opacity, so a Material3D with Opacity < 1 routes this
   // through PR #99's sorted alpha-blend pass while keeping the bolt's outline.
-  // raylib loads it as a loose file (assets/decals/laser1.png); MonoGame loads
-  // it via the content pipeline (logical name "decals/laser1", built in
+  // raylib loads it as a loose file (assets/prerendered-spaceships/laser1.png,
+  // the same file SpaceBattle uses); MonoGame loads it via the content
+  // pipeline (logical name "prerendered-spaceships/laser1", built in
   // MonoShared/Content/Content.mgcb).
-  let decalLaser1 = "assets/decals/laser1.png"
+  let decalLaser1 = "assets/prerendered-spaceships/laser1.png"
 
   // ── Gun Sounds ───────────────────────────────────────────────────────────────
   let gunSounds = "assets/gun_sounds/7.62x39/"

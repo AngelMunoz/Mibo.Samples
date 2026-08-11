@@ -540,7 +540,7 @@ let private decalOffset = 0.02f
 /// with 60×60 frames (3 cols × 2 rows — the same grid SpaceBattle animates).
 /// Cropping gives the decal a single bolt instead of all six ghost frames
 /// spread over the quad.
-let private loadDecalTexture (assets: IAssets) : Texture2D =
+let private loadDecalTexture(assets: IAssets) : Texture2D =
   let sheet = assets.Texture Assets.decalLaser1
   let mutable img = Raylib.LoadImageFromTexture(sheet)
   Raylib.ImageCrop(&img, Rectangle(0.0f, 0.0f, 60.0f, 60.0f))

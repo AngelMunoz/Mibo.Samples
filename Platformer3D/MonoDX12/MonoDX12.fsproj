@@ -1,0 +1,87 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RollForward>Major</RollForward>
+    <PublishReadyToRun>false</PublishReadyToRun>
+    <TieredCompilation>false</TieredCompilation>
+    <UseWindowsForms>true</UseWindowsForms>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <IsPackable>false</IsPackable>
+    <MonoGamePlatform>WindowsDX12</MonoGamePlatform>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Types.fs" />
+    <Compile Include="Systems.fs" />
+    <Compile Include="View.fs" />
+    <Compile Include="MinimapView.fs" />
+    <Compile Include="DiagnosticsView.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Shared\Shared.fsproj" />
+    <ProjectReference Include="..\..\Mibo\src\Mibo.MonoGame\Mibo.MonoGame.fsproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="MonoGame.Framework.Native" Version="3.8.5" />
+    <PackageReference Include="MonoGame.Runtime.Windows.DX12" Version="3.8.5" />
+    <PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.5" />
+  </ItemGroup>
+  <ItemGroup>
+    <MonoGameContentReference Include="Content\Content.mgcb" />
+  </ItemGroup>
+  <!--
+    AssimpNetter loads animation clips + skeleton from the raw .glbs at runtime
+    (the MonoGame content pipeline does not preserve animation data in XNB).
+    The raw .glbs live in the shared assets/ dir (same files the raylib backend
+    uses). We copy them to a separate 'animations' directory under the output
+    dir, away from the content pipeline's 'Content' output. The mannequin
+    texture is raw-loaded too (applied to the model's SkinnedEffects at
+    runtime — the rig glb ships no texture).
+  -->
+  <ItemGroup>
+    <Content Include="..\..\assets\kaykit_character_animations\Rig_Medium_MovementBasic.glb">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>animations\Rig_Medium_MovementBasic.glb</Link>
+    </Content>
+    <Content Include="..\..\assets\kaykit_character_animations\Rig_Medium_General.glb">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>animations\Rig_Medium_General.glb</Link>
+    </Content>
+    <Content Include="..\..\assets\kaykit_character_animations\Textures\mannequin_texture.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>animations\mannequin_texture.png</Link>
+    </Content>
+    <!-- Raw kaykit weapons, loaded at runtime via AssimpNetter like the .glb
+         above — deliberately NOT in the .mgcb content pipeline. -->
+    <Content Include="..\..\assets\kaykit_fantasy_weapons\sword_A.gltf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>weapons\sword_A.gltf</Link>
+    </Content>
+    <Content Include="..\..\assets\kaykit_fantasy_weapons\sword_A.bin">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>weapons\sword_A.bin</Link>
+    </Content>
+    <Content Include="..\..\assets\kaykit_fantasy_weapons\wand_A.gltf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>weapons\wand_A.gltf</Link>
+    </Content>
+    <Content Include="..\..\assets\kaykit_fantasy_weapons\wand_A.bin">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>weapons\wand_A.bin</Link>
+    </Content>
+    <Content Include="..\..\assets\kaykit_fantasy_weapons\staff_B.gltf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>weapons\staff_B.gltf</Link>
+    </Content>
+    <Content Include="..\..\assets\kaykit_fantasy_weapons\staff_B.bin">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>weapons\staff_B.bin</Link>
+    </Content>
+    <Content Include="..\..\assets\kaykit_fantasy_weapons\weapons_bits_texture.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>weapons\weapons_bits_texture.png</Link>
+    </Content>
+  </ItemGroup>
+</Project>

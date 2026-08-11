@@ -22,26 +22,27 @@ This repo exists for two reasons:
 ```
 Mibo.Samples/
 ├── Mibo/                    ← git submodule — framework source (Mibo.Core, Mibo.Raylib, Mibo.MonoGame)
-├── Platformer/              ← 2D platformer (procedural world, sprite animation, lighting; raylib + MonoGame DX12/Vulkan)
-├── Platformer3D/            ← 3D platformer (voxel terrain, PBR, skeletal animation, shadow atlas; raylib + MonoGame DX12/DX11/Vulkan/OpenGL)
-├── ModelProbe/              ← Minimal 3D rendering probe (PBR forward + shadow atlas, instanced vs non-instanced; MonoGame DX12 + Vulkan)
+├── assets/                  ← single shared asset dir — every sample references it, never duplicates
+├── Platformer/              ← 2D platformer (procedural world, sprite animation, lighting; raylib + MonoDX12/MonoVK)
+├── Platformer3D/            ← 3D platformer (voxel terrain, PBR, skeletal animation, shadow atlas; raylib + MonoDX12/MonoDX11/MonoVK/MonoGL)
+├── ModelProbe/              ← Minimal 3D rendering probe (PBR forward + shadow atlas, instanced vs non-instanced; MonoDX12 + MonoVK)
 ├── SpaceBattle/             ← Turn-based hex strategy (fog of war, AI, phased turns)
 ├── FPSSample/               ← Cross-backend FPS (shared core, raylib + MonoGame thin clients)
 │   ├── Shared/              ← Backend-agnostic game logic, systems, physics, AI
 │   ├── Raylib/              ← raylib backend
 │   ├── MonoShared/          ← MonoGame shared backend (composition root, View, AudioService)
-│   ├── MonoDesktop/         ← MonoGame DesktopGL thin client
-│   ├── MonoWindowsDX/       ← MonoGame WindowsDX thin client
+│   ├── MonoGL/              ← MonoGame DesktopGL (OpenGL) thin client
+│   ├── MonoDX11/            ← MonoGame WindowsDX (DirectX 11) thin client
 │   ├── MonoDX12/            ← MonoGame DX12 thin client
-│   └── MonoVulkan/          ← MonoGame Vulkan thin client
-├── PingPong/                ← Networked multiplayer (client/server, WebSockets)
+│   └── MonoVK/              ← MonoGame Vulkan thin client
+├── PingPong/                ← Networked multiplayer (client/server, WebSockets; Raylib + MonoGL clients)
 ├── BoneProbe/               ← CLI diagnostic tool (raw Assimp dump + bind-pose invariant check)
-├── AnimatedInstancing/      ← Skinned+instanced perf probe (crowd tiers 500–10k, animatedModelInstanced; raylib + MonoGame DX12/DesktopGL)
+├── AnimatedInstancing/      ← Skinned+instanced perf probe (crowd tiers 500–10k, animatedModelInstanced; raylib + MonoDX12/MonoGL)
 ├── Mibo.Samples.slnx        ← solution file
 └── README.md
 ```
 
-**Backend matrix:** raylib-cs and MonoGame (DesktopGL/OpenGL, WindowsDX/DX11, WindowsDX12, DesktopVK/Vulkan). Cross-backend samples (`FPSSample`, `PingPong`) isolate backend-specific code in thin client projects while sharing all game logic.
+**Backend matrix:** raylib-cs and MonoGame thin clients — `Raylib`, `MonoGL` (DesktopGL/OpenGL), `MonoVK` (Vulkan), `MonoDX12` (WindowsDX12), `MonoDX11` (WindowsDX/DX11). Cross-backend samples (`FPSSample`, `PingPong`) isolate backend-specific code in thin client projects while sharing all game logic.
 
 ## Sample Architecture (Enforced)
 
@@ -108,7 +109,7 @@ A sample fix often requires a concurrent framework change. Work in both repos, v
 
 ```bash
 dotnet build                          # build everything
-dotnet run --project PlatformerSample # run a sample
+dotnet run --project Platformer/Raylib  # run a sample
 dotnet test FPSSample/Shared.Tests    # run the FPS test suite
 dotnet fantomas .                     # format all F# files (required before commit)
 ```

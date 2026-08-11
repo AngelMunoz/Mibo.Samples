@@ -28,23 +28,23 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Content\kenney_platformer-kit\Models\character-oobi.glb">
+    <Content Include="..\..\assets\kenney_platformer-kit\Models\character-oobi.glb">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>animations\character-oobi.glb</Link>
     </Content>
-    <Content Include="Content\kenney_platformer-kit\Models\character-oodi.glb">
+    <Content Include="..\..\assets\kenney_platformer-kit\Models\character-oodi.glb">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>animations\character-oodi.glb</Link>
     </Content>
-    <Content Include="Content\kenney_platformer-kit\Models\character-ooli.glb">
+    <Content Include="..\..\assets\kenney_platformer-kit\Models\character-ooli.glb">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>animations\character-ooli.glb</Link>
     </Content>
-    <Content Include="Content\kenney_platformer-kit\Models\character-oopi.glb">
+    <Content Include="..\..\assets\kenney_platformer-kit\Models\character-oopi.glb">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>animations\character-oopi.glb</Link>
     </Content>
-    <Content Include="Content\kenney_platformer-kit\Models\character-oozi.glb">
+    <Content Include="..\..\assets\kenney_platformer-kit\Models\character-oozi.glb">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>animations\character-oozi.glb</Link>
     </Content>

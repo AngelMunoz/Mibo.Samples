@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!--
     DirectX 11 (WindowsDX) thin client for AnimatedInstancing.
-    Shares all sources with the DX12 client (../MonoGame) via linked files;
+    Shares all sources with the DX12 client (../MonoDX12) via linked files;
     only the runtime package differs. Mirrors Platformer3D/MonoDX11.
   -->
   <PropertyGroup>
@@ -17,16 +17,16 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\MonoGame\Types.fs">
+    <Compile Include="..\MonoDX12\Types.fs">
       <Link>Types.fs</Link>
     </Compile>
-    <Compile Include="..\MonoGame\Systems.fs">
+    <Compile Include="..\MonoDX12\Systems.fs">
       <Link>Systems.fs</Link>
     </Compile>
-    <Compile Include="..\MonoGame\View.fs">
+    <Compile Include="..\MonoDX12\View.fs">
       <Link>View.fs</Link>
     </Compile>
-    <Compile Include="..\MonoGame\Program.fs">
+    <Compile Include="..\MonoDX12\Program.fs">
       <Link>Program.fs</Link>
     </Compile>
   </ItemGroup>
@@ -37,26 +37,26 @@
     <PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.5" />
   </ItemGroup>
   <ItemGroup>
-    <MonoGameContentReference Include="..\MonoGame\Content\Content.mgcb">
+    <MonoGameContentReference Include="..\MonoDX12\Content\Content.mgcb">
       <Link>Content\Content.mgcb</Link>
     </MonoGameContentReference>
   </ItemGroup>
   <!-- Raw .glbs + mannequin texture for runtime animation loading (same as
        the DX12 client — referenced from Platformer3D, never duplicated). -->
   <ItemGroup>
-    <Content Include="..\..\Platformer3D\assets\kaykit_character_animations\Rig_Medium_MovementBasic.glb">
+    <Content Include="..\..\assets\kaykit_character_animations\Rig_Medium_MovementBasic.glb">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>animations\Rig_Medium_MovementBasic.glb</Link>
     </Content>
-    <Content Include="..\..\Platformer3D\assets\kaykit_character_animations\Rig_Medium_General.glb">
+    <Content Include="..\..\assets\kaykit_character_animations\Rig_Medium_General.glb">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>animations\Rig_Medium_General.glb</Link>
     </Content>
-    <Content Include="..\..\Platformer3D\assets\kaykit_character_animations\Rig_Large_MovementBasic.glb">
+    <Content Include="..\..\assets\kaykit_character_animations\Rig_Large_MovementBasic.glb">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>animations\Rig_Large_MovementBasic.glb</Link>
     </Content>
-    <Content Include="..\..\Platformer3D\assets\kaykit_character_animations\Rig_Large_General.glb">
+    <Content Include="..\..\assets\kaykit_character_animations\Rig_Large_General.glb">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>animations\Rig_Large_General.glb</Link>
     </Content>

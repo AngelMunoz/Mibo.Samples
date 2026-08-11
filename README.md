@@ -28,22 +28,24 @@ The `Mibo/` directory contains the [Mibo](https://github.com/AngelMunoz/Mibo) fr
 
 ## Samples
 
-### PlatformerSample
+All samples share a single repo-root `assets/` directory (referenced, never duplicated — each `.fsproj` copies only the subset it needs into its output).
+
+### Platformer
 
 A 2D side-scrolling platformer with procedural world generation, sprite animation, lighting, particles, and sound. Uses Mibo's Elmish architecture with `InputMap`, `AnimatedSprite`, `CellGrid2D`, and `LightContext2D`.
 
 ```bash
-dotnet run --project PlatformerSample
+dotnet run --project Platformer/Raylib
 ```
 
 Controls: **WASD/Arrows** to move, **Space** to jump, **R** to respawn.
 
-### ThreeDSample
+### Platformer3D
 
 A 3D platformer with procedurally generated voxel terrain, PBR lighting, shadow atlas, 3D character animation, minimap overlay, and physics. Showcases Mibo's `Renderer3D`, `ForwardPbrPipeline`, and `Animation3DState`.
 
 ```bash
-dotnet run --project ThreeDSample
+dotnet run --project Platformer3D/Raylib
 ```
 
 Controls: **WASD** (camera-relative movement), **Space** to jump, **Q/E** rotate camera, **PageUp/PageDown** tilt camera, **R** to respawn.
@@ -63,8 +65,8 @@ Controls: **Left-click** to select/move units, **Right-click** for unit info, **
 A minimal 3D rendering probe for the MonoGame backends: five kenney blocks rendered non-instanced (`Draw3D.drawModel`), the same blocks instanced (`Draw3D.drawInstanced`), and both on a floor with PBR lighting and shadow atlas — three zones in one frame for side-by-side backend comparison.
 
 ```bash
-dotnet run --project ModelProbe/WindowsDX12   # DirectX 12
-dotnet run --project ModelProbe/DesktopVK     # Vulkan
+dotnet run --project ModelProbe/MonoDX12     # DirectX 12
+dotnet run --project ModelProbe/MonoVK       # Vulkan
 ```
 
 Controls: **Arrows** to orbit, **W/S** to zoom, **A/D** and **PageUp/PageDown** to pan, **0–3** camera presets per zone.
@@ -78,10 +80,10 @@ A horror-themed first-person shooter built with Mibo's **Composable Systems**, *
 dotnet run --project FPSSample/Raylib
 
 # MonoGame DesktopGL backend (any platform)
-dotnet run --project FPSSample/MonoDesktop
+dotnet run --project FPSSample/MonoGL
 
-# MonoGame WindowsDX backend (Windows only, DirectX)
-dotnet run --project FPSSample/MonoWindowsDX
+# MonoGame WindowsDX (DirectX 11) backend (Windows only)
+dotnet run --project FPSSample/MonoDX11
 ```
 
 Controls: **WASD/Arrows** to move, **Mouse** to look, **Left-click** to shoot, **Right-click/R** to reload (also restart on game over), **Space** to jump, **Left Shift** to sprint.
@@ -100,7 +102,7 @@ A networked multiplayer Pong game with a client-server architecture over WebSock
 dotnet run --project PingPong/Server
 
 # Then start one or two clients
-dotnet run --project PingPong/Client
+dotnet run --project PingPong/Raylib
 ```
 
 Controls: **Mouse Y-axis** to move your assigned paddle (Left or Right).
@@ -111,13 +113,13 @@ A CLI diagnostic tool for inspecting glTF/GLB models and verifying bone-palette 
 
 ```bash
 # Raw mode dump
-dotnet run --project BoneProbe -- raw ThreeDSample/assets/kenney_platformer-kit/Models/character-oobi.glb
+dotnet run --project BoneProbe -- raw assets/kenney_platformer-kit/Models/character-oobi.glb
 
 # Palette mode with focus on Hips bones
-dotnet run --project BoneProbe -- palette ThreeDSample/assets/kenney_platformer-kit/Models/character-oobi.glb -f Hips
+dotnet run --project BoneProbe -- palette assets/kenney_platformer-kit/Models/character-oobi.glb -f Hips
 
 # Summary verbosity (counts only)
-dotnet run --project BoneProbe -- raw ThreeDSample/assets/kenney_platformer-kit/Models/character-oobi.glb -v summary
+dotnet run --project BoneProbe -- raw assets/kenney_platformer-kit/Models/character-oobi.glb -v summary
 ```
 
 Controls: **`-v full|summary`** (detail level), **`-f <name>`** (substring filter on node/bone/clip names).

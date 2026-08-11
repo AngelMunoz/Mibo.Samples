@@ -14,16 +14,16 @@
 #---------------------------------- Content ---------------------------------#
 
 
-#begin ../../assets/Fonts/Monogram.spritefont
+#begin ../../../assets/Fonts/Monogram.spritefont
 /importer:FontDescriptionImporter
 /processor:FontDescriptionProcessor
 /processorParam:PremultiplyAlpha=True
 /processorParam:TextureFormat=Compressed
-/build:../../assets/Fonts/Monogram.spritefont;diagnostics
+/build:../../../assets/Fonts/Monogram.spritefont;diagnostics
 
 
 
-#begin kenney_blaster-kit/Models/blaster-a.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/blaster-a.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -40,10 +40,10 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/blaster-a.fbx;kenney_blaster-kit/Models/blaster-a
+/build:../../../assets/kenney_blaster-kit/Models/blaster-a.fbx;kenney_blaster-kit/Models/blaster-a
 
 
-#begin kenney_blaster-kit/Models/blaster-b.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/blaster-b.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -60,9 +60,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/blaster-b.fbx;kenney_blaster-kit/Models/blaster-b
+/build:../../../assets/kenney_blaster-kit/Models/blaster-b.fbx;kenney_blaster-kit/Models/blaster-b
 
-#begin kenney_blaster-kit/Models/blaster-c.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/blaster-c.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -79,9 +79,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/blaster-c.fbx;kenney_blaster-kit/Models/blaster-c
+/build:../../../assets/kenney_blaster-kit/Models/blaster-c.fbx;kenney_blaster-kit/Models/blaster-c
 
-#begin kenney_blaster-kit/Models/blaster-d.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/blaster-d.fbx
 /importer:OpenAssetImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -98,9 +98,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/blaster-d.fbx;kenney_blaster-kit/Models/blaster-d
+/build:../../../assets/kenney_blaster-kit/Models/blaster-d.fbx;kenney_blaster-kit/Models/blaster-d
 
-#begin kenney_blaster-kit/Models/blaster-e.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/blaster-e.fbx
 /importer:OpenAssetImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -117,9 +117,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/blaster-e.fbx;kenney_blaster-kit/Models/blaster-e
+/build:../../../assets/kenney_blaster-kit/Models/blaster-e.fbx;kenney_blaster-kit/Models/blaster-e
 
-#begin kenney_blaster-kit/Models/blaster-f.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/blaster-f.fbx
 /importer:OpenAssetImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -136,9 +136,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/blaster-f.fbx;kenney_blaster-kit/Models/blaster-f
+/build:../../../assets/kenney_blaster-kit/Models/blaster-f.fbx;kenney_blaster-kit/Models/blaster-f
 
-#begin kenney_blaster-kit/Models/blaster-g.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/blaster-g.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -155,9 +155,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/blaster-g.fbx;kenney_blaster-kit/Models/blaster-g
+/build:../../../assets/kenney_blaster-kit/Models/blaster-g.fbx;kenney_blaster-kit/Models/blaster-g
 
-#begin kenney_blaster-kit/Models/blaster-h.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/blaster-h.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -174,9 +174,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/blaster-h.fbx;kenney_blaster-kit/Models/blaster-h
+/build:../../../assets/kenney_blaster-kit/Models/blaster-h.fbx;kenney_blaster-kit/Models/blaster-h
 
-#begin kenney_blaster-kit/Models/blaster-i.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/blaster-i.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -193,9 +193,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/blaster-i.fbx;kenney_blaster-kit/Models/blaster-i
+/build:../../../assets/kenney_blaster-kit/Models/blaster-i.fbx;kenney_blaster-kit/Models/blaster-i
 
-#begin kenney_blaster-kit/Models/blaster-j.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/blaster-j.fbx
 /importer:OpenAssetImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -212,9 +212,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/blaster-j.fbx;kenney_blaster-kit/Models/blaster-j
+/build:../../../assets/kenney_blaster-kit/Models/blaster-j.fbx;kenney_blaster-kit/Models/blaster-j
 
-#begin kenney_blaster-kit/Models/blaster-k.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/blaster-k.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -231,9 +231,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/blaster-k.fbx;kenney_blaster-kit/Models/blaster-k
+/build:../../../assets/kenney_blaster-kit/Models/blaster-k.fbx;kenney_blaster-kit/Models/blaster-k
 
-#begin kenney_blaster-kit/Models/blaster-l.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/blaster-l.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -250,9 +250,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/blaster-l.fbx;kenney_blaster-kit/Models/blaster-l
+/build:../../../assets/kenney_blaster-kit/Models/blaster-l.fbx;kenney_blaster-kit/Models/blaster-l
 
-#begin kenney_blaster-kit/Models/blaster-m.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/blaster-m.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -269,9 +269,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/blaster-m.fbx;kenney_blaster-kit/Models/blaster-m
+/build:../../../assets/kenney_blaster-kit/Models/blaster-m.fbx;kenney_blaster-kit/Models/blaster-m
 
-#begin kenney_blaster-kit/Models/blaster-n.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/blaster-n.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -288,9 +288,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/blaster-n.fbx;kenney_blaster-kit/Models/blaster-n
+/build:../../../assets/kenney_blaster-kit/Models/blaster-n.fbx;kenney_blaster-kit/Models/blaster-n
 
-#begin kenney_blaster-kit/Models/blaster-o.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/blaster-o.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -307,9 +307,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/blaster-o.fbx;kenney_blaster-kit/Models/blaster-o
+/build:../../../assets/kenney_blaster-kit/Models/blaster-o.fbx;kenney_blaster-kit/Models/blaster-o
 
-#begin kenney_blaster-kit/Models/blaster-p.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/blaster-p.fbx
 /importer:OpenAssetImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -326,9 +326,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/blaster-p.fbx;kenney_blaster-kit/Models/blaster-p
+/build:../../../assets/kenney_blaster-kit/Models/blaster-p.fbx;kenney_blaster-kit/Models/blaster-p
 
-#begin kenney_blaster-kit/Models/blaster-q.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/blaster-q.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -345,9 +345,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/blaster-q.fbx;kenney_blaster-kit/Models/blaster-q
+/build:../../../assets/kenney_blaster-kit/Models/blaster-q.fbx;kenney_blaster-kit/Models/blaster-q
 
-#begin kenney_blaster-kit/Models/blaster-r.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/blaster-r.fbx
 /importer:OpenAssetImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -364,9 +364,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/blaster-r.fbx;kenney_blaster-kit/Models/blaster-r
+/build:../../../assets/kenney_blaster-kit/Models/blaster-r.fbx;kenney_blaster-kit/Models/blaster-r
 
-#begin kenney_blaster-kit/Models/bullet-foam-thick.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/bullet-foam-thick.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -383,9 +383,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/bullet-foam-thick.fbx;kenney_blaster-kit/Models/bullet-foam-thick
+/build:../../../assets/kenney_blaster-kit/Models/bullet-foam-thick.fbx;kenney_blaster-kit/Models/bullet-foam-thick
 
-#begin kenney_blaster-kit/Models/bullet-foam-tip-thick.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/bullet-foam-tip-thick.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -402,9 +402,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/bullet-foam-tip-thick.fbx;kenney_blaster-kit/Models/bullet-foam-tip-thick
+/build:../../../assets/kenney_blaster-kit/Models/bullet-foam-tip-thick.fbx;kenney_blaster-kit/Models/bullet-foam-tip-thick
 
-#begin kenney_blaster-kit/Models/bullet-foam-tip.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/bullet-foam-tip.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -421,9 +421,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/bullet-foam-tip.fbx;kenney_blaster-kit/Models/bullet-foam-tip
+/build:../../../assets/kenney_blaster-kit/Models/bullet-foam-tip.fbx;kenney_blaster-kit/Models/bullet-foam-tip
 
-#begin kenney_blaster-kit/Models/bullet-foam.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/bullet-foam.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -440,9 +440,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/bullet-foam.fbx;kenney_blaster-kit/Models/bullet-foam
+/build:../../../assets/kenney_blaster-kit/Models/bullet-foam.fbx;kenney_blaster-kit/Models/bullet-foam
 
-#begin kenney_blaster-kit/Models/clip-large.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/clip-large.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -459,9 +459,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/clip-large.fbx;kenney_blaster-kit/Models/clip-large
+/build:../../../assets/kenney_blaster-kit/Models/clip-large.fbx;kenney_blaster-kit/Models/clip-large
 
-#begin kenney_blaster-kit/Models/clip-small.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/clip-small.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -478,9 +478,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/clip-small.fbx;kenney_blaster-kit/Models/clip-small
+/build:../../../assets/kenney_blaster-kit/Models/clip-small.fbx;kenney_blaster-kit/Models/clip-small
 
-#begin kenney_blaster-kit/Models/crate-medium.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/crate-medium.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -497,9 +497,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/crate-medium.fbx;kenney_blaster-kit/Models/crate-medium
+/build:../../../assets/kenney_blaster-kit/Models/crate-medium.fbx;kenney_blaster-kit/Models/crate-medium
 
-#begin kenney_blaster-kit/Models/crate-small.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/crate-small.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -516,9 +516,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/crate-small.fbx;kenney_blaster-kit/Models/crate-small
+/build:../../../assets/kenney_blaster-kit/Models/crate-small.fbx;kenney_blaster-kit/Models/crate-small
 
-#begin kenney_blaster-kit/Models/crate-wide.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/crate-wide.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -535,9 +535,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/crate-wide.fbx;kenney_blaster-kit/Models/crate-wide
+/build:../../../assets/kenney_blaster-kit/Models/crate-wide.fbx;kenney_blaster-kit/Models/crate-wide
 
-#begin kenney_blaster-kit/Models/grenade-a.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/grenade-a.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -554,9 +554,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/grenade-a.fbx;kenney_blaster-kit/Models/grenade-a
+/build:../../../assets/kenney_blaster-kit/Models/grenade-a.fbx;kenney_blaster-kit/Models/grenade-a
 
-#begin kenney_blaster-kit/Models/grenade-b.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/grenade-b.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -573,9 +573,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/grenade-b.fbx;kenney_blaster-kit/Models/grenade-b
+/build:../../../assets/kenney_blaster-kit/Models/grenade-b.fbx;kenney_blaster-kit/Models/grenade-b
 
-#begin kenney_blaster-kit/Models/scope-large-a.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/scope-large-a.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -592,9 +592,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/scope-large-a.fbx;kenney_blaster-kit/Models/scope-large-a
+/build:../../../assets/kenney_blaster-kit/Models/scope-large-a.fbx;kenney_blaster-kit/Models/scope-large-a
 
-#begin kenney_blaster-kit/Models/scope-large-b.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/scope-large-b.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -611,9 +611,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/scope-large-b.fbx;kenney_blaster-kit/Models/scope-large-b
+/build:../../../assets/kenney_blaster-kit/Models/scope-large-b.fbx;kenney_blaster-kit/Models/scope-large-b
 
-#begin kenney_blaster-kit/Models/scope-small.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/scope-small.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -630,9 +630,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/scope-small.fbx;kenney_blaster-kit/Models/scope-small
+/build:../../../assets/kenney_blaster-kit/Models/scope-small.fbx;kenney_blaster-kit/Models/scope-small
 
-#begin kenney_blaster-kit/Models/silencer-larger.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/silencer-larger.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -649,9 +649,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/silencer-larger.fbx;kenney_blaster-kit/Models/silencer-larger
+/build:../../../assets/kenney_blaster-kit/Models/silencer-larger.fbx;kenney_blaster-kit/Models/silencer-larger
 
-#begin kenney_blaster-kit/Models/silencer-small.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/silencer-small.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -668,9 +668,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/silencer-small.fbx;kenney_blaster-kit/Models/silencer-small
+/build:../../../assets/kenney_blaster-kit/Models/silencer-small.fbx;kenney_blaster-kit/Models/silencer-small
 
-#begin kenney_blaster-kit/Models/smoke.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/smoke.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -687,9 +687,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/smoke.fbx;kenney_blaster-kit/Models/smoke
+/build:../../../assets/kenney_blaster-kit/Models/smoke.fbx;kenney_blaster-kit/Models/smoke
 
-#begin kenney_blaster-kit/Models/target-detail.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/target-detail.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -706,9 +706,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/target-detail.fbx;kenney_blaster-kit/Models/target-detail
+/build:../../../assets/kenney_blaster-kit/Models/target-detail.fbx;kenney_blaster-kit/Models/target-detail
 
-#begin kenney_blaster-kit/Models/target-fragment-large.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/target-fragment-large.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -725,9 +725,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/target-fragment-large.fbx;kenney_blaster-kit/Models/target-fragment-large
+/build:../../../assets/kenney_blaster-kit/Models/target-fragment-large.fbx;kenney_blaster-kit/Models/target-fragment-large
 
-#begin kenney_blaster-kit/Models/target-fragment-small.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/target-fragment-small.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -744,9 +744,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/target-fragment-small.fbx;kenney_blaster-kit/Models/target-fragment-small
+/build:../../../assets/kenney_blaster-kit/Models/target-fragment-small.fbx;kenney_blaster-kit/Models/target-fragment-small
 
-#begin kenney_blaster-kit/Models/target-large.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/target-large.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -763,9 +763,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/target-large.fbx;kenney_blaster-kit/Models/target-large
+/build:../../../assets/kenney_blaster-kit/Models/target-large.fbx;kenney_blaster-kit/Models/target-large
 
-#begin kenney_blaster-kit/Models/target-small.fbx
+#begin ../../../assets/kenney_blaster-kit/Models/target-small.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -782,9 +782,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_blaster-kit/Models/target-small.fbx;kenney_blaster-kit/Models/target-small
+/build:../../../assets/kenney_blaster-kit/Models/target-small.fbx;kenney_blaster-kit/Models/target-small
 
-#begin kenney_platformer-kit/Models/arrow.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/arrow.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -801,9 +801,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/arrow.fbx;kenney_platformer-kit/Models/arrow
+/build:../../../assets/kenney_platformer-kit/Models/arrow.fbx;kenney_platformer-kit/Models/arrow
 
-#begin kenney_platformer-kit/Models/arrows.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/arrows.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -820,9 +820,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/arrows.fbx;kenney_platformer-kit/Models/arrows
+/build:../../../assets/kenney_platformer-kit/Models/arrows.fbx;kenney_platformer-kit/Models/arrows
 
-#begin kenney_platformer-kit/Models/barrel.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/barrel.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -839,9 +839,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/barrel.fbx;kenney_platformer-kit/Models/barrel
+/build:../../../assets/kenney_platformer-kit/Models/barrel.fbx;kenney_platformer-kit/Models/barrel
 
-#begin kenney_platformer-kit/Models/block-grass-corner-low.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-corner-low.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -858,9 +858,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-corner-low.fbx;kenney_platformer-kit/Models/block-grass-corner-low
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-corner-low.fbx;kenney_platformer-kit/Models/block-grass-corner-low
 
-#begin kenney_platformer-kit/Models/block-grass-corner-overhang-low.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-corner-overhang-low.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -877,9 +877,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-corner-overhang-low.fbx;kenney_platformer-kit/Models/block-grass-corner-overhang-low
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-corner-overhang-low.fbx;kenney_platformer-kit/Models/block-grass-corner-overhang-low
 
-#begin kenney_platformer-kit/Models/block-grass-corner-overhang.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-corner-overhang.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -896,9 +896,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-corner-overhang.fbx;kenney_platformer-kit/Models/block-grass-corner-overhang
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-corner-overhang.fbx;kenney_platformer-kit/Models/block-grass-corner-overhang
 
-#begin kenney_platformer-kit/Models/block-grass-corner.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-corner.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -915,9 +915,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-corner.fbx;kenney_platformer-kit/Models/block-grass-corner
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-corner.fbx;kenney_platformer-kit/Models/block-grass-corner
 
-#begin kenney_platformer-kit/Models/block-grass-curve-half.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-curve-half.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -934,9 +934,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-curve-half.fbx;kenney_platformer-kit/Models/block-grass-curve-half
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-curve-half.fbx;kenney_platformer-kit/Models/block-grass-curve-half
 
-#begin kenney_platformer-kit/Models/block-grass-curve-low.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-curve-low.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -953,9 +953,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-curve-low.fbx;kenney_platformer-kit/Models/block-grass-curve-low
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-curve-low.fbx;kenney_platformer-kit/Models/block-grass-curve-low
 
-#begin kenney_platformer-kit/Models/block-grass-curve.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-curve.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -972,9 +972,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-curve.fbx;kenney_platformer-kit/Models/block-grass-curve
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-curve.fbx;kenney_platformer-kit/Models/block-grass-curve
 
-#begin kenney_platformer-kit/Models/block-grass-edge.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-edge.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -991,9 +991,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-edge.fbx;kenney_platformer-kit/Models/block-grass-edge
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-edge.fbx;kenney_platformer-kit/Models/block-grass-edge
 
-#begin kenney_platformer-kit/Models/block-grass-hexagon.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-hexagon.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1010,9 +1010,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-hexagon.fbx;kenney_platformer-kit/Models/block-grass-hexagon
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-hexagon.fbx;kenney_platformer-kit/Models/block-grass-hexagon
 
-#begin kenney_platformer-kit/Models/block-grass-large-slope-narrow.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-large-slope-narrow.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1029,9 +1029,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-large-slope-narrow.fbx;kenney_platformer-kit/Models/block-grass-large-slope-narrow
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-large-slope-narrow.fbx;kenney_platformer-kit/Models/block-grass-large-slope-narrow
 
-#begin kenney_platformer-kit/Models/block-grass-large-slope-steep-narrow.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-large-slope-steep-narrow.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1048,9 +1048,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-large-slope-steep-narrow.fbx;kenney_platformer-kit/Models/block-grass-large-slope-steep-narrow
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-large-slope-steep-narrow.fbx;kenney_platformer-kit/Models/block-grass-large-slope-steep-narrow
 
-#begin kenney_platformer-kit/Models/block-grass-large-slope-steep.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-large-slope-steep.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1067,9 +1067,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-large-slope-steep.fbx;kenney_platformer-kit/Models/block-grass-large-slope-steep
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-large-slope-steep.fbx;kenney_platformer-kit/Models/block-grass-large-slope-steep
 
-#begin kenney_platformer-kit/Models/block-grass-large-slope.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-large-slope.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1086,9 +1086,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-large-slope.fbx;kenney_platformer-kit/Models/block-grass-large-slope
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-large-slope.fbx;kenney_platformer-kit/Models/block-grass-large-slope
 
-#begin kenney_platformer-kit/Models/block-grass-large-tall.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-large-tall.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1105,9 +1105,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-large-tall.fbx;kenney_platformer-kit/Models/block-grass-large-tall
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-large-tall.fbx;kenney_platformer-kit/Models/block-grass-large-tall
 
-#begin kenney_platformer-kit/Models/block-grass-large.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-large.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1124,9 +1124,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-large.fbx;kenney_platformer-kit/Models/block-grass-large
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-large.fbx;kenney_platformer-kit/Models/block-grass-large
 
-#begin kenney_platformer-kit/Models/block-grass-long.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-long.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1143,9 +1143,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-long.fbx;kenney_platformer-kit/Models/block-grass-long
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-long.fbx;kenney_platformer-kit/Models/block-grass-long
 
-#begin kenney_platformer-kit/Models/block-grass-low-hexagon.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-low-hexagon.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1162,9 +1162,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-low-hexagon.fbx;kenney_platformer-kit/Models/block-grass-low-hexagon
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-low-hexagon.fbx;kenney_platformer-kit/Models/block-grass-low-hexagon
 
-#begin kenney_platformer-kit/Models/block-grass-low-large.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-low-large.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1181,9 +1181,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-low-large.fbx;kenney_platformer-kit/Models/block-grass-low-large
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-low-large.fbx;kenney_platformer-kit/Models/block-grass-low-large
 
-#begin kenney_platformer-kit/Models/block-grass-low-long.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-low-long.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1200,9 +1200,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-low-long.fbx;kenney_platformer-kit/Models/block-grass-low-long
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-low-long.fbx;kenney_platformer-kit/Models/block-grass-low-long
 
-#begin kenney_platformer-kit/Models/block-grass-low-narrow.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-low-narrow.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1219,9 +1219,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-low-narrow.fbx;kenney_platformer-kit/Models/block-grass-low-narrow
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-low-narrow.fbx;kenney_platformer-kit/Models/block-grass-low-narrow
 
-#begin kenney_platformer-kit/Models/block-grass-low.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-low.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1238,9 +1238,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-low.fbx;kenney_platformer-kit/Models/block-grass-low
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-low.fbx;kenney_platformer-kit/Models/block-grass-low
 
-#begin kenney_platformer-kit/Models/block-grass-narrow.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-narrow.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1257,9 +1257,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-narrow.fbx;kenney_platformer-kit/Models/block-grass-narrow
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-narrow.fbx;kenney_platformer-kit/Models/block-grass-narrow
 
-#begin kenney_platformer-kit/Models/block-grass-overhang-corner.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-overhang-corner.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1276,9 +1276,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-overhang-corner.fbx;kenney_platformer-kit/Models/block-grass-overhang-corner
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-overhang-corner.fbx;kenney_platformer-kit/Models/block-grass-overhang-corner
 
-#begin kenney_platformer-kit/Models/block-grass-overhang-edge.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-overhang-edge.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1295,9 +1295,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-overhang-edge.fbx;kenney_platformer-kit/Models/block-grass-overhang-edge
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-overhang-edge.fbx;kenney_platformer-kit/Models/block-grass-overhang-edge
 
-#begin kenney_platformer-kit/Models/block-grass-overhang-hexagon.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-overhang-hexagon.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1314,9 +1314,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-overhang-hexagon.fbx;kenney_platformer-kit/Models/block-grass-overhang-hexagon
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-overhang-hexagon.fbx;kenney_platformer-kit/Models/block-grass-overhang-hexagon
 
-#begin kenney_platformer-kit/Models/block-grass-overhang-large-slope-narrow.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-overhang-large-slope-narrow.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1333,9 +1333,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-overhang-large-slope-narrow.fbx;kenney_platformer-kit/Models/block-grass-overhang-large-slope-narrow
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-overhang-large-slope-narrow.fbx;kenney_platformer-kit/Models/block-grass-overhang-large-slope-narrow
 
-#begin kenney_platformer-kit/Models/block-grass-overhang-large-slope-steep-narrow.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-overhang-large-slope-steep-narrow.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1352,9 +1352,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-overhang-large-slope-steep-narrow.fbx;kenney_platformer-kit/Models/block-grass-overhang-large-slope-steep-narrow
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-overhang-large-slope-steep-narrow.fbx;kenney_platformer-kit/Models/block-grass-overhang-large-slope-steep-narrow
 
-#begin kenney_platformer-kit/Models/block-grass-overhang-large-slope-steep.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-overhang-large-slope-steep.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1371,9 +1371,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-overhang-large-slope-steep.fbx;kenney_platformer-kit/Models/block-grass-overhang-large-slope-steep
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-overhang-large-slope-steep.fbx;kenney_platformer-kit/Models/block-grass-overhang-large-slope-steep
 
-#begin kenney_platformer-kit/Models/block-grass-overhang-large-slope.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-overhang-large-slope.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1390,9 +1390,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-overhang-large-slope.fbx;kenney_platformer-kit/Models/block-grass-overhang-large-slope
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-overhang-large-slope.fbx;kenney_platformer-kit/Models/block-grass-overhang-large-slope
 
-#begin kenney_platformer-kit/Models/block-grass-overhang-large-tall.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-overhang-large-tall.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1409,9 +1409,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-overhang-large-tall.fbx;kenney_platformer-kit/Models/block-grass-overhang-large-tall
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-overhang-large-tall.fbx;kenney_platformer-kit/Models/block-grass-overhang-large-tall
 
-#begin kenney_platformer-kit/Models/block-grass-overhang-large.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-overhang-large.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1428,9 +1428,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-overhang-large.fbx;kenney_platformer-kit/Models/block-grass-overhang-large
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-overhang-large.fbx;kenney_platformer-kit/Models/block-grass-overhang-large
 
-#begin kenney_platformer-kit/Models/block-grass-overhang-long.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-overhang-long.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1447,9 +1447,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-overhang-long.fbx;kenney_platformer-kit/Models/block-grass-overhang-long
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-overhang-long.fbx;kenney_platformer-kit/Models/block-grass-overhang-long
 
-#begin kenney_platformer-kit/Models/block-grass-overhang-low-hexagon.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-overhang-low-hexagon.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1466,9 +1466,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-overhang-low-hexagon.fbx;kenney_platformer-kit/Models/block-grass-overhang-low-hexagon
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-overhang-low-hexagon.fbx;kenney_platformer-kit/Models/block-grass-overhang-low-hexagon
 
-#begin kenney_platformer-kit/Models/block-grass-overhang-low-large.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-overhang-low-large.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1485,9 +1485,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-overhang-low-large.fbx;kenney_platformer-kit/Models/block-grass-overhang-low-large
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-overhang-low-large.fbx;kenney_platformer-kit/Models/block-grass-overhang-low-large
 
-#begin kenney_platformer-kit/Models/block-grass-overhang-low-long.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-overhang-low-long.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1504,9 +1504,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-overhang-low-long.fbx;kenney_platformer-kit/Models/block-grass-overhang-low-long
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-overhang-low-long.fbx;kenney_platformer-kit/Models/block-grass-overhang-low-long
 
-#begin kenney_platformer-kit/Models/block-grass-overhang-low-narrow.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-overhang-low-narrow.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1523,9 +1523,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-overhang-low-narrow.fbx;kenney_platformer-kit/Models/block-grass-overhang-low-narrow
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-overhang-low-narrow.fbx;kenney_platformer-kit/Models/block-grass-overhang-low-narrow
 
-#begin kenney_platformer-kit/Models/block-grass-overhang-low.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-overhang-low.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1542,9 +1542,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-overhang-low.fbx;kenney_platformer-kit/Models/block-grass-overhang-low
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-overhang-low.fbx;kenney_platformer-kit/Models/block-grass-overhang-low
 
-#begin kenney_platformer-kit/Models/block-grass-overhang-narrow.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass-overhang-narrow.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1561,9 +1561,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass-overhang-narrow.fbx;kenney_platformer-kit/Models/block-grass-overhang-narrow
+/build:../../../assets/kenney_platformer-kit/Models/block-grass-overhang-narrow.fbx;kenney_platformer-kit/Models/block-grass-overhang-narrow
 
-#begin kenney_platformer-kit/Models/block-grass.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-grass.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1580,9 +1580,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-grass.fbx;kenney_platformer-kit/Models/block-grass
+/build:../../../assets/kenney_platformer-kit/Models/block-grass.fbx;kenney_platformer-kit/Models/block-grass
 
-#begin kenney_platformer-kit/Models/block-moving-blue.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-moving-blue.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1599,9 +1599,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-moving-blue.fbx;kenney_platformer-kit/Models/block-moving-blue
+/build:../../../assets/kenney_platformer-kit/Models/block-moving-blue.fbx;kenney_platformer-kit/Models/block-moving-blue
 
-#begin kenney_platformer-kit/Models/block-moving-large.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-moving-large.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1618,9 +1618,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-moving-large.fbx;kenney_platformer-kit/Models/block-moving-large
+/build:../../../assets/kenney_platformer-kit/Models/block-moving-large.fbx;kenney_platformer-kit/Models/block-moving-large
 
-#begin kenney_platformer-kit/Models/block-moving.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-moving.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1637,9 +1637,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-moving.fbx;kenney_platformer-kit/Models/block-moving
+/build:../../../assets/kenney_platformer-kit/Models/block-moving.fbx;kenney_platformer-kit/Models/block-moving
 
-#begin kenney_platformer-kit/Models/block-snow-corner-low.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-corner-low.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1656,9 +1656,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-corner-low.fbx;kenney_platformer-kit/Models/block-snow-corner-low
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-corner-low.fbx;kenney_platformer-kit/Models/block-snow-corner-low
 
-#begin kenney_platformer-kit/Models/block-snow-corner-overhang-low.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-corner-overhang-low.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1675,9 +1675,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-corner-overhang-low.fbx;kenney_platformer-kit/Models/block-snow-corner-overhang-low
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-corner-overhang-low.fbx;kenney_platformer-kit/Models/block-snow-corner-overhang-low
 
-#begin kenney_platformer-kit/Models/block-snow-corner-overhang.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-corner-overhang.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1694,9 +1694,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-corner-overhang.fbx;kenney_platformer-kit/Models/block-snow-corner-overhang
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-corner-overhang.fbx;kenney_platformer-kit/Models/block-snow-corner-overhang
 
-#begin kenney_platformer-kit/Models/block-snow-corner.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-corner.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1713,9 +1713,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-corner.fbx;kenney_platformer-kit/Models/block-snow-corner
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-corner.fbx;kenney_platformer-kit/Models/block-snow-corner
 
-#begin kenney_platformer-kit/Models/block-snow-curve-half.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-curve-half.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1732,9 +1732,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-curve-half.fbx;kenney_platformer-kit/Models/block-snow-curve-half
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-curve-half.fbx;kenney_platformer-kit/Models/block-snow-curve-half
 
-#begin kenney_platformer-kit/Models/block-snow-curve-low.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-curve-low.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1751,9 +1751,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-curve-low.fbx;kenney_platformer-kit/Models/block-snow-curve-low
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-curve-low.fbx;kenney_platformer-kit/Models/block-snow-curve-low
 
-#begin kenney_platformer-kit/Models/block-snow-curve.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-curve.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1770,9 +1770,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-curve.fbx;kenney_platformer-kit/Models/block-snow-curve
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-curve.fbx;kenney_platformer-kit/Models/block-snow-curve
 
-#begin kenney_platformer-kit/Models/block-snow-edge.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-edge.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1789,9 +1789,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-edge.fbx;kenney_platformer-kit/Models/block-snow-edge
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-edge.fbx;kenney_platformer-kit/Models/block-snow-edge
 
-#begin kenney_platformer-kit/Models/block-snow-hexagon.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-hexagon.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1808,9 +1808,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-hexagon.fbx;kenney_platformer-kit/Models/block-snow-hexagon
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-hexagon.fbx;kenney_platformer-kit/Models/block-snow-hexagon
 
-#begin kenney_platformer-kit/Models/block-snow-large-slope-narrow.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-large-slope-narrow.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1827,9 +1827,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-large-slope-narrow.fbx;kenney_platformer-kit/Models/block-snow-large-slope-narrow
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-large-slope-narrow.fbx;kenney_platformer-kit/Models/block-snow-large-slope-narrow
 
-#begin kenney_platformer-kit/Models/block-snow-large-slope-steep-narrow.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-large-slope-steep-narrow.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1846,9 +1846,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-large-slope-steep-narrow.fbx;kenney_platformer-kit/Models/block-snow-large-slope-steep-narrow
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-large-slope-steep-narrow.fbx;kenney_platformer-kit/Models/block-snow-large-slope-steep-narrow
 
-#begin kenney_platformer-kit/Models/block-snow-large-slope-steep.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-large-slope-steep.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1865,9 +1865,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-large-slope-steep.fbx;kenney_platformer-kit/Models/block-snow-large-slope-steep
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-large-slope-steep.fbx;kenney_platformer-kit/Models/block-snow-large-slope-steep
 
-#begin kenney_platformer-kit/Models/block-snow-large-slope.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-large-slope.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1884,9 +1884,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-large-slope.fbx;kenney_platformer-kit/Models/block-snow-large-slope
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-large-slope.fbx;kenney_platformer-kit/Models/block-snow-large-slope
 
-#begin kenney_platformer-kit/Models/block-snow-large-tall.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-large-tall.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1903,9 +1903,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-large-tall.fbx;kenney_platformer-kit/Models/block-snow-large-tall
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-large-tall.fbx;kenney_platformer-kit/Models/block-snow-large-tall
 
-#begin kenney_platformer-kit/Models/block-snow-large.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-large.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1922,9 +1922,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-large.fbx;kenney_platformer-kit/Models/block-snow-large
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-large.fbx;kenney_platformer-kit/Models/block-snow-large
 
-#begin kenney_platformer-kit/Models/block-snow-long.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-long.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1941,9 +1941,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-long.fbx;kenney_platformer-kit/Models/block-snow-long
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-long.fbx;kenney_platformer-kit/Models/block-snow-long
 
-#begin kenney_platformer-kit/Models/block-snow-low-hexagon.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-low-hexagon.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1960,9 +1960,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-low-hexagon.fbx;kenney_platformer-kit/Models/block-snow-low-hexagon
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-low-hexagon.fbx;kenney_platformer-kit/Models/block-snow-low-hexagon
 
-#begin kenney_platformer-kit/Models/block-snow-low-large.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-low-large.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1979,9 +1979,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-low-large.fbx;kenney_platformer-kit/Models/block-snow-low-large
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-low-large.fbx;kenney_platformer-kit/Models/block-snow-low-large
 
-#begin kenney_platformer-kit/Models/block-snow-low-long.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-low-long.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1998,9 +1998,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-low-long.fbx;kenney_platformer-kit/Models/block-snow-low-long
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-low-long.fbx;kenney_platformer-kit/Models/block-snow-low-long
 
-#begin kenney_platformer-kit/Models/block-snow-low-narrow.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-low-narrow.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2017,9 +2017,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-low-narrow.fbx;kenney_platformer-kit/Models/block-snow-low-narrow
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-low-narrow.fbx;kenney_platformer-kit/Models/block-snow-low-narrow
 
-#begin kenney_platformer-kit/Models/block-snow-low.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-low.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2036,9 +2036,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-low.fbx;kenney_platformer-kit/Models/block-snow-low
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-low.fbx;kenney_platformer-kit/Models/block-snow-low
 
-#begin kenney_platformer-kit/Models/block-snow-narrow.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-narrow.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2055,9 +2055,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-narrow.fbx;kenney_platformer-kit/Models/block-snow-narrow
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-narrow.fbx;kenney_platformer-kit/Models/block-snow-narrow
 
-#begin kenney_platformer-kit/Models/block-snow-overhang-corner.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-overhang-corner.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2074,9 +2074,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-overhang-corner.fbx;kenney_platformer-kit/Models/block-snow-overhang-corner
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-overhang-corner.fbx;kenney_platformer-kit/Models/block-snow-overhang-corner
 
-#begin kenney_platformer-kit/Models/block-snow-overhang-edge.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-overhang-edge.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2093,9 +2093,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-overhang-edge.fbx;kenney_platformer-kit/Models/block-snow-overhang-edge
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-overhang-edge.fbx;kenney_platformer-kit/Models/block-snow-overhang-edge
 
-#begin kenney_platformer-kit/Models/block-snow-overhang-hexagon.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-overhang-hexagon.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2112,9 +2112,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-overhang-hexagon.fbx;kenney_platformer-kit/Models/block-snow-overhang-hexagon
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-overhang-hexagon.fbx;kenney_platformer-kit/Models/block-snow-overhang-hexagon
 
-#begin kenney_platformer-kit/Models/block-snow-overhang-large-slope-narrow.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-overhang-large-slope-narrow.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2131,9 +2131,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-overhang-large-slope-narrow.fbx;kenney_platformer-kit/Models/block-snow-overhang-large-slope-narrow
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-overhang-large-slope-narrow.fbx;kenney_platformer-kit/Models/block-snow-overhang-large-slope-narrow
 
-#begin kenney_platformer-kit/Models/block-snow-overhang-large-slope-steep-narrow.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-overhang-large-slope-steep-narrow.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2150,9 +2150,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-overhang-large-slope-steep-narrow.fbx;kenney_platformer-kit/Models/block-snow-overhang-large-slope-steep-narrow
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-overhang-large-slope-steep-narrow.fbx;kenney_platformer-kit/Models/block-snow-overhang-large-slope-steep-narrow
 
-#begin kenney_platformer-kit/Models/block-snow-overhang-large-slope-steep.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-overhang-large-slope-steep.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2169,9 +2169,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-overhang-large-slope-steep.fbx;kenney_platformer-kit/Models/block-snow-overhang-large-slope-steep
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-overhang-large-slope-steep.fbx;kenney_platformer-kit/Models/block-snow-overhang-large-slope-steep
 
-#begin kenney_platformer-kit/Models/block-snow-overhang-large-slope.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-overhang-large-slope.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2188,9 +2188,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-overhang-large-slope.fbx;kenney_platformer-kit/Models/block-snow-overhang-large-slope
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-overhang-large-slope.fbx;kenney_platformer-kit/Models/block-snow-overhang-large-slope
 
-#begin kenney_platformer-kit/Models/block-snow-overhang-large-tall.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-overhang-large-tall.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2207,9 +2207,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-overhang-large-tall.fbx;kenney_platformer-kit/Models/block-snow-overhang-large-tall
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-overhang-large-tall.fbx;kenney_platformer-kit/Models/block-snow-overhang-large-tall
 
-#begin kenney_platformer-kit/Models/block-snow-overhang-large.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-overhang-large.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2226,9 +2226,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-overhang-large.fbx;kenney_platformer-kit/Models/block-snow-overhang-large
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-overhang-large.fbx;kenney_platformer-kit/Models/block-snow-overhang-large
 
-#begin kenney_platformer-kit/Models/block-snow-overhang-long.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-overhang-long.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2245,9 +2245,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-overhang-long.fbx;kenney_platformer-kit/Models/block-snow-overhang-long
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-overhang-long.fbx;kenney_platformer-kit/Models/block-snow-overhang-long
 
-#begin kenney_platformer-kit/Models/block-snow-overhang-low-hexagon.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-overhang-low-hexagon.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2264,9 +2264,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-overhang-low-hexagon.fbx;kenney_platformer-kit/Models/block-snow-overhang-low-hexagon
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-overhang-low-hexagon.fbx;kenney_platformer-kit/Models/block-snow-overhang-low-hexagon
 
-#begin kenney_platformer-kit/Models/block-snow-overhang-low-large.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-overhang-low-large.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2283,9 +2283,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-overhang-low-large.fbx;kenney_platformer-kit/Models/block-snow-overhang-low-large
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-overhang-low-large.fbx;kenney_platformer-kit/Models/block-snow-overhang-low-large
 
-#begin kenney_platformer-kit/Models/block-snow-overhang-low-long.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-overhang-low-long.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2302,9 +2302,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-overhang-low-long.fbx;kenney_platformer-kit/Models/block-snow-overhang-low-long
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-overhang-low-long.fbx;kenney_platformer-kit/Models/block-snow-overhang-low-long
 
-#begin kenney_platformer-kit/Models/block-snow-overhang-low-narrow.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-overhang-low-narrow.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2321,9 +2321,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-overhang-low-narrow.fbx;kenney_platformer-kit/Models/block-snow-overhang-low-narrow
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-overhang-low-narrow.fbx;kenney_platformer-kit/Models/block-snow-overhang-low-narrow
 
-#begin kenney_platformer-kit/Models/block-snow-overhang-low.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-overhang-low.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2340,9 +2340,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-overhang-low.fbx;kenney_platformer-kit/Models/block-snow-overhang-low
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-overhang-low.fbx;kenney_platformer-kit/Models/block-snow-overhang-low
 
-#begin kenney_platformer-kit/Models/block-snow-overhang-narrow.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow-overhang-narrow.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2359,9 +2359,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow-overhang-narrow.fbx;kenney_platformer-kit/Models/block-snow-overhang-narrow
+/build:../../../assets/kenney_platformer-kit/Models/block-snow-overhang-narrow.fbx;kenney_platformer-kit/Models/block-snow-overhang-narrow
 
-#begin kenney_platformer-kit/Models/block-snow.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/block-snow.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2378,9 +2378,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/block-snow.fbx;kenney_platformer-kit/Models/block-snow
+/build:../../../assets/kenney_platformer-kit/Models/block-snow.fbx;kenney_platformer-kit/Models/block-snow
 
-#begin kenney_platformer-kit/Models/bomb.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/bomb.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2397,9 +2397,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/bomb.fbx;kenney_platformer-kit/Models/bomb
+/build:../../../assets/kenney_platformer-kit/Models/bomb.fbx;kenney_platformer-kit/Models/bomb
 
-#begin kenney_platformer-kit/Models/brick.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/brick.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2416,9 +2416,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/brick.fbx;kenney_platformer-kit/Models/brick
+/build:../../../assets/kenney_platformer-kit/Models/brick.fbx;kenney_platformer-kit/Models/brick
 
-#begin kenney_platformer-kit/Models/button-round.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/button-round.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2435,9 +2435,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/button-round.fbx;kenney_platformer-kit/Models/button-round
+/build:../../../assets/kenney_platformer-kit/Models/button-round.fbx;kenney_platformer-kit/Models/button-round
 
-#begin kenney_platformer-kit/Models/button-square.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/button-square.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2454,9 +2454,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/button-square.fbx;kenney_platformer-kit/Models/button-square
+/build:../../../assets/kenney_platformer-kit/Models/button-square.fbx;kenney_platformer-kit/Models/button-square
 
-#begin kenney_platformer-kit/Models/character-oobi.glb
+#begin ../../../assets/kenney_platformer-kit/Models/character-oobi.glb
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2473,9 +2473,9 @@
 /processorParam:Scale=1
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/character-oobi.glb;kenney_platformer-kit/Models/character-oobi
+/build:../../../assets/kenney_platformer-kit/Models/character-oobi.glb;kenney_platformer-kit/Models/character-oobi
 
-#begin kenney_platformer-kit/Models/character-oodi.glb
+#begin ../../../assets/kenney_platformer-kit/Models/character-oodi.glb
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2492,9 +2492,9 @@
 /processorParam:Scale=1
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/character-oodi.glb;kenney_platformer-kit/Models/character-oodi
+/build:../../../assets/kenney_platformer-kit/Models/character-oodi.glb;kenney_platformer-kit/Models/character-oodi
 
-#begin kenney_platformer-kit/Models/character-ooli.glb
+#begin ../../../assets/kenney_platformer-kit/Models/character-ooli.glb
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2511,9 +2511,9 @@
 /processorParam:Scale=1
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/character-ooli.glb;kenney_platformer-kit/Models/character-ooli
+/build:../../../assets/kenney_platformer-kit/Models/character-ooli.glb;kenney_platformer-kit/Models/character-ooli
 
-#begin kenney_platformer-kit/Models/character-oopi.glb
+#begin ../../../assets/kenney_platformer-kit/Models/character-oopi.glb
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2530,9 +2530,9 @@
 /processorParam:Scale=1
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/character-oopi.glb;kenney_platformer-kit/Models/character-oopi
+/build:../../../assets/kenney_platformer-kit/Models/character-oopi.glb;kenney_platformer-kit/Models/character-oopi
 
-#begin kenney_platformer-kit/Models/character-oozi.glb
+#begin ../../../assets/kenney_platformer-kit/Models/character-oozi.glb
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:Colosssssolor=0,0,0,0
@@ -2549,9 +2549,9 @@
 /processorParam:Scale=1
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/character-oozi.glb;kenney_platformer-kit/Models/character-oozi
+/build:../../../assets/kenney_platformer-kit/Models/character-oozi.glb;kenney_platformer-kit/Models/character-oozi
 
-#begin kenney_platformer-kit/Models/chest.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/chest.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2568,9 +2568,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/chest.fbx;kenney_platformer-kit/Models/chest
+/build:../../../assets/kenney_platformer-kit/Models/chest.fbx;kenney_platformer-kit/Models/chest
 
-#begin kenney_platformer-kit/Models/coin-bronze.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/coin-bronze.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2587,9 +2587,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/coin-bronze.fbx;kenney_platformer-kit/Models/coin-bronze
+/build:../../../assets/kenney_platformer-kit/Models/coin-bronze.fbx;kenney_platformer-kit/Models/coin-bronze
 
-#begin kenney_platformer-kit/Models/coin-gold.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/coin-gold.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2606,9 +2606,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/coin-gold.fbx;kenney_platformer-kit/Models/coin-gold
+/build:../../../assets/kenney_platformer-kit/Models/coin-gold.fbx;kenney_platformer-kit/Models/coin-gold
 
-#begin kenney_platformer-kit/Models/coin-silver.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/coin-silver.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2625,9 +2625,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/coin-silver.fbx;kenney_platformer-kit/Models/coin-silver
+/build:../../../assets/kenney_platformer-kit/Models/coin-silver.fbx;kenney_platformer-kit/Models/coin-silver
 
-#begin kenney_platformer-kit/Models/conveyor-belt.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/conveyor-belt.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2644,9 +2644,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/conveyor-belt.fbx;kenney_platformer-kit/Models/conveyor-belt
+/build:../../../assets/kenney_platformer-kit/Models/conveyor-belt.fbx;kenney_platformer-kit/Models/conveyor-belt
 
-#begin kenney_platformer-kit/Models/crate-item-strong.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/crate-item-strong.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2663,9 +2663,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/crate-item-strong.fbx;kenney_platformer-kit/Models/crate-item-strong
+/build:../../../assets/kenney_platformer-kit/Models/crate-item-strong.fbx;kenney_platformer-kit/Models/crate-item-strong
 
-#begin kenney_platformer-kit/Models/crate-item.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/crate-item.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2682,9 +2682,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/crate-item.fbx;kenney_platformer-kit/Models/crate-item
+/build:../../../assets/kenney_platformer-kit/Models/crate-item.fbx;kenney_platformer-kit/Models/crate-item
 
-#begin kenney_platformer-kit/Models/crate-strong.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/crate-strong.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2701,9 +2701,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/crate-strong.fbx;kenney_platformer-kit/Models/crate-strong
+/build:../../../assets/kenney_platformer-kit/Models/crate-strong.fbx;kenney_platformer-kit/Models/crate-strong
 
-#begin kenney_platformer-kit/Models/crate.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/crate.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2720,9 +2720,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/crate.fbx;kenney_platformer-kit/Models/crate
+/build:../../../assets/kenney_platformer-kit/Models/crate.fbx;kenney_platformer-kit/Models/crate
 
-#begin kenney_platformer-kit/Models/door-large-open.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/door-large-open.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2739,9 +2739,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/door-large-open.fbx;kenney_platformer-kit/Models/door-large-open
+/build:../../../assets/kenney_platformer-kit/Models/door-large-open.fbx;kenney_platformer-kit/Models/door-large-open
 
-#begin kenney_platformer-kit/Models/door-open.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/door-open.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2758,9 +2758,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/door-open.fbx;kenney_platformer-kit/Models/door-open
+/build:../../../assets/kenney_platformer-kit/Models/door-open.fbx;kenney_platformer-kit/Models/door-open
 
-#begin kenney_platformer-kit/Models/door-rotate-large.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/door-rotate-large.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2777,9 +2777,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/door-rotate-large.fbx;kenney_platformer-kit/Models/door-rotate-large
+/build:../../../assets/kenney_platformer-kit/Models/door-rotate-large.fbx;kenney_platformer-kit/Models/door-rotate-large
 
-#begin kenney_platformer-kit/Models/door-rotate.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/door-rotate.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2796,9 +2796,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/door-rotate.fbx;kenney_platformer-kit/Models/door-rotate
+/build:../../../assets/kenney_platformer-kit/Models/door-rotate.fbx;kenney_platformer-kit/Models/door-rotate
 
-#begin kenney_platformer-kit/Models/fence-broken.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/fence-broken.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2815,9 +2815,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/fence-broken.fbx;kenney_platformer-kit/Models/fence-broken
+/build:../../../assets/kenney_platformer-kit/Models/fence-broken.fbx;kenney_platformer-kit/Models/fence-broken
 
-#begin kenney_platformer-kit/Models/fence-corner-curved.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/fence-corner-curved.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2834,9 +2834,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/fence-corner-curved.fbx;kenney_platformer-kit/Models/fence-corner-curved
+/build:../../../assets/kenney_platformer-kit/Models/fence-corner-curved.fbx;kenney_platformer-kit/Models/fence-corner-curved
 
-#begin kenney_platformer-kit/Models/fence-corner.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/fence-corner.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2853,9 +2853,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/fence-corner.fbx;kenney_platformer-kit/Models/fence-corner
+/build:../../../assets/kenney_platformer-kit/Models/fence-corner.fbx;kenney_platformer-kit/Models/fence-corner
 
-#begin kenney_platformer-kit/Models/fence-low-broken.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/fence-low-broken.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2872,9 +2872,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/fence-low-broken.fbx;kenney_platformer-kit/Models/fence-low-broken
+/build:../../../assets/kenney_platformer-kit/Models/fence-low-broken.fbx;kenney_platformer-kit/Models/fence-low-broken
 
-#begin kenney_platformer-kit/Models/fence-low-corner-curved.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/fence-low-corner-curved.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2891,9 +2891,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/fence-low-corner-curved.fbx;kenney_platformer-kit/Models/fence-low-corner-curved
+/build:../../../assets/kenney_platformer-kit/Models/fence-low-corner-curved.fbx;kenney_platformer-kit/Models/fence-low-corner-curved
 
-#begin kenney_platformer-kit/Models/fence-low-corner.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/fence-low-corner.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2910,9 +2910,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/fence-low-corner.fbx;kenney_platformer-kit/Models/fence-low-corner
+/build:../../../assets/kenney_platformer-kit/Models/fence-low-corner.fbx;kenney_platformer-kit/Models/fence-low-corner
 
-#begin kenney_platformer-kit/Models/fence-low-straight.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/fence-low-straight.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2929,9 +2929,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/fence-low-straight.fbx;kenney_platformer-kit/Models/fence-low-straight
+/build:../../../assets/kenney_platformer-kit/Models/fence-low-straight.fbx;kenney_platformer-kit/Models/fence-low-straight
 
-#begin kenney_platformer-kit/Models/fence-rope.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/fence-rope.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2948,9 +2948,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/fence-rope.fbx;kenney_platformer-kit/Models/fence-rope
+/build:../../../assets/kenney_platformer-kit/Models/fence-rope.fbx;kenney_platformer-kit/Models/fence-rope
 
-#begin kenney_platformer-kit/Models/fence-straight.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/fence-straight.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2967,9 +2967,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/fence-straight.fbx;kenney_platformer-kit/Models/fence-straight
+/build:../../../assets/kenney_platformer-kit/Models/fence-straight.fbx;kenney_platformer-kit/Models/fence-straight
 
-#begin kenney_platformer-kit/Models/flag.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/flag.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2986,9 +2986,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/flag.fbx;kenney_platformer-kit/Models/flag
+/build:../../../assets/kenney_platformer-kit/Models/flag.fbx;kenney_platformer-kit/Models/flag
 
-#begin kenney_platformer-kit/Models/flowers-tall.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/flowers-tall.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3005,9 +3005,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/flowers-tall.fbx;kenney_platformer-kit/Models/flowers-tall
+/build:../../../assets/kenney_platformer-kit/Models/flowers-tall.fbx;kenney_platformer-kit/Models/flowers-tall
 
-#begin kenney_platformer-kit/Models/flowers.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/flowers.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3024,9 +3024,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/flowers.fbx;kenney_platformer-kit/Models/flowers
+/build:../../../assets/kenney_platformer-kit/Models/flowers.fbx;kenney_platformer-kit/Models/flowers
 
-#begin kenney_platformer-kit/Models/grass.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/grass.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3043,9 +3043,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/grass.fbx;kenney_platformer-kit/Models/grass
+/build:../../../assets/kenney_platformer-kit/Models/grass.fbx;kenney_platformer-kit/Models/grass
 
-#begin kenney_platformer-kit/Models/heart.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/heart.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3062,9 +3062,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/heart.fbx;kenney_platformer-kit/Models/heart
+/build:../../../assets/kenney_platformer-kit/Models/heart.fbx;kenney_platformer-kit/Models/heart
 
-#begin kenney_platformer-kit/Models/hedge-corner.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/hedge-corner.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3081,9 +3081,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/hedge-corner.fbx;kenney_platformer-kit/Models/hedge-corner
+/build:../../../assets/kenney_platformer-kit/Models/hedge-corner.fbx;kenney_platformer-kit/Models/hedge-corner
 
-#begin kenney_platformer-kit/Models/hedge.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/hedge.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3100,9 +3100,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/hedge.fbx;kenney_platformer-kit/Models/hedge
+/build:../../../assets/kenney_platformer-kit/Models/hedge.fbx;kenney_platformer-kit/Models/hedge
 
-#begin kenney_platformer-kit/Models/jewel.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/jewel.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3119,9 +3119,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/jewel.fbx;kenney_platformer-kit/Models/jewel
+/build:../../../assets/kenney_platformer-kit/Models/jewel.fbx;kenney_platformer-kit/Models/jewel
 
-#begin kenney_platformer-kit/Models/key.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/key.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3138,9 +3138,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/key.fbx;kenney_platformer-kit/Models/key
+/build:../../../assets/kenney_platformer-kit/Models/key.fbx;kenney_platformer-kit/Models/key
 
-#begin kenney_platformer-kit/Models/ladder-broken.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/ladder-broken.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3157,9 +3157,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/ladder-broken.fbx;kenney_platformer-kit/Models/ladder-broken
+/build:../../../assets/kenney_platformer-kit/Models/ladder-broken.fbx;kenney_platformer-kit/Models/ladder-broken
 
-#begin kenney_platformer-kit/Models/ladder-long.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/ladder-long.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3176,9 +3176,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/ladder-long.fbx;kenney_platformer-kit/Models/ladder-long
+/build:../../../assets/kenney_platformer-kit/Models/ladder-long.fbx;kenney_platformer-kit/Models/ladder-long
 
-#begin kenney_platformer-kit/Models/ladder.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/ladder.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3195,9 +3195,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/ladder.fbx;kenney_platformer-kit/Models/ladder
+/build:../../../assets/kenney_platformer-kit/Models/ladder.fbx;kenney_platformer-kit/Models/ladder
 
-#begin kenney_platformer-kit/Models/lever.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/lever.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3214,9 +3214,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/lever.fbx;kenney_platformer-kit/Models/lever
+/build:../../../assets/kenney_platformer-kit/Models/lever.fbx;kenney_platformer-kit/Models/lever
 
-#begin kenney_platformer-kit/Models/lock.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/lock.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3233,9 +3233,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/lock.fbx;kenney_platformer-kit/Models/lock
+/build:../../../assets/kenney_platformer-kit/Models/lock.fbx;kenney_platformer-kit/Models/lock
 
-#begin kenney_platformer-kit/Models/mushrooms.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/mushrooms.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3252,9 +3252,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/mushrooms.fbx;kenney_platformer-kit/Models/mushrooms
+/build:../../../assets/kenney_platformer-kit/Models/mushrooms.fbx;kenney_platformer-kit/Models/mushrooms
 
-#begin kenney_platformer-kit/Models/pipe.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/pipe.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3271,9 +3271,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/pipe.fbx;kenney_platformer-kit/Models/pipe
+/build:../../../assets/kenney_platformer-kit/Models/pipe.fbx;kenney_platformer-kit/Models/pipe
 
-#begin kenney_platformer-kit/Models/plant.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/plant.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3290,9 +3290,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/plant.fbx;kenney_platformer-kit/Models/plant
+/build:../../../assets/kenney_platformer-kit/Models/plant.fbx;kenney_platformer-kit/Models/plant
 
-#begin kenney_platformer-kit/Models/platform-fortified.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/platform-fortified.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3309,9 +3309,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/platform-fortified.fbx;kenney_platformer-kit/Models/platform-fortified
+/build:../../../assets/kenney_platformer-kit/Models/platform-fortified.fbx;kenney_platformer-kit/Models/platform-fortified
 
-#begin kenney_platformer-kit/Models/platform-overhang.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/platform-overhang.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3328,9 +3328,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/platform-overhang.fbx;kenney_platformer-kit/Models/platform-overhang
+/build:../../../assets/kenney_platformer-kit/Models/platform-overhang.fbx;kenney_platformer-kit/Models/platform-overhang
 
-#begin kenney_platformer-kit/Models/platform-ramp.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/platform-ramp.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3347,9 +3347,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/platform-ramp.fbx;kenney_platformer-kit/Models/platform-ramp
+/build:../../../assets/kenney_platformer-kit/Models/platform-ramp.fbx;kenney_platformer-kit/Models/platform-ramp
 
-#begin kenney_platformer-kit/Models/platform.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/platform.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3366,9 +3366,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/platform.fbx;kenney_platformer-kit/Models/platform
+/build:../../../assets/kenney_platformer-kit/Models/platform.fbx;kenney_platformer-kit/Models/platform
 
-#begin kenney_platformer-kit/Models/poles.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/poles.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3385,9 +3385,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/poles.fbx;kenney_platformer-kit/Models/poles
+/build:../../../assets/kenney_platformer-kit/Models/poles.fbx;kenney_platformer-kit/Models/poles
 
-#begin kenney_platformer-kit/Models/rocks.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/rocks.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3404,9 +3404,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/rocks.fbx;kenney_platformer-kit/Models/rocks
+/build:../../../assets/kenney_platformer-kit/Models/rocks.fbx;kenney_platformer-kit/Models/rocks
 
-#begin kenney_platformer-kit/Models/saw.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/saw.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3423,9 +3423,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/saw.fbx;kenney_platformer-kit/Models/saw
+/build:../../../assets/kenney_platformer-kit/Models/saw.fbx;kenney_platformer-kit/Models/saw
 
-#begin kenney_platformer-kit/Models/sign.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/sign.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3442,9 +3442,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/sign.fbx;kenney_platformer-kit/Models/sign
+/build:../../../assets/kenney_platformer-kit/Models/sign.fbx;kenney_platformer-kit/Models/sign
 
-#begin kenney_platformer-kit/Models/spike-block-wide.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/spike-block-wide.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3461,9 +3461,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/spike-block-wide.fbx;kenney_platformer-kit/Models/spike-block-wide
+/build:../../../assets/kenney_platformer-kit/Models/spike-block-wide.fbx;kenney_platformer-kit/Models/spike-block-wide
 
-#begin kenney_platformer-kit/Models/spike-block.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/spike-block.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3480,9 +3480,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/spike-block.fbx;kenney_platformer-kit/Models/spike-block
+/build:../../../assets/kenney_platformer-kit/Models/spike-block.fbx;kenney_platformer-kit/Models/spike-block
 
-#begin kenney_platformer-kit/Models/spring.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/spring.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3499,9 +3499,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/spring.fbx;kenney_platformer-kit/Models/spring
+/build:../../../assets/kenney_platformer-kit/Models/spring.fbx;kenney_platformer-kit/Models/spring
 
-#begin kenney_platformer-kit/Models/star.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/star.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3518,9 +3518,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/star.fbx;kenney_platformer-kit/Models/star
+/build:../../../assets/kenney_platformer-kit/Models/star.fbx;kenney_platformer-kit/Models/star
 
-#begin kenney_platformer-kit/Models/stones.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/stones.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3537,9 +3537,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/stones.fbx;kenney_platformer-kit/Models/stones
+/build:../../../assets/kenney_platformer-kit/Models/stones.fbx;kenney_platformer-kit/Models/stones
 
-#begin kenney_platformer-kit/Models/trap-spikes-large.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/trap-spikes-large.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3556,9 +3556,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/trap-spikes-large.fbx;kenney_platformer-kit/Models/trap-spikes-large
+/build:../../../assets/kenney_platformer-kit/Models/trap-spikes-large.fbx;kenney_platformer-kit/Models/trap-spikes-large
 
-#begin kenney_platformer-kit/Models/trap-spikes.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/trap-spikes.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3575,9 +3575,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/trap-spikes.fbx;kenney_platformer-kit/Models/trap-spikes
+/build:../../../assets/kenney_platformer-kit/Models/trap-spikes.fbx;kenney_platformer-kit/Models/trap-spikes
 
-#begin kenney_platformer-kit/Models/tree-pine-small.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/tree-pine-small.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3594,9 +3594,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/tree-pine-small.fbx;kenney_platformer-kit/Models/tree-pine-small
+/build:../../../assets/kenney_platformer-kit/Models/tree-pine-small.fbx;kenney_platformer-kit/Models/tree-pine-small
 
-#begin kenney_platformer-kit/Models/tree-pine-snow-small.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/tree-pine-snow-small.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3613,9 +3613,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/tree-pine-snow-small.fbx;kenney_platformer-kit/Models/tree-pine-snow-small
+/build:../../../assets/kenney_platformer-kit/Models/tree-pine-snow-small.fbx;kenney_platformer-kit/Models/tree-pine-snow-small
 
-#begin kenney_platformer-kit/Models/tree-pine-snow.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/tree-pine-snow.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3632,9 +3632,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/tree-pine-snow.fbx;kenney_platformer-kit/Models/tree-pine-snow
+/build:../../../assets/kenney_platformer-kit/Models/tree-pine-snow.fbx;kenney_platformer-kit/Models/tree-pine-snow
 
-#begin kenney_platformer-kit/Models/tree-pine.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/tree-pine.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3651,9 +3651,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/tree-pine.fbx;kenney_platformer-kit/Models/tree-pine
+/build:../../../assets/kenney_platformer-kit/Models/tree-pine.fbx;kenney_platformer-kit/Models/tree-pine
 
-#begin kenney_platformer-kit/Models/tree-snow.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/tree-snow.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3670,9 +3670,9 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/tree-snow.fbx;kenney_platformer-kit/Models/tree-snow
+/build:../../../assets/kenney_platformer-kit/Models/tree-snow.fbx;kenney_platformer-kit/Models/tree-snow
 
-#begin kenney_platformer-kit/Models/tree.fbx
+#begin ../../../assets/kenney_platformer-kit/Models/tree.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3689,7 +3689,7 @@
 /processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:kenney_platformer-kit/Models/tree.fbx;kenney_platformer-kit/Models/tree
+/build:../../../assets/kenney_platformer-kit/Models/tree.fbx;kenney_platformer-kit/Models/tree
 
 
 
@@ -3712,93 +3712,93 @@
 /processorParam:DebugMode=Auto
 /build:Fog.fx;Fog
 
-#begin gun_sounds/7.62x39/762x39 Single MP3.mp3
+#begin ../../../assets/gun_sounds/7.62x39/762x39 Single MP3.mp3
 /importer:Mp3Importer
 /processor:SoundEffectProcessor
-/build:gun_sounds/7.62x39/762x39 Single MP3.mp3;gun_sounds/7.62x39/762x39 Single MP3
+/build:../../../assets/gun_sounds/7.62x39/762x39 Single MP3.mp3;gun_sounds/7.62x39/762x39 Single MP3
 
-#begin gun_sounds/7.62x39/762x39 Double Tap MP3.mp3
+#begin ../../../assets/gun_sounds/7.62x39/762x39 Double Tap MP3.mp3
 /importer:Mp3Importer
 /processor:SoundEffectProcessor
-/build:gun_sounds/7.62x39/762x39 Double Tap MP3.mp3;gun_sounds/7.62x39/762x39 Double Tap MP3
+/build:../../../assets/gun_sounds/7.62x39/762x39 Double Tap MP3.mp3;gun_sounds/7.62x39/762x39 Double Tap MP3
 
-#begin gun_sounds/7.62x39/762x39 Burst MP3.mp3
+#begin ../../../assets/gun_sounds/7.62x39/762x39 Burst MP3.mp3
 /importer:Mp3Importer
 /processor:SoundEffectProcessor
-/build:gun_sounds/7.62x39/762x39 Burst MP3.mp3;gun_sounds/7.62x39/762x39 Burst MP3
+/build:../../../assets/gun_sounds/7.62x39/762x39 Burst MP3.mp3;gun_sounds/7.62x39/762x39 Burst MP3
 
-#begin gun_sounds/7.62x39/762x39 Spray MP3.mp3
+#begin ../../../assets/gun_sounds/7.62x39/762x39 Spray MP3.mp3
 /importer:Mp3Importer
 /processor:SoundEffectProcessor
-/build:gun_sounds/7.62x39/762x39 Spray MP3.mp3;gun_sounds/7.62x39/762x39 Spray MP3
+/build:../../../assets/gun_sounds/7.62x39/762x39 Spray MP3.mp3;gun_sounds/7.62x39/762x39 Spray MP3
 
-#begin gun_sounds/reloads/reload-fast.mp3
+#begin ../../../assets/gun_sounds/reloads/reload-fast.mp3
 /importer:Mp3Importer
 /processor:SoundEffectProcessor
-/build:gun_sounds/reloads/reload-fast.mp3;gun_sounds/reloads/reload-fast
+/build:../../../assets/gun_sounds/reloads/reload-fast.mp3;gun_sounds/reloads/reload-fast
 
-#begin gun_sounds/reloads/reload-rifle.mp3
+#begin ../../../assets/gun_sounds/reloads/reload-rifle.mp3
 /importer:Mp3Importer
 /processor:SoundEffectProcessor
-/build:gun_sounds/reloads/reload-rifle.mp3;gun_sounds/reloads/reload-rifle
+/build:../../../assets/gun_sounds/reloads/reload-rifle.mp3;gun_sounds/reloads/reload-rifle
 
-#begin gun_sounds/reloads/reload-heavy.mp3
+#begin ../../../assets/gun_sounds/reloads/reload-heavy.mp3
 /importer:Mp3Importer
 /processor:SoundEffectProcessor
-/build:gun_sounds/reloads/reload-heavy.mp3;gun_sounds/reloads/reload-heavy
+/build:../../../assets/gun_sounds/reloads/reload-heavy.mp3;gun_sounds/reloads/reload-heavy
 
-#begin horror_sfx/Bite.wav
+#begin ../../../assets/horror_sfx/Bite.wav
 /importer:WavImporter
 /processor:SoundEffectProcessor
-/build:horror_sfx/Bite.wav;horror_sfx/Bite
-#begin horror_sfx/Child laugh.wav
+/build:../../../assets/horror_sfx/Bite.wav;horror_sfx/Bite
+#begin ../../../assets/horror_sfx/Child laugh.wav
 /importer:WavImporter
 /processor:SoundEffectProcessor
-/build:horror_sfx/Child laugh.wav;horror_sfx/Child laugh
-#begin horror_sfx/Footsteps_ running.wav
+/build:../../../assets/horror_sfx/Child laugh.wav;horror_sfx/Child laugh
+#begin ../../../assets/horror_sfx/Footsteps_ running.wav
 /importer:WavImporter
 /processor:SoundEffectProcessor
-/build:horror_sfx/Footsteps_ running.wav;horror_sfx/Footsteps_ running
-#begin horror_sfx/Footsteps_walking.wav
+/build:../../../assets/horror_sfx/Footsteps_ running.wav;horror_sfx/Footsteps_ running
+#begin ../../../assets/horror_sfx/Footsteps_walking.wav
 /importer:WavImporter
 /processor:SoundEffectProcessor
-/build:horror_sfx/Footsteps_walking.wav;horror_sfx/Footsteps_walking
-#begin horror_sfx/Gasp_3.wav
+/build:../../../assets/horror_sfx/Footsteps_walking.wav;horror_sfx/Footsteps_walking
+#begin ../../../assets/horror_sfx/Gasp_3.wav
 /importer:WavImporter
 /processor:SoundEffectProcessor
-/build:horror_sfx/Gasp_3.wav;horror_sfx/Gasp_3
-#begin horror_sfx/Injured.wav
+/build:../../../assets/horror_sfx/Gasp_3.wav;horror_sfx/Gasp_3
+#begin ../../../assets/horror_sfx/Injured.wav
 /importer:WavImporter
 /processor:SoundEffectProcessor
-/build:horror_sfx/Injured.wav;horror_sfx/Injured
-#begin horror_sfx/Robotic_bass.wav
+/build:../../../assets/horror_sfx/Injured.wav;horror_sfx/Injured
+#begin ../../../assets/horror_sfx/Robotic_bass.wav
 /importer:WavImporter
 /processor:SoundEffectProcessor
-/build:horror_sfx/Robotic_bass.wav;horror_sfx/Robotic_bass
-#begin horror_sfx/robotic_groan_3.wav
+/build:../../../assets/horror_sfx/Robotic_bass.wav;horror_sfx/Robotic_bass
+#begin ../../../assets/horror_sfx/robotic_groan_3.wav
 /importer:WavImporter
 /processor:SoundEffectProcessor
-/build:horror_sfx/robotic_groan_3.wav;horror_sfx/robotic_groan_3
-#begin horror_sfx/robotic_hiss.wav
+/build:../../../assets/horror_sfx/robotic_groan_3.wav;horror_sfx/robotic_groan_3
+#begin ../../../assets/horror_sfx/robotic_hiss.wav
 /importer:WavImporter
 /processor:SoundEffectProcessor
-/build:horror_sfx/robotic_hiss.wav;horror_sfx/robotic_hiss
-#begin horror_sfx/Scream_Robotic.wav
+/build:../../../assets/horror_sfx/robotic_hiss.wav;horror_sfx/robotic_hiss
+#begin ../../../assets/horror_sfx/Scream_Robotic.wav
 /importer:WavImporter
 /processor:SoundEffectProcessor
-/build:horror_sfx/Scream_Robotic.wav;horror_sfx/Scream_Robotic
+/build:../../../assets/horror_sfx/Scream_Robotic.wav;horror_sfx/Scream_Robotic
 
-#begin horror_sfx/Breathing_fast.wav
+#begin ../../../assets/horror_sfx/Breathing_fast.wav
 /importer:WavImporter
 /processor:SoundEffectProcessor
-/build:horror_sfx/Breathing_fast.wav;horror_sfx/Breathing_fast
+/build:../../../assets/horror_sfx/Breathing_fast.wav;horror_sfx/Breathing_fast
 
-#begin horror_sfx/Laugh_spooky_4.wav
+#begin ../../../assets/horror_sfx/Laugh_spooky_4.wav
 /importer:WavImporter
 /processor:SoundEffectProcessor
-/build:horror_sfx/Laugh_spooky_4.wav;horror_sfx/Laugh_spooky_4
+/build:../../../assets/horror_sfx/Laugh_spooky_4.wav;horror_sfx/Laugh_spooky_4
 
-#begin ../../assets/decals/laser1.png
+#begin ../../../assets/prerendered-spaceships/laser1.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -3807,4 +3807,31 @@
 /processorParam:PremultiplyAlpha=True
 /processorParam:ResizeTexturesToPowerOfTwo=False
 /processorParam:TextureFormat=Compressed
-/build:../../assets/decals/laser1.png;decals/laser1
+/build:../../../assets/prerendered-spaceships/laser1.png;prerendered-spaceships/laser1
+
+
+# External colormap textures: the fbx/glb model sources live in the repo-root
+# assets/ dir, outside this project, so ModelProcessor's auto-discovered
+# texture would escape MGCB's output root (ContentLoadException at runtime).
+# Build both explicitly under the content names the models embed.
+#begin ../../../assets/kenney_platformer-kit/Models/Textures/colormap.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=0,0,0,0
+/processorParam:ColorKeyEnabled=False
+/processorParam:GenerateMipmaps=True
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:TextureFormat=Compressed
+/build:../../../assets/kenney_platformer-kit/Models/Textures/colormap.png;assets/kenney_platformer-kit/Models/Textures/colormap_0
+
+#begin ../../../assets/kenney_blaster-kit/Models/Textures/colormap.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=0,0,0,0
+/processorParam:ColorKeyEnabled=False
+/processorParam:GenerateMipmaps=True
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:TextureFormat=Compressed
+/build:../../../assets/kenney_blaster-kit/Models/Textures/colormap.png;assets/kenney_blaster-kit/Models/Textures/colormap_0

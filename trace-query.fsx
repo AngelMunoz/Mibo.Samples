@@ -14,7 +14,9 @@ open System.Collections.Generic
 
 let path =
   if fsi.CommandLineArgs.Length < 2 then
-    eprintfn "usage: dotnet fsi trace-query.fsx <trace.speedscope.json> [--tail <fraction>]"
+    eprintfn
+      "usage: dotnet fsi trace-query.fsx <trace.speedscope.json> [--tail <fraction>]"
+
     exit 1
   else
     fsi.CommandLineArgs[1]
@@ -52,7 +54,12 @@ type FrameStat = {
   mutable Inclusive: float
 }
 
-let bump (dict: Dictionary<'K, FrameStat>) (key: 'K) (self: float) (inclusive: float) =
+let bump
+  (dict: Dictionary<'K, FrameStat>)
+  (key: 'K)
+  (self: float)
+  (inclusive: float)
+  =
   match dict.TryGetValue key with
   | true, s ->
     s.Self <- s.Self + self
@@ -61,7 +68,10 @@ let bump (dict: Dictionary<'K, FrameStat>) (key: 'K) (self: float) (inclusive: f
 
 let parseFrames(arr: JsonElement) : Frame[] =
   (arr.EnumerateArray() |> Seq.toArray)
-  |> Array.mapi(fun i f -> { Index = i; Name = let s = getString f "name" in if s = "" then "?" else s })
+  |> Array.mapi(fun i f -> {
+    Index = i
+    Name = let s = getString f "name" in if s = "" then "?" else s
+  })
 
 let sharedFrames =
   match getProp root "shared" with
@@ -90,8 +100,10 @@ let isSyntheticLeaf(name: string) =
 
 let effectiveSelfIdx (frames: Frame[]) (path: int[]) =
   let mutable idx = 0
+
   while idx < path.Length - 1 && isSyntheticLeaf frames[path[idx]].Name do
     idx <- idx + 1
+
   idx
 
 let aggregateEvented (prof: JsonElement) (frames: Frame[]) (isMain: bool) =
@@ -108,7 +120,7 @@ let aggregateEvented (prof: JsonElement) (frames: Frame[]) (isMain: bool) =
   let mutable prev = startV
   let mutable total = 0.0
 
-  let attr(dt: float) (intervalStart: float) =
+  let attr (dt: float) (intervalStart: float) =
     let dt = max 0.0 (intervalStart + dt - max intervalStart cutoff)
 
     if dt > 0.0 && stack.Count > 0 then
@@ -120,14 +132,25 @@ let aggregateEvented (prof: JsonElement) (frames: Frame[]) (isMain: bool) =
         bump mainNameStats frames[path[selfIdx]].Name dt dt
 
         let trueLeafName = frames[path[0]].Name
+
         if trueLeafName = "CPU_TIME" then
           mainCpuTime <- mainCpuTime + dt
           let n = frames[path[selfIdx]].Name
-          mainNameSelfCpu[n] <- (match mainNameSelfCpu.TryGetValue n with true, v -> v | _ -> 0.0) + dt
+
+          mainNameSelfCpu[n] <-
+            (match mainNameSelfCpu.TryGetValue n with
+             | true, v -> v
+             | _ -> 0.0)
+            + dt
         elif trueLeafName = "UNMANAGED_CODE_TIME" then
           mainNativeTime <- mainNativeTime + dt
           let n = frames[path[selfIdx]].Name
-          mainNameSelfNative[n] <- (match mainNameSelfNative.TryGetValue n with true, v -> v | _ -> 0.0) + dt
+
+          mainNameSelfNative[n] <-
+            (match mainNameSelfNative.TryGetValue n with
+             | true, v -> v
+             | _ -> 0.0)
+            + dt
 
         for j = 0 to path.Length - 1 do
           if j <> selfIdx then
@@ -140,8 +163,12 @@ let aggregateEvented (prof: JsonElement) (frames: Frame[]) (isMain: bool) =
     let at = e.GetProperty("at").GetDouble()
     attr (at - prev) prev
     let ty = getString e "type"
-    if ty = "O" then stack.Push(e.GetProperty("frame").GetInt32())
-    elif ty = "C" && stack.Count > 0 then stack.Pop() |> ignore
+
+    if ty = "O" then
+      stack.Push(e.GetProperty("frame").GetInt32())
+    elif ty = "C" && stack.Count > 0 then
+      stack.Pop() |> ignore
+
     prev <- at
 
   attr (endV - prev) prev
@@ -154,6 +181,7 @@ let mainIdx =
       match getProp p "events" with
       | Some e -> e.GetArrayLength()
       | _ -> 0
+
     struct (i, n))
   |> Array.maxBy(fun struct (_, n) -> n)
   |> fun struct (i, _) -> i
@@ -171,8 +199,10 @@ for i = 0 to profiles.Length - 1 do
       | _ -> [||]
 
   let total =
-    if getString prof "type" = "evented" then aggregateEvented prof frames isMain
-    else 0.0
+    if getString prof "type" = "evented" then
+      aggregateEvented prof frames isMain
+    else
+      0.0
 
   if isMain then
     mainThreadName <- getString prof "name"
@@ -184,35 +214,82 @@ let mainTotal = max 1e-9 mainThreadTotal
 let pct v = 100.0 * v / mainTotal
 
 printfn "file: %s" (Path.GetFileName path)
-printfn "tail window: %s" (match tailFraction with Some f -> $"last {f * 100.0}%%" | None -> "full")
-printfn "main thread: %s  wall=%.1f ms  managed=%.1f%%  native=%.1f%%" mainThreadName mainThreadTotal (100.0 * mainCpuTime / mainTotal) (100.0 * mainNativeTime / mainTotal)
+
+printfn
+  "tail window: %s"
+  (match tailFraction with
+   | Some f -> $"last {f * 100.0}%%"
+   | None -> "full")
+
+printfn
+  "main thread: %s  wall=%.1f ms  managed=%.1f%%  native=%.1f%%"
+  mainThreadName
+  mainThreadTotal
+  (100.0 * mainCpuTime / mainTotal)
+  (100.0 * mainNativeTime / mainTotal)
 
 // Non-overlapping self-time buckets (main thread). Every frame lands in
 // exactly one bucket, checked in order.
 let buckets: (string * (string -> bool))[] = [|
-  "Present/GraphicsDevice.Present", fun n -> n.Contains "PlatformPresent" || n.Contains "GraphicsDevice.Present"
-  "Constant buffers + state apply", fun n ->
-    n.Contains "ConstantBuffer" || n.Contains "PlatformApplyState" || n.Contains ".ApplyState" ||
-    n.Contains "EffectPass" || n.Contains "PlatformApplyPass" || n.Contains "ApplyRenderTarget" ||
-    n.Contains "SetRenderTarget" || n.Contains "PlatformApplyDefaultRenderTarget"
-  "Draw API (Draw*Primitives/DrawMesh*)", fun n ->
-    n.Contains "DrawInstancedPrimitives" || n.Contains "DrawPrimitives" || n.Contains "DrawUserPrimitives" ||
-    n.Contains "DrawMeshInstanced" || n.Contains "DrawMesh" || n.Contains "DrawModel"
-  "GPU uploads (SetData/UpdateSubresource/CreateTexture)", fun n ->
-    n.Contains "SetDataInternal" || n.Contains "SetData" || n.Contains "UpdateSubresource" ||
-    n.Contains "CreateTexture" || n.Contains "uploadPaletteChunk" || n.Contains "SetTexture" ||
-    n.Contains "UpdateTexture" || n.Contains "LoadTexture"
-  "Mibo pipeline (Pipelines/Pbr/Shading/Shadow/Renderer3D/RenderBuffer)", fun n ->
-    n.Contains "Pipelines" || n.Contains "PbrShading" || n.Contains "Shading" || n.Contains "Shadow" ||
-    n.Contains "Renderer3D" || n.Contains "RenderBuffer" || n.Contains "RenderTargetPool"
-  "Mibo core elmish/renderer glue", fun n -> n.Contains "Mibo.Elmish" || n.Contains "MiboGame"
+  "Present/GraphicsDevice.Present",
+  fun n -> n.Contains "PlatformPresent" || n.Contains "GraphicsDevice.Present"
+  "Constant buffers + state apply",
+  fun n ->
+    n.Contains "ConstantBuffer"
+    || n.Contains "PlatformApplyState"
+    || n.Contains ".ApplyState"
+    || n.Contains "EffectPass"
+    || n.Contains "PlatformApplyPass"
+    || n.Contains "ApplyRenderTarget"
+    || n.Contains "SetRenderTarget"
+    || n.Contains "PlatformApplyDefaultRenderTarget"
+  "Draw API (Draw*Primitives/DrawMesh*)",
+  fun n ->
+    n.Contains "DrawInstancedPrimitives"
+    || n.Contains "DrawPrimitives"
+    || n.Contains "DrawUserPrimitives"
+    || n.Contains "DrawMeshInstanced"
+    || n.Contains "DrawMesh"
+    || n.Contains "DrawModel"
+  "GPU uploads (SetData/UpdateSubresource/CreateTexture)",
+  fun n ->
+    n.Contains "SetDataInternal"
+    || n.Contains "SetData"
+    || n.Contains "UpdateSubresource"
+    || n.Contains "CreateTexture"
+    || n.Contains "uploadPaletteChunk"
+    || n.Contains "SetTexture"
+    || n.Contains "UpdateTexture"
+    || n.Contains "LoadTexture"
+  "Mibo pipeline (Pipelines/Pbr/Shading/Shadow/Renderer3D/RenderBuffer)",
+  fun n ->
+    n.Contains "Pipelines"
+    || n.Contains "PbrShading"
+    || n.Contains "Shading"
+    || n.Contains "Shadow"
+    || n.Contains "Renderer3D"
+    || n.Contains "RenderBuffer"
+    || n.Contains "RenderTargetPool"
+  "Mibo core elmish/renderer glue",
+  fun n -> n.Contains "Mibo.Elmish" || n.Contains "MiboGame"
   "Mibo animation (CPU skinning/pose)", fun n -> n.Contains "Mibo.Animation"
-  "Sample game code (AnimatedInstancing.*)", fun n -> n.Contains "AnimatedInstancing"
-  "GC / runtime bookkeeping", fun n ->
-    n.Contains "PollGC" || n.Contains "GarbageCollect" || n.Contains "GC_" || n.Contains "WaitForGC"
-  "Thread sync/wait", fun n ->
-    n.Contains "Monitor" || n.Contains "SpinWait" || n.Contains "Thread.Sleep" || n.Contains "WaitOne" ||
-    n.Contains "ManualResetEvent" || n.Contains "Semaphore" || n.Contains "SpinOnce"
+  "Sample game code (AnimatedInstancing.*)",
+  fun n -> n.Contains "AnimatedInstancing"
+  "GC / runtime bookkeeping",
+  fun n ->
+    n.Contains "PollGC"
+    || n.Contains "GarbageCollect"
+    || n.Contains "GC_"
+    || n.Contains "WaitForGC"
+  "Thread sync/wait",
+  fun n ->
+    n.Contains "Monitor"
+    || n.Contains "SpinWait"
+    || n.Contains "Thread.Sleep"
+    || n.Contains "WaitOne"
+    || n.Contains "ManualResetEvent"
+    || n.Contains "Semaphore"
+    || n.Contains "SpinOnce"
 |]
 
 let bucketTotals = Array.zeroCreate<float> buckets.Length
@@ -237,7 +314,11 @@ printfn "\n--- SELF-TIME CATEGORIES (main thread, non-overlapping) ---"
 
 for i = 0 to buckets.Length - 1 do
   if bucketTotals[i] > 0.0 then
-    printfn "  %6.2f%%  %9.1f ms  %s" (pct bucketTotals[i]) bucketTotals[i] (fst buckets[i])
+    printfn
+      "  %6.2f%%  %9.1f ms  %s"
+      (pct bucketTotals[i])
+      bucketTotals[i]
+      (fst buckets[i])
 
 printfn "  %6.2f%%  %9.1f ms  (other)" (pct bucketOther) bucketOther
 
@@ -267,7 +348,9 @@ let interesting(name: string) =
   || name.Contains "Effect"
   || name.Contains "Viewport"
 
-printfn "\n--- RENDER/PIPELINE FRAMES ON MAIN THREAD (incl desc; incl >= 1 ms) ---"
+printfn
+  "\n--- RENDER/PIPELINE FRAMES ON MAIN THREAD (incl desc; incl >= 1 ms) ---"
+
 printfn "  self%%   self ms  (cpu ms / native ms)   incl%%   incl ms  name"
 
 let getSplit (d: Dictionary<string, float>) (n: string) =
@@ -289,13 +372,20 @@ mainNameStats
     kv.Value.Inclusive
     kv.Key)
 
-printfn "\n--- ALL NAMES CONTAINING 'Shadow' (any thread-attributed, main only shown) ---"
+printfn
+  "\n--- ALL NAMES CONTAINING 'Shadow' (any thread-attributed, main only shown) ---"
 
 mainNameStats
 |> Seq.filter(fun kv -> kv.Key.Contains "Shadow" || kv.Key.Contains "shadow")
 |> Seq.sortByDescending(fun kv -> kv.Value.Inclusive)
 |> Seq.iter(fun kv ->
-  printfn "  %6.2f  %8.1f  %6.2f  %8.1f  %s" (pct kv.Value.Self) kv.Value.Self (pct kv.Value.Inclusive) kv.Value.Inclusive kv.Key)
+  printfn
+    "  %6.2f  %8.1f  %6.2f  %8.1f  %s"
+    (pct kv.Value.Self)
+    kv.Value.Self
+    (pct kv.Value.Inclusive)
+    kv.Value.Inclusive
+    kv.Key)
 
 // Distinct frame inventory so nothing render-related hides behind naming.
 printfn "\n--- FULL NAME INVENTORY (main-thread incl desc, incl >= 5 ms) ---"
@@ -304,4 +394,10 @@ mainNameStats
 |> Seq.filter(fun kv -> kv.Value.Inclusive >= 5.0)
 |> Seq.sortByDescending(fun kv -> kv.Value.Inclusive)
 |> Seq.iter(fun kv ->
-  printfn "  %6.2f  %8.1f  %6.2f  %8.1f  %s" (pct kv.Value.Self) kv.Value.Self (pct kv.Value.Inclusive) kv.Value.Inclusive kv.Key)
+  printfn
+    "  %6.2f  %8.1f  %6.2f  %8.1f  %s"
+    (pct kv.Value.Self)
+    kv.Value.Self
+    (pct kv.Value.Inclusive)
+    kv.Value.Inclusive
+    kv.Key)

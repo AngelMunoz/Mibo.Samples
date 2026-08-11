@@ -13,10 +13,25 @@
     <Compile Include="View.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
+  <!-- Assets are referenced from the repo-root shared assets dir — never
+       duplicated. RecursiveDir does not include the anchored subdir, so the
+       Link re-adds it explicitly. -->
   <ItemGroup>
-    <Content Include="..\assets\**\*">
+    <Content Include="..\..\assets\kenney_platformer\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>assets\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <Link>assets\kenney_platformer\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
+    <Content Include="..\..\assets\Fonts\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\Fonts\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
+    <Content Include="..\..\assets\NormalMap.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\NormalMap.png</Link>
+    </Content>
+    <Content Include="..\..\assets\sfx_jump.ogg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\sfx_jump.ogg</Link>
     </Content>
   </ItemGroup>
   <ItemGroup>

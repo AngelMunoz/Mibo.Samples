@@ -15,11 +15,11 @@
        duplicated. RecursiveDir does not include the anchored subdir, so the
        Link re-adds it explicitly. -->
   <ItemGroup>
-    <Content Include="..\..\Platformer3D\assets\kaykit_character_animations\**">
+    <Content Include="..\..\assets\kaykit_character_animations\**">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>assets\kaykit_character_animations\%(RecursiveDir)%(Filename)%(Extension)</Link>
     </Content>
-    <Content Include="..\..\Platformer3D\assets\Fonts\monogram.ttf">
+    <Content Include="..\..\assets\Fonts\monogram.ttf">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>assets\Fonts\monogram.ttf</Link>
     </Content>

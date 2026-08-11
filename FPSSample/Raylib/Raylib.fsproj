@@ -15,10 +15,33 @@
     <Compile Include="Program.fs" />
   </ItemGroup>
 
+  <!-- Assets are referenced from the repo-root shared assets dir — never
+       duplicated. RecursiveDir does not include the anchored subdir, so the
+       Link re-adds it explicitly. -->
   <ItemGroup>
-    <Content Include="..\assets\**\*">
-      <Link>assets\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    <Content Include="..\..\assets\prerendered-spaceships\laser1.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\prerendered-spaceships\laser1.png</Link>
+    </Content>
+    <Content Include="..\..\assets\Fonts\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\Fonts\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
+    <Content Include="..\..\assets\gun_sounds\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\gun_sounds\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
+    <Content Include="..\..\assets\horror_sfx\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\horror_sfx\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
+    <Content Include="..\..\assets\kenney_blaster-kit\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\kenney_blaster-kit\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
+    <Content Include="..\..\assets\kenney_platformer-kit\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\kenney_platformer-kit\%(RecursiveDir)%(Filename)%(Extension)</Link>
     </Content>
   </ItemGroup>
 

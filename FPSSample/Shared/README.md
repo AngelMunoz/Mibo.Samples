@@ -379,7 +379,7 @@ FPSSample/
 │   ├── HudView.fs              ← 2D HUD
 │   ├── AudioService.fs         ← Consume + Update(dt, snapshot)
 │   └── Skybox.fs               ← Starry skybox
-├── MonoDesktop/                ← DesktopGL thin client
-├── MonoWindowsDX/              ← WindowsDX thin client
+├── MonoGL/                     ← DesktopGL thin client
+├── MonoDX11/                   ← WindowsDX thin client
 └── Shared.Tests/               ← Expecto tests (router translation, event emission)
 ```

@@ -13,7 +13,9 @@ open System.Collections.Generic
 
 let path =
   if fsi.CommandLineArgs.Length < 2 then
-    eprintfn "usage: dotnet fsi trace-count.fsx <trace.speedscope.json> [--tail <fraction>]"
+    eprintfn
+      "usage: dotnet fsi trace-count.fsx <trace.speedscope.json> [--tail <fraction>]"
+
     exit 1
   else
     fsi.CommandLineArgs[1]
@@ -65,6 +67,7 @@ let mainIdx =
       match getProp p "events" with
       | Some e -> e.GetArrayLength()
       | _ -> 0
+
     struct (i, n))
   |> Array.maxBy(fun struct (_, n) -> n)
   |> fun struct (i, _) -> i
@@ -100,29 +103,48 @@ for e in prof.GetProperty("events").EnumerateArray() do
 let windowSec = (endV - cutoff) / 1000.0
 
 printfn "file: %s" (Path.GetFileName path)
-printfn "window: %.1f s (%s)" windowSec (match tailFraction with Some f -> $"last {f * 100.0}%%" | None -> "full")
+
+printfn
+  "window: %.1f s (%s)"
+  windowSec
+  (match tailFraction with
+   | Some f -> $"last {f * 100.0}%%"
+   | None -> "full")
 
 let draws =
   counts
   |> Seq.tryPick(fun kv ->
-    if kv.Key.Contains "MiboGame`2" && kv.Key.Contains ".Draw(" then Some kv.Value
-    else None)
+    if kv.Key.Contains "MiboGame`2" && kv.Key.Contains ".Draw(" then
+      Some kv.Value
+    else
+      None)
   |> Option.defaultValue 0L
 
 let updates =
   counts
   |> Seq.tryPick(fun kv ->
-    if kv.Key.Contains "Game.DoUpdate" then Some kv.Value
-    else None)
+    if kv.Key.Contains "Game.DoUpdate" then
+      Some kv.Value
+    else
+      None)
   |> Option.defaultValue 0L
 
-printfn "frames (MiboGame.Draw opens): %d  -> %.1f fps" draws (float draws / windowSec)
-printfn "updates (Game.DoUpdate opens): %d  -> %.1f ups" updates (float updates / windowSec)
+printfn
+  "frames (MiboGame.Draw opens): %d  -> %.1f fps"
+  draws
+  (float draws / windowSec)
+
+printfn
+  "updates (Game.DoUpdate opens): %d  -> %.1f ups"
+  updates
+  (float updates / windowSec)
+
 printfn ""
 printfn "  per-frame    total   /sec  name"
 
 let interesting(kv: KeyValuePair<string, int64>) =
   let n = kv.Key
+
   n.Contains "Pipelines"
   || n.Contains "DrawInstancedPrimitives"
   || n.Contains "ConstantBuffer"
@@ -143,4 +165,10 @@ counts
 |> Seq.sortByDescending(fun kv -> kv.Value)
 |> Seq.iter(fun kv ->
   let perFrame = if draws > 0L then float kv.Value / float draws else 0.0
-  printfn "  %9.2f  %8d  %7.1f  %s" perFrame kv.Value (float kv.Value / windowSec) kv.Key)
+
+  printfn
+    "  %9.2f  %8d  %7.1f  %s"
+    perFrame
+    kv.Value
+    (float kv.Value / windowSec)
+    kv.Key)

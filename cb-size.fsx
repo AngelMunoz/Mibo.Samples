@@ -3,9 +3,18 @@
 // .mgfx files. Usage: dotnet fsi cb-size.fsx -- <file1> [file2 ...]
 open System.IO
 
-let needle = [| 0x24uy; 0x47uy; 0x6Cuy; 0x6Fuy; 0x62uy; 0x61uy; 0x6Cuy; 0x73uy |] // "$Globals"
+let needle = [|
+  0x24uy
+  0x47uy
+  0x6Cuy
+  0x6Fuy
+  0x62uy
+  0x61uy
+  0x6Cuy
+  0x73uy
+|] // "$Globals"
 
-let findNeedle (bytes: byte[]) =
+let findNeedle(bytes: byte[]) =
   let mutable found = -1
   let mutable i = 0
 
@@ -14,10 +23,14 @@ let findNeedle (bytes: byte[]) =
     let mutable j = 0
 
     while matches && j < needle.Length do
-      if bytes[i + j] <> needle[j] then matches <- false
+      if bytes[i + j] <> needle[j] then
+        matches <- false
+
       j <- j + 1
 
-    if matches then found <- i
+    if matches then
+      found <- i
+
     i <- i + 1
 
   found

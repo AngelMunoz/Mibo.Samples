@@ -6,50 +6,50 @@
     <Project Path="Mibo/src/Mibo.MonoGame/Mibo.MonoGame.fsproj" />
   </Folder>
   <Folder Name="/PingPong/">
-    <Project Path="PingPong/Client/Client.fsproj" />
+    <Project Path="PingPong/Raylib/Raylib.fsproj" />
     <Project Path="PingPong/Server/Server.fsproj" />
     <Project Path="PingPong/Shared/Shared.fsproj" />
-    <Project Path="PingPong/MonoClient/MonoClient.fsproj" />
+    <Project Path="PingPong/MonoGL/MonoGL.fsproj" />
   </Folder>
   <Folder Name="/FPSSample/">
     <Project Path="FPSSample/Shared/Shared.fsproj" />
     <Project Path="FPSSample/Shared.Tests/Shared.Tests.fsproj" />
     <Project Path="FPSSample/Raylib/Raylib.fsproj" />
     <Project Path="FPSSample/MonoShared/MonoShared.fsproj" />
-    <Project Path="FPSSample/MonoDesktop/MonoDesktop.fsproj" />
-    <Project Path="FPSSample/MonoWindowsDX/MonoWindowsDX.fsproj" />
-    <Project Path="FPSSample/MonoVulkan/MonoVulkan.fsproj" />
+    <Project Path="FPSSample/MonoGL/MonoGL.fsproj" />
+    <Project Path="FPSSample/MonoDX11/MonoDX11.fsproj" />
+    <Project Path="FPSSample/MonoVK/MonoVK.fsproj" />
     <Project Path="FPSSample/MonoDX12/MonoDX12.fsproj" />
   </Folder>
   <Folder Name="/Platformer/">
     <Project Path="Platformer/Shared/Shared.fsproj" />
     <Project Path="Platformer/Shared.Tests/Shared.Tests.fsproj" />
     <Project Path="Platformer/Raylib/Raylib.fsproj" />
-    <Project Path="Platformer/MonoGame/MonoGame.fsproj" />
-    <Project Path="Platformer/MonoVulkan/MonoVulkan.fsproj" />
+    <Project Path="Platformer/MonoDX12/MonoDX12.fsproj" />
+    <Project Path="Platformer/MonoVK/MonoVK.fsproj" />
   </Folder>
   <Folder Name="/Platformer3D/">
     <Project Path="Platformer3D/Shared/Shared.fsproj" />
     <Project Path="Platformer3D/Shared.Tests/Shared.Tests.fsproj" />
     <Project Path="Platformer3D/Raylib/Raylib.fsproj" />
-    <Project Path="Platformer3D/MonoGame/MonoGame.fsproj" />
-    <Project Path="Platformer3D/MonoVulkan/MonoVulkan.fsproj" />
+    <Project Path="Platformer3D/MonoDX12/MonoDX12.fsproj" />
+    <Project Path="Platformer3D/MonoVK/MonoVK.fsproj" />
     <Project Path="Platformer3D/MonoGL/MonoGL.fsproj" />
     <Project Path="Platformer3D/MonoDX11/MonoDX11.fsproj" />
   </Folder>
   <Folder Name="/AnimatedInstancing/">
     <Project Path="AnimatedInstancing/Shared/Shared.fsproj" />
     <Project Path="AnimatedInstancing/Raylib/Raylib.fsproj" />
-    <Project Path="AnimatedInstancing/MonoGame/MonoGame.fsproj" />
+    <Project Path="AnimatedInstancing/MonoDX12/MonoDX12.fsproj" />
     <Project Path="AnimatedInstancing/MonoGL/MonoGL.fsproj" />
-    <Project Path="AnimatedInstancing/MonoVulkan/MonoVulkan.fsproj" />
+    <Project Path="AnimatedInstancing/MonoVK/MonoVK.fsproj" />
     <Project Path="AnimatedInstancing/MonoDX11/MonoDX11.fsproj" />
   </Folder>
   <Folder Name="/ModelProbe/">
-    <Project Path="ModelProbe/src/ModelProbe.fsproj" />
-    <Project Path="ModelProbe/DesktopVK/DesktopVK.fsproj" />
+    <Project Path="ModelProbe/MonoShared/MonoShared.fsproj" />
+    <Project Path="ModelProbe/MonoVK/MonoVK.fsproj" />
     <Project Path="ModelProbe/Raylib/Raylib.fsproj" />
-    <Project Path="ModelProbe/WindowsDX12/WindowsDX12.fsproj" />
+    <Project Path="ModelProbe/MonoDX12/MonoDX12.fsproj" />
     <Project Path="ModelProbe/MonoDX11/MonoDX11.fsproj" />
     <Project Path="ModelProbe/MonoGL/MonoGL.fsproj" />
   </Folder>

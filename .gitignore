@@ -32,6 +32,11 @@ x86/
 bld/
 [Bb]in/
 [Oo]bj/
+
+# MonoGame content pipeline byproducts (mgcb writes stats + external-source
+# outputs next to the .mgcb when sources live in the shared root assets/)
+**/Content/.mgstats
+**/Content/assets/
 [Ll]og/
 [Ll]ogs/
 

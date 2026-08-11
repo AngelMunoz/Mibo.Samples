@@ -19,7 +19,9 @@ open System.Collections.Generic
 
 let path =
   if fsi.CommandLineArgs.Length < 2 then
-    eprintfn "usage: dotnet fsi analyze-speedscope.fsx <trace.speedscope.json> [--tail <fraction>]"
+    eprintfn
+      "usage: dotnet fsi analyze-speedscope.fsx <trace.speedscope.json> [--tail <fraction>]"
+
     exit 1
   else
     fsi.CommandLineArgs[1]
@@ -200,7 +202,7 @@ let aggregateEvented (prof: JsonElement) (frames: Frame[]) (isMain: bool) =
   let mutable prev = startV
   let mutable total = 0.0
 
-  let attr(dt: float) (intervalStart: float) =
+  let attr (dt: float) (intervalStart: float) =
     let dt = max 0.0 (intervalStart + dt - max intervalStart cutoff)
 
     if dt > 0.0 && stack.Count > 0 then

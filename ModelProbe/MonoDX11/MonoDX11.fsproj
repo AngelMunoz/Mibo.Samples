@@ -1,9 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!--
-    DirectX 11 (WindowsDX) thin client for Platformer3D.
-    Shares all sources with the DX12 client (../MonoGame) via linked files;
-    only the runtime package differs. Mirrors the MonoVulkan/MonoGL projects
-    and the FPSSample/MonoWindowsDX packaging.
+    MonoDX11 thin client for ModelProbe.
+    Shares the ModelProbe/MonoShared library; only the runtime package
+    differs. Mirrors the other ModelProbe clients.
   -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -21,7 +20,7 @@
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\src\ModelProbe.fsproj" />
+    <ProjectReference Include="..\MonoShared\MonoShared.fsproj" />
     <PackageReference Include="MonoGame.Framework.WindowsDX" Version="3.8.5" />
     <PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.5" />
   </ItemGroup>

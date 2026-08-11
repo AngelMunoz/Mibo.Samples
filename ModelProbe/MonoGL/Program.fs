@@ -1,4 +1,4 @@
-module ModelProbe.DesktopVK.Program
+module ModelProbe.MonoGL.Program
 
 open Mibo.Elmish
 open ModelProbe

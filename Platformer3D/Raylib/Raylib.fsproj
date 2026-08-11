@@ -13,10 +13,29 @@
     <Compile Include="DiagnosticsView.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
+  <!-- Assets are referenced from the repo-root shared assets dir — never
+       duplicated. RecursiveDir does not include the anchored subdir, so the
+       Link re-adds it explicitly. -->
   <ItemGroup>
-    <Content Include="..\assets\**\*">
+    <Content Include="..\..\assets\kenney_platformer-kit\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>assets\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <Link>assets\kenney_platformer-kit\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
+    <Content Include="..\..\assets\kaykit_character_animations\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\kaykit_character_animations\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
+    <Content Include="..\..\assets\kaykit_fantasy_weapons\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\kaykit_fantasy_weapons\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
+    <Content Include="..\..\assets\Fonts\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\Fonts\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
+    <Content Include="..\..\assets\sfx_jump.ogg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\sfx_jump.ogg</Link>
     </Content>
   </ItemGroup>
   <ItemGroup>

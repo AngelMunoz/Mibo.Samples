@@ -218,11 +218,13 @@ let private decalOffset = 0.02f
 /// with 60×60 frames (3 cols × 2 rows — the same grid SpaceBattle animates).
 /// Cropping gives the decal a single bolt instead of all six ghost frames
 /// spread over the quad.
-let private loadDecalTexture (gd: GraphicsDevice) (assets: IAssets) : Texture2D =
+let private loadDecalTexture
+  (gd: GraphicsDevice)
+  (assets: IAssets)
+  : Texture2D =
   let sheet = assets.Texture(mgAssetPath Assets.decalLaser1)
 
-  let data =
-    Array.zeroCreate<Microsoft.Xna.Framework.Color>(60 * 60)
+  let data = Array.zeroCreate<Microsoft.Xna.Framework.Color>(60 * 60)
 
   sheet.GetData(
     0,

@@ -11,9 +11,12 @@
     <Compile Include="Program.fs" />
   </ItemGroup>
 
+  <!-- Assets are referenced from the repo-root shared assets dir — never
+       duplicated. RecursiveDir does not include the anchored subdir, so the
+       Link re-adds it explicitly. -->
   <ItemGroup>
-    <Content Include="..\..\Platformer3D\assets\**\*">
-      <Link>assets\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    <Content Include="..\..\assets\kenney_platformer-kit\**\*">
+      <Link>assets\kenney_platformer-kit\%(RecursiveDir)%(Filename)%(Extension)</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
