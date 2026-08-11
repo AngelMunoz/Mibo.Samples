@@ -3801,12 +3801,6 @@
 #begin ../../../assets/prerendered-spaceships/laser1.png
 /importer:TextureImporter
 /processor:TextureProcessor
-/processorParam:ColorKeyColor=0,0,0,0
-/processorParam:ColorKeyEnabled=False
-/processorParam:GenerateMipmaps=True
-/processorParam:PremultiplyAlpha=True
-/processorParam:ResizeTexturesToPowerOfTwo=False
-/processorParam:TextureFormat=Color
 /build:../../../assets/prerendered-spaceships/laser1.png;prerendered-spaceships/laser1
 
 
