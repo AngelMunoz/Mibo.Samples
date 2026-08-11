@@ -3,7 +3,7 @@ module Defli.World.Systems.Projectiles
 open System
 open System.Collections.Generic
 open System.Numerics
-open AdaptiveSlop.Core
+open Mibo.Adaptive
 open Mibo.Elmish
 open Defli.World
 

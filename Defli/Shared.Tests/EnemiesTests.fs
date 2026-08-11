@@ -2,7 +2,7 @@ module Defli.Tests.EnemiesTests
 
 open System.Numerics
 open Expecto
-open AdaptiveSlop.Core
+open Mibo.Adaptive
 open Defli.World
 open Defli.World.Systems
 open TestData

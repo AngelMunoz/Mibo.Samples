@@ -1,6 +1,6 @@
 module Defli.World.Systems.Waves
 
-open AdaptiveSlop.Core
+open Mibo.Adaptive
 open Defli
 open Defli.World
 

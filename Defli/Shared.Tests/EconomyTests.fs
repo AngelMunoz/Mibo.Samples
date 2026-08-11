@@ -1,7 +1,7 @@
 module Defli.Tests.EconomyTests
 
 open Expecto
-open AdaptiveSlop.Core
+open Mibo.Adaptive
 open TestData
 open Defli.World
 open Defli.World.Systems

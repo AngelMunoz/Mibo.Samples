@@ -3,7 +3,7 @@ module Defli.Tests.TowersTests
 open System.Collections.Generic
 open System.Numerics
 open Expecto
-open AdaptiveSlop.Core
+open Mibo.Adaptive
 open Defli
 open Defli.World
 open Defli.World.Systems

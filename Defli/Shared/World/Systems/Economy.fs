@@ -1,6 +1,6 @@
 module Defli.World.Systems.Economy
 
-open AdaptiveSlop.Core
+open Mibo.Adaptive
 open Defli
 open Defli.World
 

@@ -4,7 +4,7 @@ open System
 open System.Diagnostics
 open Expecto
 open Defli
-open AdaptiveSlop.Core
+open Mibo.Adaptive
 
 // ─────────────────────────────────────────────────────────────
 // Windowed diagnostics — FrameDiag is driven with SYNTHETIC

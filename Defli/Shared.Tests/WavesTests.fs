@@ -1,7 +1,7 @@
 module Defli.Tests.WavesTests
 
 open Expecto
-open AdaptiveSlop.Core
+open Mibo.Adaptive
 open Defli.World
 open Defli.World.Systems
 open Defli.World.Systems.Waves

@@ -2,7 +2,7 @@ module Defli.Tests.ProjectionTests
 
 open System.Numerics
 open Expecto
-open AdaptiveSlop.Core
+open Mibo.Adaptive
 open TestData
 open Defli.World
 open Defli.World.Systems

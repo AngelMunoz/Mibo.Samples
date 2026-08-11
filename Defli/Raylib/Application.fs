@@ -2,7 +2,6 @@ namespace Defli.Raylib
 
 open System
 open System.Numerics
-open AdaptiveSlop.Core
 open Mibo
 open Mibo.Adaptive
 open Mibo.Elmish

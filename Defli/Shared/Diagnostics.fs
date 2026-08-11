@@ -3,7 +3,7 @@ namespace Defli
 open System
 open System.Diagnostics
 open System.Numerics
-open AdaptiveSlop.Core
+open Mibo.Adaptive
 open Defli.World
 // ─────────────────────────────────────────────────────────────
 // Diagnostics overlay — Kimo's Systems/Diagnostics.fs pattern,

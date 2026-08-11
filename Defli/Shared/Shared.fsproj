@@ -30,6 +30,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Mibo\src\Mibo.Adaptive\Mibo.Adaptive.fsproj" />
+    <ProjectReference Include="..\..\Mibo\src\Mibo.Core\Mibo.Core.fsproj" />
   </ItemGroup>
 
 </Project>

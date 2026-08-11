@@ -2,7 +2,7 @@ module Defli.Tests.RouterTests
 
 open Expecto
 open System.Collections.Generic
-open AdaptiveSlop.Core
+open Mibo.Adaptive
 open Defli
 open Defli.World
 open Defli.World.Systems

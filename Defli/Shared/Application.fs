@@ -1,7 +1,7 @@
 namespace Defli
 
 open System.Numerics
-open AdaptiveSlop.Core
+open Mibo.Adaptive
 open Mibo.Layout
 open Defli.World
 

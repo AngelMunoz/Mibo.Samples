@@ -1,7 +1,6 @@
 namespace Defli.World
 
 open System.Collections.Generic
-open AdaptiveSlop.Core
 open Mibo.Adaptive
 open Mibo.Elmish
 open Defli
