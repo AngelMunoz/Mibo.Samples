@@ -3806,7 +3806,7 @@
 /processorParam:GenerateMipmaps=True
 /processorParam:PremultiplyAlpha=True
 /processorParam:ResizeTexturesToPowerOfTwo=False
-/processorParam:TextureFormat=Compressed
+/processorParam:TextureFormat=Color
 /build:../../../assets/prerendered-spaceships/laser1.png;prerendered-spaceships/laser1
 
 
