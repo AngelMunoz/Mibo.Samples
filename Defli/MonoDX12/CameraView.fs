@@ -20,7 +20,7 @@ module CameraView =
   /// with the deterministic shake applied to the target. The screen
   /// offset is the viewport center (a render-time fact the sim never
   /// stores).
-  let toMono (state: CameraState) (viewport: Vector2) : Camera2D =
+  let inline toMono (state: CameraState) (viewport: Vector2) : Camera2D =
     let clamped = Camera.clampToWorld state viewport
     let target = clamped.Target + shakeOffset clamped
 
@@ -32,7 +32,7 @@ module CameraView =
     }
 
   /// Records the camera into the buffer (the world-space block).
-  let beginFrame
+  let inline beginFrame
     (state: CameraState)
     (viewport: Vector2)
     (buffer: RenderBuffer2D)
@@ -42,7 +42,7 @@ module CameraView =
   /// Screen → world through the DRAWN camera (clamped, shake-free —
   /// picking must match the cells the player sees, not the shaken
   /// ones).
-  let screenToWorld
+  let inline screenToWorld
     (state: CameraState)
     (viewport: Vector2)
     (screenPos: Vector2)
@@ -51,7 +51,10 @@ module CameraView =
 
   /// The culling rect for the map passes: the clamped view inflated
   /// by 15% on each side (CellGrid2D.iterVisible culls to it).
-  let cullingBounds (state: CameraState) (viewport: Vector2) : Rectangle =
+  let inline cullingBounds
+    (state: CameraState)
+    (viewport: Vector2)
+    : Rectangle =
     let struct (min, max) = Camera.viewBounds state viewport
     let w = max.X - min.X
     let h = max.Y - min.Y

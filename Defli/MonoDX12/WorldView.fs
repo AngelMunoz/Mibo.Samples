@@ -58,7 +58,12 @@ module WorldView =
     | PlacementStatus.TooExpensive ->
       drawOutline size (Mibo.Color.rgb 255uy 210uy 0uy) frame buffer
 
-    // Range ring: hovering an own tower shows its range circle.
+    // Range ring: hovering an own tower shows its range circle. Drawn
+    // as a regular polygon outline instead of circleOutline — MonoGame's
+    // circleOutline is a PrimitiveType.LineStrip that rasterizes as a
+    // filled disc on this backend, while polyOutline(thickness > 1)
+    // uses AddLineThick quads (the same reliable path as the
+    // placement-preview rectOutline).
     frame.HoverCell
     |> ValueOption.iter2
       (fun def c ->
@@ -68,10 +73,13 @@ module WorldView =
             (Vector2(float32 Tiles.TileSize, float32 Tiles.TileSize))
 
         buffer
-          .circleOutline(
+          .polyOutline(
             center,
+            48,
             float32 def.Range * size,
+            0f,
             Mibo.Color.Blue,
+            thickness = 2f,
             layer = Layers.Effects
           )
           .drop())

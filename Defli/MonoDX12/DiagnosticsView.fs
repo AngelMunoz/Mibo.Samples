@@ -26,14 +26,7 @@ module DiagnosticsViewExtensions =
       : RenderBuffer2D =
       let yellow = Mibo.Color.rgb 255uy 210uy 0uy
 
-      buffer.text(
-        font,
-        diag.Display,
-        at,
-        0.8f,
-        tint = yellow,
-        layer = Layers.Hud
-      )
+      buffer.text(font, diag.Display, at, 1f, tint = yellow, layer = Layers.Hud)
 
     /// Draws the world-diagnostics line (gated like frameDiagnostics).
     member inline buffer.worldDiagnostics
@@ -41,11 +34,4 @@ module DiagnosticsViewExtensions =
       : RenderBuffer2D =
       let yellow = Mibo.Color.rgb 255uy 210uy 0uy
 
-      buffer.text(
-        font,
-        diag.Display,
-        at,
-        0.8f,
-        tint = yellow,
-        layer = Layers.Hud
-      )
+      buffer.text(font, diag.Display, at, 1f, tint = yellow, layer = Layers.Hud)

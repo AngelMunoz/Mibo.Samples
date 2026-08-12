@@ -9,7 +9,7 @@ open Defli.World
 
 // ─────────────────────────────────────────────────────────────
 // Defli — the windowed MonoGame frontend. The sim runs on the
-// AdaptiveGame host: one Step per frame (input poll → shell phase →
+// AdaptiveMonoGameGame host: one Step per frame (input poll → shell phase →
 // Router.step → force), the renderers draw the forced frame. The
 // raylib client is Defli/Raylib (same Shared sim).
 // ─────────────────────────────────────────────────────────────
@@ -40,7 +40,7 @@ let main _ =
     |> AdaptiveMonoGameProgram.withConfig(fun (game, _) ->
       game.Content.RootDirectory <- "Content")
 
-  let game = new AdaptiveGame<Frame.RenderFrame>(program)
+  let game = new AdaptiveMonoGameGame<Frame.RenderFrame>(program)
 
   game.Run()
   0

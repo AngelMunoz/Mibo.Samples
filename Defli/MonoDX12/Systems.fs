@@ -67,7 +67,7 @@ module Inputs =
   /// the CAMERA (Up → the view pans north); Camera.Pan subtracts its
   /// input (drag semantics: the world follows the cursor), so keyboard
   /// deltas carry the OPPOSITE sign of the drag they mirror.
-  let panStep(action: GameAction) : Vector2 =
+  let inline panStep(action: GameAction) : Vector2 =
     match action with
     | GameAction.PanLeft -> Vector2(1f, 0f)
     | GameAction.PanRight -> Vector2(-1f, 0f)
@@ -84,7 +84,7 @@ module Application =
 
   /// Screen → world → the CONTAINING cell (the sim's cellAt — the
   /// floor-based pick, not the nearest-center one).
-  let private hoverCell
+  let inline private hoverCell
     (world: World)
     (viewport: Vector2)
     (screenPos: Vector2)
@@ -94,7 +94,7 @@ module Application =
 
     Defli.Application.cellAt worldPos (MapModel.terrain world.Map)
 
-  let private handleKeyboard
+  let inline private handleKeyboard
     (ctx: AdaptiveContext)
     (cell: WorldCell)
     (shell: Shell)
@@ -157,8 +157,13 @@ module Application =
 
     // Wheel zoom / middle-drag pan: direct camera messages (no dt).
     if delta.ScrollDelta <> 0f then
-      // Multiplicative steps toward the camera target.
-      let factor = float32(1.1 ** float delta.ScrollDelta)
+      // Multiplicative steps toward the camera target. MonoGame's
+      // input service reports the raw XNA wheel value (±120 per
+      // notch), so normalize to ±1 per notch to match the raylib
+      // client (GetMouseWheelMove already returns ±1). Without this,
+      // one notch would multiply zoom by 1.1^120 and slam straight
+      // into the camera's min/max clamp.
+      let factor = float32(1.1 ** (float delta.ScrollDelta / 120.0))
       Camera.Camera.update (CameraMsg.ZoomBy factor) world.Camera
     elif shell.MiddleDown && delta.PositionDelta <> Vector2.Zero then
       // Middle-drag pan: world moves opposite the drag (screen px).
