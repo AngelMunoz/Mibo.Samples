@@ -34,6 +34,7 @@ Mibo.Samples/
 │   ├── MonoVK/              ← MonoGame Vulkan thin client (linked)
 │   ├── MonoGL/              ← MonoGame DesktopGL thin client (linked)
 │   └── MonoDX11/            ← MonoGame WindowsDX11 thin client (linked)
+├── Defli3D/                 ← 3D port of Defli (adaptive tower defense; kenney_tower_defense_kit GLB models; raylib + MonoDX12/MonoDX11/MonoVK/MonoGL)
 ├── SpaceBattle/             ← Turn-based hex strategy (fog of war, AI, phased turns)
 ├── FPSSample/               ← Cross-backend FPS (shared core, raylib + MonoGame thin clients)
 │   ├── Shared/              ← Backend-agnostic game logic, systems, physics, AI

@@ -62,6 +62,15 @@
     <Project Path="Defli/MonoGL/MonoGL.fsproj" />
     <Project Path="Defli/MonoDX11/MonoDX11.fsproj" />
   </Folder>
+  <Folder Name="/Defli3D/">
+    <Project Path="Defli3D/Shared/Shared.fsproj" />
+    <Project Path="Defli3D/Shared.Tests/Shared.Tests.fsproj" />
+    <Project Path="Defli3D/Raylib/Raylib.fsproj" />
+    <Project Path="Defli3D/MonoDX12/MonoDX12.fsproj" />
+    <Project Path="Defli3D/MonoVK/MonoVK.fsproj" />
+    <Project Path="Defli3D/MonoGL/MonoGL.fsproj" />
+    <Project Path="Defli3D/MonoDX11/MonoDX11.fsproj" />
+  </Folder>
   <Project Path="SpaceBattle/SpaceBattle.fsproj" />
   <Project Path="BoneProbe/BoneProbe.fsproj" />
 </Solution>

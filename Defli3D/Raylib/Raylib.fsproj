@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="CameraView.fs" />
+    <Compile Include="MapView.fs" />
+    <Compile Include="EnemiesView.fs" />
+    <Compile Include="TowersView.fs" />
+    <Compile Include="ProjectilesView.fs" />
+    <Compile Include="VfxView.fs" />
+    <Compile Include="DiagnosticsView.fs" />
+    <Compile Include="WorldView.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <!-- Assets are referenced from the repo-root shared assets dir — never
+       duplicated. RecursiveDir does not include the anchored subdir, so the
+       Link re-adds it explicitly. The recursive glob preserves
+       Models/Textures/colormap.png, which every GLB references by relative
+       URI. The kenney particle/smoke packs feed the per-kind VFX textures
+       (VfxView). -->
+  <ItemGroup>
+    <Content Include="..\..\assets\kenney_tower_defense_kit\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\kenney_tower_defense_kit\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
+    <Content Include="..\..\assets\kenney_particle_pack\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\kenney_particle_pack\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
+    <Content Include="..\..\assets\kenney_smoke_particles\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\kenney_smoke_particles\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Shared\Shared.fsproj" />
+    <ProjectReference Include="..\..\Mibo\src\Mibo.Raylib\Mibo.Raylib.fsproj" />
+  </ItemGroup>
+
+</Project>

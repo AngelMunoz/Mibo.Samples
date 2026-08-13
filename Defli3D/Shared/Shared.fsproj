@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Extensions.fs" />
+    <Compile Include="State/Domain.fs" />
+    <Compile Include="State/Models.fs" />
+    <Compile Include="Diagnostics.fs" />
+    <Compile Include="Shell.fs" />
+    <Compile Include="Telemetry.fs" />
+    <Compile Include="State/Systems/Map.fs" />
+    <Compile Include="State/Systems/Enemies.fs" />
+    <Compile Include="State/Systems/Spawning.fs" />
+    <Compile Include="State/Systems/Waves.fs" />
+    <Compile Include="State/Systems/Economy.fs" />
+    <Compile Include="State/Systems/Towers.fs" />
+    <Compile Include="State/Systems/Projectiles.fs" />
+    <Compile Include="State/Systems/Vfx.fs" />
+    <Compile Include="State/Systems/Camera.fs" />
+    <Compile Include="State/Projections.fs" />
+    <Compile Include="State/State.fs" />
+    <Compile Include="State/Frame.fs" />
+    <Compile Include="Application.fs" />
+    <Compile Include="Input.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Mibo\src\Mibo.Adaptive\Mibo.Adaptive.fsproj" />
+    <ProjectReference Include="..\..\Mibo\src\Mibo.Core\Mibo.Core.fsproj" />
+  </ItemGroup>
+
+</Project>
