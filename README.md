@@ -85,7 +85,7 @@ Controls: **Arrows** to orbit, **W/S** to zoom, **A/D** and **PageUp/PageDown** 
 
 ### Defli
 
-A tower-defense game running on Mibo's **adaptive data** architecture (`Mibo.Adaptive` — AdaptiveSlop-powered roots/projections with no `Msg`/`Cmd`/`Sub`): the sim is a composition root of adaptive roots and projections, the router translates system events in place, and the renderers read a forced `RenderFrame` snapshot — no graph access at draw time. The same sim runs on raylib and four MonoGame backends. See [Defli/README.md](Defli/README.md) for the adaptive trace assessment.
+A tower-defense game running on Mibo's **adaptive data** architecture (`Mibo.Adaptive` — AdaptiveSlop-powered roots/projections with no `Msg`/`Cmd`/`Sub`): the sim is a composition root of adaptive roots and projections, `Application.step` runs the systems and posts cross-system event translations as intents, input arrives through adaptive subscriptions, and the renderers read a forced `RenderFrame` snapshot — no graph access at draw time. The same sim runs on raylib and four MonoGame backends. See [Defli/README.md](Defli/README.md) for the adaptive trace assessment.
 
 ```bash
 # raylib backend (any platform)

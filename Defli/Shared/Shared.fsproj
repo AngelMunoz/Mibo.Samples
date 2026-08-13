@@ -8,24 +8,25 @@
 
   <ItemGroup>
     <Compile Include="Extensions.fs" />
-    <Compile Include="World/Domain.fs" />
-    <Compile Include="World/Tiles.fs" />
+    <Compile Include="State/Domain.fs" />
+    <Compile Include="State/Tiles.fs" />
     <Compile Include="Diagnostics.fs" />
+    <Compile Include="Shell.fs" />
     <Compile Include="Telemetry.fs" />
-    <Compile Include="World/Systems/Map.fs" />
-    <Compile Include="World/Systems/Enemies.fs" />
-    <Compile Include="World/Systems/Spawning.fs" />
-    <Compile Include="World/Systems/Waves.fs" />
-    <Compile Include="World/Systems/Economy.fs" />
-    <Compile Include="World/Systems/Towers.fs" />
-    <Compile Include="World/Systems/Projectiles.fs" />
-    <Compile Include="World/Systems/Vfx.fs" />
-    <Compile Include="World/Systems/Camera.fs" />
-    <Compile Include="World/Projections.fs" />
-    <Compile Include="World/World.fs" />
-    <Compile Include="World/Router.fs" />
-    <Compile Include="World/Frame.fs" />
+    <Compile Include="State/Systems/Map.fs" />
+    <Compile Include="State/Systems/Enemies.fs" />
+    <Compile Include="State/Systems/Spawning.fs" />
+    <Compile Include="State/Systems/Waves.fs" />
+    <Compile Include="State/Systems/Economy.fs" />
+    <Compile Include="State/Systems/Towers.fs" />
+    <Compile Include="State/Systems/Projectiles.fs" />
+    <Compile Include="State/Systems/Vfx.fs" />
+    <Compile Include="State/Systems/Camera.fs" />
+    <Compile Include="State/Projections.fs" />
+    <Compile Include="State/State.fs" />
+    <Compile Include="State/Frame.fs" />
     <Compile Include="Application.fs" />
+    <Compile Include="Input.fs" />
   </ItemGroup>
 
   <ItemGroup>

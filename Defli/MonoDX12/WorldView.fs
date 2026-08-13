@@ -8,10 +8,10 @@ open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics2D
 open Mibo.Layout
 open Defli
-open Defli.World
-open Defli.World.Frame
-open Defli.World.Systems
-open Defli.World.Systems.Camera
+open Defli.State
+open Defli.State.Frame
+open Defli.State.Systems
+open Defli.State.Systems.Camera
 
 // ─────────────────────────────────────────────────────────────
 // WorldView — the world pass and the HUD pass, reading ONLY the
@@ -106,7 +106,7 @@ module WorldView =
     // screen space.
     CameraView.beginFrame frame.Camera viewport buffer
 
-    buffer |> Draw.setSamplerState Layers.Ground SamplerState.PointClamp
+    buffer.setSamplerState(SamplerState.PointClamp, Layers.Ground).drop()
 
     let visible = CameraView.cullingBounds frame.Camera viewport
 
@@ -135,7 +135,7 @@ module WorldView =
         font,
         $"Gold: %d{frame.Gold}   Lives: %d{frame.Lives}   %s{frame.Banner}   Tower: %s{frame.SelectedTower.Name} (1/2/3)",
         Vector2(12f, 10f),
-        1.0f,
+        1.5f,
         layer = Layers.Hud
       )
       .drop()
@@ -145,7 +145,7 @@ module WorldView =
         font,
         "WASD/arrows or middle-drag: pan   wheel: zoom   Home: reset   right-click: upgrade",
         Vector2(12f, float32 ctx.WindowHeight - 30f),
-        0.75f,
+        1.25f,
         layer = Layers.Hud
       )
       .drop()
@@ -156,7 +156,7 @@ module WorldView =
           font,
           "GAME OVER - press R to restart",
           Vector2(430f, 360f),
-          1.75f,
+          2f,
           layer = Layers.Hud
         )
         .drop()

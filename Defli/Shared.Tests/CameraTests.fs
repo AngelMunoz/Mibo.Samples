@@ -2,8 +2,8 @@ module Defli.Tests.CameraTests
 
 open Expecto
 open System.Numerics
-open Defli.World.Systems
-open Defli.World.Systems.Camera
+open Defli.State.Systems
+open Defli.State.Systems.Camera
 
 // Phase 4 — the Camera sub-system (Kimo analog): the sim stores
 // BACKEND-NEUTRAL camera facts (CameraState); the native camera is
@@ -35,28 +35,28 @@ let tests =
     testCase "Pan moves the target opposite the drag, scaled by zoom" (fun () ->
       let m = model()
       // Drag right 100 px at zoom 1 → the world moves left 100.
-      Camera.Camera.update (CameraMsg.Pan(Vector2(100f, 0f))) m
+      Camera.Camera.handle (CameraMsg.Pan(Vector2(100f, 0f))) m
       Expect.equal m.State.Target (Vector2(540f, 384f)) "pan at zoom 1"
 
       // At zoom 2 the same drag moves the world half as far.
-      Camera.Camera.update (CameraMsg.ZoomBy 2f) m
-      Camera.Camera.update (CameraMsg.Pan(Vector2(100f, 0f))) m
+      Camera.Camera.handle (CameraMsg.ZoomBy 2f) m
+      Camera.Camera.handle (CameraMsg.Pan(Vector2(100f, 0f))) m
       Expect.equal m.State.Target (Vector2(490f, 384f)) "pan at zoom 2")
 
     testCase "ZoomBy multiplies and clamps to the zoom limits" (fun () ->
       let m = model()
-      Camera.Camera.update (CameraMsg.ZoomBy 2f) m
+      Camera.Camera.handle (CameraMsg.ZoomBy 2f) m
       Expect.equal m.State.Zoom 2f "zoomed in"
 
-      Camera.Camera.update (CameraMsg.ZoomBy 2f) m
+      Camera.Camera.handle (CameraMsg.ZoomBy 2f) m
       Expect.equal m.State.Zoom Camera.MaxZoom "clamped at max"
 
-      Camera.Camera.update (CameraMsg.ZoomBy 0.01f) m
+      Camera.Camera.handle (CameraMsg.ZoomBy 0.01f) m
       Expect.equal m.State.Zoom Camera.MinZoom "clamped at min")
 
     testCase "Shake sets the timer, tick decays it, offset expires" (fun () ->
       let m = model()
-      Camera.Camera.update (CameraMsg.Shake 8f) m
+      Camera.Camera.handle (CameraMsg.Shake 8f) m
       Expect.equal m.State.ShakeRemaining Camera.ShakeDuration "timer set"
       Expect.notEqual (shakeOffset m.State) Vector2.Zero "offset active"
 
@@ -77,10 +77,10 @@ let tests =
 
     testCase "Reset restores the world center at zoom 1" (fun () ->
       let m = model()
-      Camera.Camera.update (CameraMsg.Pan(Vector2(400f, 300f))) m
-      Camera.Camera.update (CameraMsg.ZoomBy 2f) m
-      Camera.Camera.update (CameraMsg.Shake 8f) m
-      Camera.Camera.update CameraMsg.Reset m
+      Camera.Camera.handle (CameraMsg.Pan(Vector2(400f, 300f))) m
+      Camera.Camera.handle (CameraMsg.ZoomBy 2f) m
+      Camera.Camera.handle (CameraMsg.Shake 8f) m
+      Camera.Camera.handle CameraMsg.Reset m
       Expect.equal m.State.Target (Vector2(640f, 384f)) "target"
       Expect.equal m.State.Zoom 1f "zoom"
       Expect.equal m.State.ShakeRemaining 0f "shake cleared")
@@ -89,13 +89,31 @@ let tests =
     //    neutral CameraState math — milestone-2 frontend) ──
 
     testCase
-      "clampToWorld pins the target when the view fits the world"
+      "clampToWorld soft-clamps when the view is wider than the world"
       (fun () ->
         // Zoomed out so far the whole world fits in the view: the
-        // target pins to the world center no matter where it is.
+        // target roams free inside the soft range [world - view/2,
+        // view/2] per axis and only clamps where a world edge would
+        // leave the screen — keyboard panning never dead-ends.
         let s = state Vector2.Zero 1f (Vector2(100f, 100f))
         let clamped = Camera.clampToWorld s viewport
-        Expect.equal clamped.Target (Vector2(50f, 50f)) "pinned to center")
+        Expect.equal clamped.Target Vector2.Zero "free inside the soft range"
+
+        let s2 = state (Vector2(10000f, 10000f)) 1f (Vector2(100f, 100f))
+        let clamped2 = Camera.clampToWorld s2 viewport
+
+        Expect.equal
+          clamped2.Target
+          (Vector2(640f, 400f))
+          "clamped at the soft max"
+
+        let s3 = state (Vector2(-10000f, -10000f)) 1f (Vector2(100f, 100f))
+        let clamped3 = Camera.clampToWorld s3 viewport
+
+        Expect.equal
+          clamped3.Target
+          (Vector2(-540f, -300f))
+          "clamped at the soft min")
 
     testCase "clampToWorld clamps panning beyond the world edges" (fun () ->
       // Zoom 2 → view 640x400 inside the 1280x768 world: the target
@@ -130,11 +148,12 @@ let tests =
         "corner")
 
     testCase "viewBounds is the clamped view rect" (fun () ->
-      // Panned far past the corner: the clamped view hugs the world.
+      // Panned far past the corner: the view (800 tall > the 768
+      // world) soft-clamps until the world edge meets the screen edge.
       let s = state (Vector2(5000f, 5000f)) 1f worldSize
       let struct (min, max) = Camera.viewBounds s viewport
-      Expect.equal min (Vector2(0f, -16f)) "min" // height 800 > world 768 → pinned, sticks out
-      Expect.equal max (Vector2(1280f, 784f)) "max"
+      Expect.equal min (Vector2(0f, 0f)) "min"
+      Expect.equal max (Vector2(1280f, 800f)) "max"
 
       // Zoomed in: the view fits entirely inside the world.
       let s2 = state Vector2.Zero 2f worldSize

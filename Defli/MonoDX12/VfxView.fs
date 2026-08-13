@@ -8,9 +8,9 @@ open Mibo.Elmish
 open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics2D
 open Mibo.Elmish.Graphics2D.Lighting
-open Defli.World
-open Defli.World.Systems
-open Defli.World.Systems.Vfx
+open Defli.State
+open Defli.State.Systems
+open Defli.State.Systems.Vfx
 
 // ─────────────────────────────────────────────────────────────
 // VfxView — the MonoGame EDGE of the VFX pools. The sim stores a

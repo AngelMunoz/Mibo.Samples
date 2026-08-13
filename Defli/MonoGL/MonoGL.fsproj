@@ -18,9 +18,6 @@
     <Compile Include="..\MonoDX12\Types.fs">
       <Link>Types.fs</Link>
     </Compile>
-    <Compile Include="..\MonoDX12\Shell.fs">
-      <Link>Shell.fs</Link>
-    </Compile>
     <Compile Include="..\MonoDX12\CameraView.fs">
       <Link>CameraView.fs</Link>
     </Compile>
@@ -44,9 +41,6 @@
     </Compile>
     <Compile Include="..\MonoDX12\WorldView.fs">
       <Link>WorldView.fs</Link>
-    </Compile>
-    <Compile Include="..\MonoDX12\Systems.fs">
-      <Link>Systems.fs</Link>
     </Compile>
     <Compile Include="..\MonoDX12\Program.fs">
       <Link>Program.fs</Link>

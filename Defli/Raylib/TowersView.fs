@@ -6,8 +6,8 @@ open Mibo.Elmish
 open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics2D
 open Raylib_cs
-open Defli.World
-open Defli.World.Systems
+open Defli.State
+open Defli.State.Systems
 
 // ─────────────────────────────────────────────────────────────
 // TowersView — base plates, heads and level tags from the frame's

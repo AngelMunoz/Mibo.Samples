@@ -1,13 +1,13 @@
-module Defli.World.Systems.Economy
+module Defli.State.Systems.Economy
 
 open Mibo.Adaptive
 open Defli
-open Defli.World
+open Defli.State
 
 // ─────────────────────────────────────────────────────────────
 // Economy sub-system — two singletons, one system. No events out
-// (nothing consumes economy output except the view/router); kills
-// and arrivals reach it via router-translated Cmd.
+// (nothing consumes economy output except the view/Application); kills
+// and arrivals reach it via Application-translated events.
 // ─────────────────────────────────────────────────────────────
 
 [<Struct>]
@@ -37,7 +37,7 @@ module Economy =
 
     m
 
-  let update (msg: EconomyMsg) (model: EconomyModel) : unit =
+  let handle (msg: EconomyMsg) (model: EconomyModel) : unit =
     match msg with
     | SpendGold amount ->
       let gold = model.Gold |> AVal.getValue

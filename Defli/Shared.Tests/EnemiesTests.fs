@@ -3,10 +3,10 @@ module Defli.Tests.EnemiesTests
 open System.Numerics
 open Expecto
 open Mibo.Adaptive
-open Defli.World
-open Defli.World.Systems
+open Defli.State
+open Defli.State.Systems
 open TestData
-open Defli.World.Systems.Enemies
+open Defli.State.Systems.Enemies
 
 let private cfg = TestData.Fixtures.cfg
 let private map = MapModel.create cfg
@@ -24,7 +24,7 @@ let tests =
     testCase "spawn adds rows to all maps + projections" (fun () ->
       let m = model()
 
-      let _ = Enemies.update (EnemyMsg.Spawn Fixtures.grunt) m map.Path
+      let _ = Enemies.handle (EnemyMsg.Spawn Fixtures.grunt) m map.Path
       let m' = m
 
       Expect.equal ((m'.Healths |> AMap.getValue).Count) 1 "healths"
@@ -42,7 +42,7 @@ let tests =
     testCase "spawn is atomic across maps" (fun () ->
       let m = model()
 
-      let _ = Enemies.update (EnemyMsg.Spawn Fixtures.tank) m map.Path
+      let _ = Enemies.handle (EnemyMsg.Spawn Fixtures.tank) m map.Path
       let m' = m
 
       // All four rows share the same key.
@@ -59,7 +59,7 @@ let tests =
         let pos = Vector2(100f, 200f)
 
         let _ =
-          Enemies.update
+          Enemies.handle
             (EnemyMsg.SpawnAt(Fixtures.grunt, pos, 0.5f, 2))
             m
             map.Path
@@ -83,12 +83,12 @@ let tests =
     testCase "damage reduces HP; death emits Killed with reward" (fun () ->
       let m = model()
 
-      let _ = Enemies.update (EnemyMsg.Spawn Fixtures.grunt) m map.Path
+      let _ = Enemies.handle (EnemyMsg.Spawn Fixtures.grunt) m map.Path
       let m' = m
 
       let eid = 0<EnemyId>
 
-      let events = Enemies.update (EnemyMsg.ApplyDamage(eid, 10)) m' map.Path
+      let events = Enemies.handle (EnemyMsg.ApplyDamage(eid, 10)) m' map.Path
       let m2 = m'
 
       Expect.equal events.Length 0 "not dead yet"
@@ -98,7 +98,7 @@ let tests =
         Expect.equal h.Hp (Fixtures.grunt.Hp - 10) "hp after 10 damage"
       | ValueNone -> failtest "enemy must exist"
 
-      let events = Enemies.update (EnemyMsg.ApplyDamage(eid, 100)) m2 map.Path
+      let events = Enemies.handle (EnemyMsg.ApplyDamage(eid, 100)) m2 map.Path
       let m3 = m2
 
       match events with
@@ -114,10 +114,10 @@ let tests =
     testCase "despawn removes rows everywhere" (fun () ->
       let m = model()
 
-      let _ = Enemies.update (EnemyMsg.Spawn Fixtures.runner) m map.Path
+      let _ = Enemies.handle (EnemyMsg.Spawn Fixtures.runner) m map.Path
       let m' = m
 
-      let _ = Enemies.update (EnemyMsg.Despawn(0<EnemyId>)) m' map.Path
+      let _ = Enemies.handle (EnemyMsg.Despawn(0<EnemyId>)) m' map.Path
       let m2 = m'
 
       Expect.equal ((m2.Healths |> AMap.getValue).Count) 0 "healths"
@@ -130,7 +130,7 @@ let tests =
     testCase "movement advances along waypoints" (fun () ->
       let m = model()
 
-      let _ = Enemies.update (EnemyMsg.Spawn Fixtures.runner) m map.Path
+      let _ = Enemies.handle (EnemyMsg.Spawn Fixtures.runner) m map.Path
       let m' = m
 
       let eid = 0<EnemyId>
@@ -147,7 +147,7 @@ let tests =
     testCase "arrival at base emits ReachedBase and removes rows" (fun () ->
       let m = model()
 
-      let _ = Enemies.update (EnemyMsg.Spawn Fixtures.runner) m map.Path
+      let _ = Enemies.handle (EnemyMsg.Spawn Fixtures.runner) m map.Path
       let m' = m
 
       let eid = 0<EnemyId>
@@ -177,13 +177,13 @@ let tests =
     testCase "slow modifies speed and expires" (fun () ->
       let m = model()
 
-      let _ = Enemies.update (EnemyMsg.Spawn Fixtures.grunt) m map.Path
+      let _ = Enemies.handle (EnemyMsg.Spawn Fixtures.grunt) m map.Path
       let m' = m
 
       let eid = 0<EnemyId>
 
       let _ =
-        Enemies.update
+        Enemies.handle
           (EnemyMsg.ApplySlow {
             Enemy = eid
             Factor = 0.5f
@@ -212,7 +212,7 @@ let tests =
     testCase "flier flies the straight line spawn → base" (fun () ->
       let m = model()
 
-      let _ = Enemies.update (EnemyMsg.Spawn Fixtures.flier) m map.Path
+      let _ = Enemies.handle (EnemyMsg.Spawn Fixtures.flier) m map.Path
       let m' = m
 
       let eid = 0<EnemyId>
@@ -244,7 +244,7 @@ let tests =
     testCase "flier arrives at the base and emits ReachedBase" (fun () ->
       let m = model()
 
-      let _ = Enemies.update (EnemyMsg.Spawn Fixtures.flier) m map.Path
+      let _ = Enemies.handle (EnemyMsg.Spawn Fixtures.flier) m map.Path
       let m' = m
 
       let eid = 0<EnemyId>

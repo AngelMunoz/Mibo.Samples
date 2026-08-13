@@ -2,9 +2,9 @@ module Defli.Tests.SpawningTests
 
 open Expecto
 open TestData
-open Defli.World
-open Defli.World.Systems
-open Defli.World.Systems.Spawning
+open Defli.State
+open Defli.State.Systems
+open Defli.State.Systems.Spawning
 
 /// A grunt-only wave — deterministic, no weighted-pick variance.
 let private gruntWave = {
@@ -32,7 +32,7 @@ let tests =
   testList "Spawning" [
     testCase "FillWave builds the queue with spaced delays" (fun () ->
       let m = Spawning.init 42
-      let events = Spawning.update (SpawnMsg.FillWave gruntWave) m
+      let events = Spawning.handle (SpawnMsg.FillWave gruntWave) m
       let m' = m
       Expect.equal events.Length 0 "no failures"
       Expect.equal m'.Queue.Count gruntWave.Count "queue count"
@@ -49,7 +49,7 @@ let tests =
 
     testCase "tick drains due spawns in order" (fun () ->
       let m = Spawning.init 42
-      let _ = Spawning.update (SpawnMsg.FillWave gruntWave) m
+      let _ = Spawning.handle (SpawnMsg.FillWave gruntWave) m
       let m' = m
 
       // Before the initial delay: nothing.
@@ -71,7 +71,7 @@ let tests =
     testCase "drain is deterministic per seed" (fun () ->
       let run seed =
         let m = Spawning.init seed
-        let _ = Spawning.update (SpawnMsg.FillWave mixedWave) m
+        let _ = Spawning.handle (SpawnMsg.FillWave mixedWave) m
         let m' = m
         let mutable spawns = []
 
@@ -99,7 +99,7 @@ let tests =
       let m = Spawning.init 42
 
       let events =
-        Spawning.update
+        Spawning.handle
           (SpawnMsg.FillWave {
             Table = [||]
             Count = 3
@@ -123,7 +123,7 @@ let tests =
         let m = Spawning.init 42
 
         let events =
-          Spawning.update
+          Spawning.handle
             (SpawnMsg.FillWave {
               gruntWave with
                   ExtraSpawns = [| struct (Fixtures.tank, 0.25f) |]

@@ -1,13 +1,13 @@
-namespace Defli.World
+namespace Defli.State
 
 open System.Numerics
 open Mibo.Adaptive
 open Defli
 open Mibo.Layout
-open Defli.World.Systems
+open Defli.State.Systems
 
 // ─────────────────────────────────────────────────────────────
-// World-owned CROSS-subsystem projections — joins/filters that
+// State-owned CROSS-subsystem projections — joins/filters that
 // touch two systems' maps. Sub-systems own projections derived
 // purely from their own maps (see each system file).
 //
@@ -71,7 +71,7 @@ type Projections
   /// positions change every frame, so every tower's filter/count node
   /// re-scans the boss map per frame — O(towers × bosses) of graph
   /// work per frame. Consumed as a DIRECT VALUE by Towers.tick (the
-  /// router passes the transient view; nothing is written back into
+  /// the sim update passes the transient view; nothing is written back into
   /// a changeable map).
   member val Suppression: amap<int<TowerId>, float32> =
     towers.Statics

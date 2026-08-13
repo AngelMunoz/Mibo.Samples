@@ -6,8 +6,8 @@ open System.Numerics
 open Mibo.Elmish
 open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics2D
-open Defli.World
-open Defli.World.Systems
+open Defli.State
+open Defli.State.Systems
 
 // ─────────────────────────────────────────────────────────────
 // ProjectilesView — the shell sprite per row from the frame's

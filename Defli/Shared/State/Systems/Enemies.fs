@@ -1,10 +1,10 @@
-module Defli.World.Systems.Enemies
+module Defli.State.Systems.Enemies
 
 open System.Collections.Generic
 open System.Numerics
 open Mibo.Adaptive
 open Mibo.Elmish
-open Defli.World
+open Defli.State
 open Defli
 
 // ─────────────────────────────────────────────────────────────
@@ -56,7 +56,7 @@ type EnemiesModel() =
     Unchecked.defaultof<_> with get, set
 
   /// Live boss positions (Positions × Defs, archetype-filtered) — the
-  /// world-owned Suppression projection joins on this (Phase 6).
+  /// state-owned Suppression projection joins on this (Phase 6).
   member val BossPositions: amap<int<EnemyId>, Vector2> =
     Unchecked.defaultof<_> with get, set
 
@@ -129,7 +129,7 @@ module Enemies =
   /// Boss positions: a same-key AMap.joinOn into Defs (the Views-join
   /// shape), kept only when the archetype is Boss — the join's
   /// ValueNone output drops the entry (choose semantics). Written by
-  /// the movement tick like Positions; read by the world's Suppression
+  /// the movement tick like Positions; read by the state's Suppression
   /// projection.
   let inline private buildBossPositions
     (m: EnemiesModel)
@@ -156,11 +156,15 @@ module Enemies =
     m
 
   // ── Cold-path mutations (unit — these never emit) ──
-  // The router calls these directly: in-place mutations with no return
-  // to discard. The host-facing union dispatch (update) delegates here.
+  // Application calls these directly: in-place mutations with no return
+  // to discard. The host-facing union dispatch (handle) delegates here.
 
   /// Spawn at the path origin (the wave director's entry point).
-  let spawn (def: EnemyDef) (model: EnemiesModel) (path: Vector2[]) : unit =
+  let inline spawn
+    (def: EnemyDef)
+    (model: EnemiesModel)
+    (path: Vector2[])
+    : unit =
     let eid = model.NextId
     model.NextId <- model.NextId + 1<EnemyId>
 
@@ -180,13 +184,12 @@ module Enemies =
 
   /// Split-child spawn: the same atomic four-row write, but at the
   /// corpse's position and path state (not the path origin).
-  let spawnAt
+  let inline spawnAt
     (def: EnemyDef)
     (pos: Vector2)
     (progress: float32)
     (pathIndex: int)
     (model: EnemiesModel)
-    (path: Vector2[])
     : unit =
     let eid = model.NextId
     model.NextId <- model.NextId + 1<EnemyId>
@@ -206,11 +209,7 @@ module Enemies =
       model.Defs |> CMap.addOrUpdate eid def)
 
   /// Removes the enemy's four rows atomically.
-  let despawn
-    (eid: int<EnemyId>)
-    (model: EnemiesModel)
-    (path: Vector2[])
-    : unit =
+  let inline despawn (eid: int<EnemyId>) (model: EnemiesModel) : unit =
     Transaction.run(fun () ->
       model.Healths |> CMap.remove eid
       model.Motions |> CMap.remove eid
@@ -218,11 +217,7 @@ module Enemies =
       model.Defs |> CMap.remove eid)
 
   /// Applies the slow factor and arms the slow timer.
-  let applySlow
-    (slow: SlowApply)
-    (model: EnemiesModel)
-    (path: Vector2[])
-    : unit =
+  let inline applySlow (slow: SlowApply) (model: EnemiesModel) : unit =
     match model.Motions |> CMap.tryGetValue slow.Enemy with
     | ValueSome mv ->
       model.Motions
@@ -232,12 +227,11 @@ module Enemies =
     | ValueNone -> ()
 
   /// The one message that emits: applies damage; Killed on a zero
-  /// crossing (the router earns gold and despawns from that event).
-  let applyDamage
+  /// crossing (Application earns gold and despawns from that event).
+  let inline applyDamage
     (eid: int<EnemyId>)
     (amount: int)
     (model: EnemiesModel)
-    (path: Vector2[])
     : EnemyEvent[] =
     match model.Healths |> CMap.tryGetValue eid with
     | ValueSome h when h.Hp > 0 ->
@@ -254,7 +248,7 @@ module Enemies =
 
   /// Host-facing dispatch over the union (tests, debug hosts) —
   /// delegates to the mutations above; returns what was emitted.
-  let update
+  let handle
     (msg: EnemyMsg)
     (model: EnemiesModel)
     (path: Vector2[])
@@ -264,14 +258,14 @@ module Enemies =
       spawn def model path
       Array.empty
     | SpawnAt(def, pos, progress, pathIndex) ->
-      spawnAt def pos progress pathIndex model path
+      spawnAt def pos progress pathIndex model
       Array.empty
-    | ApplyDamage(eid, amount) -> applyDamage eid amount model path
+    | ApplyDamage(eid, amount) -> applyDamage eid amount model
     | ApplySlow slow ->
-      applySlow slow model path
+      applySlow slow model
       Array.empty
     | Despawn eid ->
-      despawn eid model path
+      despawn eid model
       Array.empty
 
   // ── Hot path (movement / "physics" phase) — direct values, no closures ──
@@ -417,7 +411,7 @@ module Enemies =
                 PathIndex = idx
           })
 
-    // Arrivals are removed atomically (the router also gets ReachedBase).
+    // Arrivals are removed atomically (Application also gets ReachedBase).
     if not(isNull arrivals) then
       Transaction.run(fun () ->
         for eid in arrivals do
@@ -426,4 +420,4 @@ module Enemies =
           model.Positions |> CMap.remove eid
           model.Defs |> CMap.remove eid)
 
-    (if isNull events then Array.empty else events)
+    if isNull events then Array.empty else events

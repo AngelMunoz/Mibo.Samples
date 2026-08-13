@@ -20,7 +20,7 @@
     <Compile Include="ProjectilesTests.fs" />
     <Compile Include="DiagnosticsTests.fs" />
     <Compile Include="CameraTests.fs" />
-    <Compile Include="RouterTests.fs" />
+    <Compile Include="ApplicationTests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
 

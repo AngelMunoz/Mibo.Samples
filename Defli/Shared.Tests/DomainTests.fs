@@ -1,7 +1,7 @@
 module Defli.Tests.DomainTests
 
 open Expecto
-open Defli.World
+open Defli.State
 
 let tests =
   testList "Domain" [

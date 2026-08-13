@@ -1,16 +1,16 @@
-module Defli.World.Systems.Projectiles
+module Defli.State.Systems.Projectiles
 
 open System
 open System.Collections.Generic
 open System.Numerics
 open Mibo.Adaptive
 open Mibo.Elmish
-open Defli.World
+open Defli.State
 
 // ─────────────────────────────────────────────────────────────
 // Projectiles sub-system — owns in-flight shots. One map is enough
 // (projectiles have no cross-component reads). Its render position
-// is the world-owned Homing projection (Projectiles.Rows ×
+// is the state-owned Homing projection (Projectiles.Rows ×
 // Enemies.Positions — see Projections.fs).
 //
 // The homing feel: the projectile seeks the target's LIVE position
@@ -37,8 +37,8 @@ module Projectiles =
 
   let init() = ProjectilesModel()
 
-  /// Cold path: spawn one shot (router-translated from TowerEvent.Fired).
-  let update (msg: ProjectileMsg) (model: ProjectilesModel) : unit =
+  /// Cold path: spawn one shot (translated by Application from TowerEvent.Fired).
+  let handle (msg: ProjectileMsg) (model: ProjectilesModel) : unit =
     match msg with
     | Spawn spawn ->
       let pid = model.NextId
@@ -60,11 +60,11 @@ module Projectiles =
 
   /// Hot path: advance toward the target's live position; impact or
   /// expire. `positions` is a transient read of Enemies.Positions
-  /// (direct value from the router). A target that despawns mid-flight
+  /// (direct value from the sim update). A target that despawns mid-flight
   /// no longer removes the shot: it flies on to the target's LAST
   /// RECORDED position and detonates there — no mid-air pop, and a
   /// splash shell still blasts the pack around the corpse (the impact
-  /// carries the dead id; the router's splash fan-out hits whatever is
+  /// carries the dead id; Application's splash fan-out hits whatever is
   /// actually near the point). Writes are collected and applied after
   /// iteration (transient views die on the next write).
   let tick
@@ -142,4 +142,4 @@ module Projectiles =
         for pid in removes do
           model.Rows |> CMap.remove pid)
 
-    (if isNull events then Array.empty else events)
+    if isNull events then Array.empty else events

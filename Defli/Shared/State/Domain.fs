@@ -1,4 +1,4 @@
-namespace Defli.World
+namespace Defli.State
 
 open System.Numerics
 
@@ -76,7 +76,7 @@ type MapTile = {
 }
 
 // ─────────────────────────────────────────────────────────────
-// World config (assembled outside the world — Kimo Phase 6 seam)
+// World config (assembled outside the state — Kimo Phase 6 seam)
 // ─────────────────────────────────────────────────────────────
 
 /// Level-1 hand-authored road (fixed waypoints) vs Level-2 procedural
@@ -220,7 +220,7 @@ module BossAura =
   /// Grunts spawned at the corpse when a boss dies.
   let SplitCount = 3
 
-  /// The child def (the wave's tier scale is applied by the router).
+  /// The child def (the wave's tier scale is applied by Application).
   let SplitInto = EnemyDefs.grunt
 
 /// Per-enemy components (rows in the Enemies sub-system's CMaps).
@@ -432,7 +432,7 @@ type ProjectileRow = {
 type ProjectileSpawn = {
   Pos: Vector2
   TargetEnemy: int<EnemyId>
-  /// Seeded by the router from the target's live position at fire time.
+  /// Seeded by Application from the target's live position at fire time.
   LastTargetPos: Vector2
   Damage: int
   Speed: float32
@@ -488,7 +488,7 @@ type TowerShot = {
 }
 
 /// A projectile impact (ProjectileEvent.Impact payload) — what hit.
-/// Pos is the detonation point; on a splash hit the router fans out
+/// Pos is the detonation point; on a splash hit Application fans out
 /// one ApplyDamage per enemy within SplashRadius of it.
 [<Struct>]
 type ProjectileImpact = {
@@ -509,7 +509,7 @@ type SlowApply = {
   Seconds: float32
 }
 
-/// Render row of the world-owned Homing projection
+/// Render row of the state-owned Homing projection
 /// (Projectiles.Rows × Enemies.Positions). TargetPos is the target's
 /// live position while it lives, the row's LastTargetPos after.
 [<Struct>]

@@ -8,9 +8,9 @@ open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics2D
 open Mibo.Elmish.Graphics2D.Lighting
 open Raylib_cs
-open Defli.World
-open Defli.World.Systems
-open Defli.World.Systems.Vfx
+open Defli.State
+open Defli.State.Systems
+open Defli.State.Systems.Vfx
 
 // ─────────────────────────────────────────────────────────────
 // VfxView — the raylib EDGE of the VFX pools. The sim stores a LOCAL

@@ -5,8 +5,8 @@ open Mibo.Elmish
 open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics2D
 open Mibo.Layout
-open Defli.World
-open Defli.World.Systems
+open Defli.State
+open Defli.State.Systems
 
 // ─────────────────────────────────────────────────────────────
 // MapView — the map passes (terrain/road/decorations/base mount),

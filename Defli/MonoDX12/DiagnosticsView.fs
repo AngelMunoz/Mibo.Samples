@@ -6,7 +6,7 @@ open Mibo
 open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics2D
 open Defli
-open Defli.World
+open Defli.State
 
 // ─────────────────────────────────────────────────────────────
 // DiagnosticsView — the F3 overlay lines (Kimo's

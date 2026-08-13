@@ -27,7 +27,7 @@ Mibo.Samples/
 ├── Platformer3D/            ← 3D platformer (voxel terrain, PBR, skeletal animation, shadow atlas; raylib + MonoDX12/MonoDX11/MonoVK/MonoGL)
 ├── ModelProbe/              ← Minimal 3D rendering probe (PBR forward + shadow atlas, instanced vs non-instanced; MonoDX12 + MonoVK)
 ├── Defli/                   ← Adaptive tower defense (Mibo.Adaptive roots/projections, forced RenderFrame; raylib + MonoDX12/MonoDX11/MonoVK/MonoGL)
-│   ├── Shared/              ← Adaptive sim (World composition root, Router, Frame, 9 systems)
+│   ├── Shared/              ← Adaptive sim (State composition root, Application update, Input subscriptions, Frame, 9 systems)
 │   ├── Shared.Tests/        ← Expecto test suite
 │   ├── Raylib/              ← raylib backend
 │   ├── MonoDX12/            ← MonoGame WindowsDX12 client (canonical — other MonoGame clients link its sources)

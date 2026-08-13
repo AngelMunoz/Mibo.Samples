@@ -4,7 +4,7 @@
 // Sources: assets/kenney_tower-defense-top-down/towerDefense_tilesheet.xml,
 //          assets/kenney_top-down-tanks-remastered/allSprites_default.xml
 // ─────────────────────────────────────────────────────────────
-namespace Defli.World
+namespace Defli.State
 
 open System.Collections.Frozen
 open System.Collections.Generic

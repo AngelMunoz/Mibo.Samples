@@ -1,14 +1,14 @@
-module Defli.World.Systems.Waves
+module Defli.State.Systems.Waves
 
 open Mibo.Adaptive
 open Defli
-open Defli.World
+open Defli.State
 
 // ─────────────────────────────────────────────────────────────
 // Waves sub-system — the wave DIRECTOR: pure composition + state.
 // No queue, no timing, no RNG (randomness lives in Spawning's
 // picks — Kimo's rule: RNG streams are owned, never shared).
-// Clear detection runs on direct values passed by the router
+// Clear detection runs on direct values passed by the sim update
 // (hot path, no closures).
 // ─────────────────────────────────────────────────────────────
 
@@ -113,8 +113,8 @@ module Waves =
     }
 
   /// Cold path: start the next wave (no-op while one is active or the
-  /// game is over — the router guards game-over).
-  let update (msg: WaveMsg) (model: WavesModel) : WaveEvent[] =
+  /// game is over — Application guards game-over).
+  let handle (msg: WaveMsg) (model: WavesModel) : WaveEvent[] =
     match msg with
     | StartNextWave ->
       let waveActive = model.WaveActive |> AVal.getValue
@@ -134,7 +134,7 @@ module Waves =
 
   /// Hot path — waves are MANUALLY gated: nothing runs while idle; the
   /// player presses Enter to start the next wave. `aliveCount` and
-  /// `queueEmpty` are direct values from the router (Enemies.AliveCount
+  /// `queueEmpty` are direct values from the sim update (Enemies.AliveCount
   /// aval + Spawning queue, respectively).
   let tick
     (dt: float32)

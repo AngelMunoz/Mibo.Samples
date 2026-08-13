@@ -4,10 +4,10 @@ open System
 open System.Diagnostics
 open System.Numerics
 open Mibo.Adaptive
-open Defli.World
+open Defli.State
 // ─────────────────────────────────────────────────────────────
 // Diagnostics overlay — Kimo's Systems/Diagnostics.fs pattern,
-// simplified for the same-thread world: no bridge, no per-world
+// simplified for the same-thread state: no bridge, no per-state
 // regions. Two windowed lines, refreshed at the window boundary
 // only (formatting every frame would allocate on the hot path).
 //
@@ -104,7 +104,7 @@ module Diagnostics =
 
   /// Folds one RoomTick into the world diagnostics: windowed tick rate,
   /// sim cost EMA, live counts. t0 is the tickStart() stamp; alive/queue
-  /// are the direct values already computed by the router this tick.
+  /// are the direct values already computed by the sim update this tick.
   let tickEnd (t0: int64) (diag: WorldDiag) (alive: aval<int>) (queue: int) =
     let now = Stopwatch.GetTimestamp()
     diag.TickCount <- diag.TickCount + 1L

@@ -19,7 +19,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Types.fs" />
-    <Compile Include="Shell.fs" />
     <Compile Include="CameraView.fs" />
     <Compile Include="MapView.fs" />
     <Compile Include="EnemiesView.fs" />
@@ -28,7 +27,6 @@
     <Compile Include="VfxView.fs" />
     <Compile Include="DiagnosticsView.fs" />
     <Compile Include="WorldView.fs" />
-    <Compile Include="Systems.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>

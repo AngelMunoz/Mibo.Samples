@@ -8,10 +8,10 @@ open Mibo.Elmish.Graphics2D
 open Mibo.Layout
 open Raylib_cs
 open Defli
-open Defli.World
-open Defli.World.Frame
-open Defli.World.Systems
-open Defli.World.Systems.Camera
+open Defli.State
+open Defli.State.Frame
+open Defli.State.Systems
+open Defli.State.Systems.Camera
 
 // ─────────────────────────────────────────────────────────────
 // WorldView — the world pass and the HUD pass, reading ONLY the

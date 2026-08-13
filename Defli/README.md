@@ -89,7 +89,7 @@ Microscopic verdict:
   busy-second (baseline ~85 /s). Grows only with entities.
 - **Suppression is the only chain that got relatively bigger vs the
   baseline** (5.3 % vs ~1 %): the port forces BossPositions → Suppression in
-  router order every frame (the documented lazy-settle ordering rule), and
+  step order every frame (the documented lazy-settle ordering rule), and
   this session has more maxed towers. Still 0.06 ms/frame — a watch item,
   not a cost problem.
 
@@ -117,9 +117,9 @@ No quadratic term appears at 15 waves of warm end-game load.
 
 | Activity | % of busy (samples) |
 | --- | --- |
-| `AdaptiveHeadless.Step` (router + frame force) | 88.9 % (32 963) |
-| ├─ `Router.step` (systems in Kimo order) | 46.6 % (17 278) |
-| ├─ `buildFrame` (Force — the Homing drain is 28.5 % of it) | 29.0 % (10 766) |
+| `AdaptiveHeadless.Step` (Application.update + frame force) | 88.9 % (32 963) |
+| ├─ `Application.update` (systems in Kimo order) | 46.6 % (17 278) |
+| ├─ `Frame.force` (Force — the Homing drain is 28.5 % of it) | 29.0 % (10 766) |
 | `Renderer2D.Draw` (view pass over the packed frame) | 6.5 % (2 406) |
 | `Input.Poll` | 0.1 % (34) |
 | Strings (HUD $"..." + AssetsService.resolvePath) | ~2.8 % (1 043) |

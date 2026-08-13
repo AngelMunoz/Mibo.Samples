@@ -3,8 +3,8 @@ module Defli.Tests.MapTests
 open Expecto
 open Mibo.Layout
 open Defli
-open Defli.World
-open Defli.World.Systems
+open Defli.State
+open Defli.State.Systems
 
 let private cfg = TestData.Fixtures.cfg
 let private map = MapModel.create cfg

@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────
-// Bakes the Kenney atlas XML files into World/Tiles.fs
+// Bakes the Kenney atlas XML files into State/Tiles.fs
 // (compile-time datasets — no runtime XML parsing).
 //
 // Usage:  dotnet fsi tools/gen-tiles.fsx
@@ -12,7 +12,7 @@ open System.IO
 open System.Xml.Linq
 
 let root = Path.GetFullPath(Path.Combine(__SOURCE_DIRECTORY__, ".."))
-let outPath = Path.Combine(root, "Defli", "Shared", "World", "Tiles.fs")
+let outPath = Path.Combine(root, "Defli", "Shared", "State", "Tiles.fs")
 
 type Sheet = {
   Module: string
@@ -168,7 +168,7 @@ line
   "//          assets/kenney_top-down-tanks-remastered/allSprites_default.xml"
 
 line "// ─────────────────────────────────────────────────────────────"
-line "namespace Defli.World"
+line "namespace Defli.State"
 line ""
 line "open System.Collections.Frozen"
 line "open System.Collections.Generic"

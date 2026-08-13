@@ -5,19 +5,26 @@ open Microsoft.Xna.Framework
 open Mibo.Adaptive
 open Mibo.Elmish
 open Mibo.Elmish.Graphics2D
-open Defli.World
+open Defli
+open Defli.State
 
 // ─────────────────────────────────────────────────────────────
 // Defli — the windowed MonoGame frontend. The sim runs on the
-// AdaptiveMonoGameGame host: one Step per frame (input poll → shell phase →
-// Router.step → force), the renderers draw the forced frame. The
-// raylib client is Defli/Raylib (same Shared sim).
+// AdaptiveMonoGameGame host: one Step per frame (input poll →
+// subscriptions run → update → force), the renderers draw the
+// forced frame. The raylib client is Defli/Raylib (same Shared
+// sim). Program assembly lives in Shared (Application.program +
+// Input.subscriptions); this file only wires the renderers.
 // ─────────────────────────────────────────────────────────────
 
 [<EntryPoint>]
 let main _ =
-  let cell = WorldCell(World.init WorldConfig.defaults)
-  let shell = Shell()
+  let shell = {
+    MiddleDown = false
+    Diag = FrameDiag()
+  }
+
+  let cell = StateCell(State.init WorldConfig.defaults)
 
   let config =
     GameConfig.defaultConfig
@@ -29,7 +36,14 @@ let main _ =
   let vfx = VfxView()
 
   let program =
-    Application.windowedProgram cell shell
+    // Raw XNA wheel is ±120 per notch: the per-notch zoom base keeps
+    // one notch = ×1.1, same as the raylib client.
+    Application.program
+      ignore
+      (fun () -> cell.Value)
+      (Input.subscriptions (1.1 ** (1.0 / 120.0)) cell shell)
+    |> AdaptiveProgram.withObserver(fun () ->
+      AdaptiveProgram.observe(fun _ -> Diagnostics.update shell.Diag))
     |> AdaptiveProgram.withConfig(fun _ -> config)
     |> AdaptiveProgram.withInput
     |> AdaptiveProgram.withRenderer(fun () ->

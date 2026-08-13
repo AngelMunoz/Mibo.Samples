@@ -1,10 +1,10 @@
-module Defli.World.Systems.Vfx
+module Defli.State.Systems.Vfx
 
 open System
 open System.Collections.Generic
 open System.Numerics
 open Mibo
-open Defli.World
+open Defli.State
 
 // ─────────────────────────────────────────────────────────────
 // VFX sub-system — the ONE deliberately non-adaptive system in the
@@ -99,7 +99,7 @@ module Vfx =
   /// Cold path: spawn a burst into the kind's pool (deterministic
   /// spread — index-based angles, three speed tiers, golden-angle
   /// rotation so overlapping puffs don't read as copies).
-  let update (msg: VfxMsg) (model: VfxModel) : unit =
+  let handle (msg: VfxMsg) (model: VfxModel) : unit =
     match msg with
     | Burst(kind, pos) ->
       let struct (count, speed, size, _, _, _, _) = paramsOf kind

@@ -1,10 +1,10 @@
-module Defli.World.Systems.Towers
+module Defli.State.Systems.Towers
 
 open System.Collections.Generic
 open System.Numerics
 open Mibo.Adaptive
 open Mibo.Elmish
-open Defli.World
+open Defli.State
 open Defli
 
 // ─────────────────────────────────────────────────────────────
@@ -16,7 +16,7 @@ open Defli
 //               RangeRing projection's hover lookup)
 //
 // Targeting reads the Enemies.Alive TRANSIENT VIEW passed in as a
-// direct value by the router (hot path, no closures). Phase 3 adds
+// direct value by the sim update (hot path, no closures). Phase 3 adds
 // the TargetPolicy field; Phase 2 always picks "first" (the enemy
 // closest to the base — highest progress).
 // ─────────────────────────────────────────────────────────────
@@ -24,7 +24,7 @@ open Defli
 [<Struct>]
 type TowerMsg =
   | Place of struct (struct (int * int) * TowerDef)
-  /// Cold path: bump the tower's level (the ROUTER validates gold
+  /// Cold path: bump the tower's level (Application validates gold
   /// and the cap before sending).
   | Upgrade of tower: int<TowerId>
 
@@ -75,9 +75,9 @@ module Towers =
     m.EffectiveDef <- buildEffectiveDef m
     m
 
-  /// Cold path: place a tower. The ROUTER validates (buildable tile,
+  /// Cold path: place a tower. Application validates (buildable tile,
   /// occupancy, gold) before sending — this only writes the rows.
-  let update (msg: TowerMsg) (model: TowersModel) : unit =
+  let handle (msg: TowerMsg) (model: TowersModel) : unit =
     match msg with
     | Place(cell, def) ->
       let tid = model.NextId
@@ -98,8 +98,8 @@ module Towers =
 
   /// Hot path: cooldown decay + target acquisition + fire.
   /// `alive` is a transient read of Enemies.Alive and `suppression`
-  /// one of the world's boss-aura projection (both direct values from
-  /// the router — hot path, no closures); `cellSize` is the grid's
+  /// one of the state's boss-aura projection (both direct values from
+  /// the sim update — hot path, no closures); `cellSize` is the grid's
   /// uniform cell size.
   let tick
     (dt: float32)
@@ -202,4 +202,4 @@ module Towers =
           Target = target
         }
 
-    (if isNull events then Array.empty else events)
+    if isNull events then Array.empty else events

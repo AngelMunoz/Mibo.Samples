@@ -2,7 +2,8 @@ module Defli.Tests.TestData
 
 open System
 open Mibo.Adaptive
-open Defli.World
+open Defli
+open Defli.State
 
 // ─────────────────────────────────────────────────────────────
 // Test-owned fixtures — never production data (Kimo convention:
@@ -88,16 +89,20 @@ module Fixtures =
 
 // ─────────────────────────────────────────────────────────────
 // Headless harness over AdaptiveHeadless — the MVU shell is gone:
-// the world is a composition root (State · Projection · Update ·
-// Force). Tests drive the world's handlers directly and step
-// virtual time; StepUntil polls the world's roots/projections.
+// the state is a composition root (State · Projection · Update ·
+// Force). Tests drive input through Post and step virtual time;
+// assertions read outputs (roots/projections) after stepping.
 // ─────────────────────────────────────────────────────────────
 
-/// A world + runner pair. The runner forces the frame once per
-/// Step; the tests read the world's projections and roots between
+/// A state + runner pair. The runner forces the frame once per
+/// Step; the tests read the state's projections and roots between
 /// steps (same objects the frame packs).
-type Harness(world: World, runner: AdaptiveHeadless<Frame.RenderFrame>) =
-  member _.World = world
+type Harness(state: State, runner: AdaptiveHeadless<Frame.RenderFrame>) =
+  member _.State = state
+
+  /// The input channel: posts a thunk for the next step's drain —
+  /// the same lane the production input subscriptions post into.
+  member _.Post(thunk: unit -> unit) : unit = runner.Post thunk
 
   member _.Step(dt: TimeSpan) : unit = runner.Step(dt) |> ignore
 
@@ -107,22 +112,24 @@ type Harness(world: World, runner: AdaptiveHeadless<Frame.RenderFrame>) =
 
   /// Steps until the predicate holds or the budget runs out.
   /// Returns whether the predicate held.
-  member _.StepUntil(pred: World -> bool, dt: TimeSpan, maxSteps: int) : bool =
+  member _.StepUntil(pred: State -> bool, dt: TimeSpan, maxSteps: int) : bool =
     let mutable i = 0
 
-    while not(pred world) && i < maxSteps do
+    while not(pred state) && i < maxSteps do
       runner.Step(dt) |> ignore
       i <- i + 1
 
-    pred world
+    pred state
 
 let mkHarness(cfg: WorldConfig) =
-  let world = World.init cfg
+  let state = State.init cfg
 
   let runner =
-    new AdaptiveHeadless<Frame.RenderFrame>(Frame.adaptiveProgram world)
+    new AdaptiveHeadless<Frame.RenderFrame>(
+      Application.program ignore (fun () -> state) (fun _ -> AMap.empty)
+    )
 
-  Harness(world, runner)
+  Harness(state, runner)
 
 /// Coarse step for e2e timing tests (the sim is dt-agnostic — the
 /// movement/spawn math consumes dt directly).

@@ -1,11 +1,11 @@
-namespace Defli.World
+namespace Defli.State
 
 open System.Collections.Generic
 open Mibo.Adaptive
 open Mibo.Elmish
 open Defli
-open Defli.World.Systems
-open Defli.World.Systems.Camera
+open Defli.State.Systems
+open Defli.State.Systems.Camera
 
 // ─────────────────────────────────────────────────────────────
 // Frame — the Force phase. Everything the renderer needs, resolved
@@ -18,7 +18,7 @@ module Frame =
   /// Everything the renderer needs, resolved and packed once per Step.
   /// The dictionaries are transient views — valid until the next
   /// Step's writes — so the renderer must read the frame immediately
-  /// after Step, before the world is stepped again.
+  /// after Step, before the state is stepped again.
   [<Struct>]
   type RenderFrame = {
     /// Alive enemies (the Alive projection). Draw-side.
@@ -65,43 +65,38 @@ module Frame =
 
   /// Forcing the frame: resolve every output projection once, pack the
   /// struct. After this, drawing is plain struct reads — O(1), no
-  /// graph access. The count nodes are created ONCE (the AliveCount
-  /// precedent): `AMap.count` builds a node, so per-call creation in
-  /// the frame body would allocate every Step.
-  let buildFrame(world: World) : unit -> RenderFrame =
-    let towerCount = world.Towers.Statics |> AMap.count
-    let enemyCount = world.Enemies.Alive |> AMap.count
-    let projectileCount = world.Projections.Homing |> AMap.count
+  /// graph access. `force` follows the state it is handed at force
+  /// time; the count nodes live on the State record (created at init),
+  /// so restarts (cell swap) re-bind cleanly with zero per-step
+  /// allocation.
+  let inline force
+    ([<InlineIfLambda>] getState: unit -> State)
+    : unit -> RenderFrame =
+    fun () ->
+      let state = getState()
 
-    fun () -> {
-      Alive = world.Enemies.Alive |> AMap.getValue
-      Defs = world.Enemies.Defs |> AMap.getValue
-      TowerStatics = world.Towers.Statics |> AMap.getValue
-      TowerLevels = world.Towers.Levels |> AMap.getValue
-      Projectiles = world.Projections.Homing |> AMap.getValue
-      Gold = AVal.getValue world.Economy.Gold
-      Lives = AVal.getValue world.Economy.Lives
-      Banner = AVal.getValue world.Waves.Banner
-      GameOver = AVal.getValue world.Economy.GameOver
-      WaveNumber = AVal.getValue world.Waves.WaveNumber
-      WaveActive = AVal.getValue world.Waves.WaveActive
-      SpawnQueueLength = world.Spawning.Queue.Count
-      TowerCount = AVal.getValue towerCount
-      EnemyCount = AVal.getValue enemyCount
-      ProjectileCount = AVal.getValue projectileCount
-      HoverCell = world.HoverCell |> AVal.getValue
-      SelectedTower = world.SelectedTower |> AVal.getValue
-      PlacementPreview = world.Projections.PlacementPreview |> AVal.getValue
-      RangeRing = world.Projections.RangeRing |> AVal.getValue
-      Vfx = world.Vfx
-      Map = world.Map
-      Diag = world.Diag
-      Camera = world.Camera.State
-    }
-
-  /// The adaptive program: the frame builder forces the world's
-  /// projections at the end of every Step; Update runs the router.
-  let adaptiveProgram(world: World) : AdaptiveProgram<RenderFrame> =
-    AdaptiveProgram.mkProgram
-      (fun _ctx -> AdaptiveInit.ofFrameBuilder(buildFrame world))
-      (fun _ctx gameTime -> Router.step world gameTime)
+      {
+        Alive = state.Enemies.Alive |> AMap.getValue
+        Defs = state.Enemies.Defs |> AMap.getValue
+        TowerStatics = state.Towers.Statics |> AMap.getValue
+        TowerLevels = state.Towers.Levels |> AMap.getValue
+        Projectiles = state.Projections.Homing |> AMap.getValue
+        Gold = state.Economy.Gold |> AVal.getValue
+        Lives = state.Economy.Lives |> AVal.getValue
+        Banner = state.Waves.Banner |> AVal.getValue
+        GameOver = state.Economy.GameOver |> AVal.getValue
+        WaveNumber = state.Waves.WaveNumber |> AVal.getValue
+        WaveActive = state.Waves.WaveActive |> AVal.getValue
+        SpawnQueueLength = state.Spawning.Queue.Count
+        TowerCount = state.TowerCount |> AVal.getValue
+        EnemyCount = state.AliveCount |> AVal.getValue
+        ProjectileCount = state.ProjectileCount |> AVal.getValue
+        HoverCell = state.HoverCell |> AVal.getValue
+        SelectedTower = state.SelectedTower |> AVal.getValue
+        PlacementPreview = state.Projections.PlacementPreview |> AVal.getValue
+        RangeRing = state.Projections.RangeRing |> AVal.getValue
+        Vfx = state.Vfx
+        Map = state.Map
+        Diag = state.Diag
+        Camera = state.Camera.State
+      }

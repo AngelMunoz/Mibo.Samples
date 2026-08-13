@@ -18,7 +18,7 @@ let allTests =
     TowersTests.tests
     ProjectilesTests.tests
     DiagnosticsTests.tests
-    RouterTests.tests
+    ApplicationTests.tests
     CameraTests.tests
   ]
 

@@ -5,10 +5,10 @@ open System.Numerics
 open Expecto
 open Mibo.Adaptive
 open Defli
-open Defli.World
-open Defli.World.Systems
+open Defli.State
+open Defli.State.Systems
 open TestData
-open Defli.World.Systems.Towers
+open Defli.State.Systems.Towers
 
 let private cfg = TestData.Fixtures.cfg
 let private map = MapModel.create cfg
@@ -67,7 +67,7 @@ let tests =
       let m = model()
       let cell = struct (3, 3)
 
-      Towers.update (TowerMsg.Place(cell, def)) m
+      Towers.handle (TowerMsg.Place(cell, def)) m
       let m' = m
 
       Expect.equal (m'.Statics |> AMap.getValue).Count 1 "statics"
@@ -85,7 +85,7 @@ let tests =
       let m = model()
       let cell = struct (3, 3)
 
-      Towers.update (TowerMsg.Place(cell, def)) m
+      Towers.handle (TowerMsg.Place(cell, def)) m
       let m' = m
 
       // Range 2 cells ≈ 128 px; enemy is far away.
@@ -105,7 +105,7 @@ let tests =
       let m = model()
       let cell = struct (3, 3)
 
-      Towers.update (TowerMsg.Place(cell, def)) m
+      Towers.handle (TowerMsg.Place(cell, def)) m
       let m' = m
 
       // Tower center (3,3) = (224, 224); enemy one cell east = in range 2.
@@ -132,7 +132,7 @@ let tests =
       let m = model()
       let cell = struct (3, 3)
 
-      Towers.update (TowerMsg.Place(cell, def)) m
+      Towers.handle (TowerMsg.Place(cell, def)) m
       let m' = m
 
       // Two enemies both in range; the one with higher progress wins.
@@ -196,7 +196,7 @@ let tests =
     let picked(policy: TargetPolicy) : int<EnemyId> =
       let m = model()
 
-      Towers.update (TowerMsg.Place(struct (3, 3), defWith policy)) m
+      Towers.handle (TowerMsg.Place(struct (3, 3), defWith policy)) m
       let m' = m
 
       let events =
@@ -243,7 +243,7 @@ let tests =
 
       let m = model()
 
-      Towers.update
+      Towers.handle
         (TowerMsg.Place(struct (3, 3), defWith TargetPolicy.Closest))
         m
 
@@ -265,7 +265,7 @@ let tests =
       let m = model()
       let cell = struct (3, 3)
 
-      Towers.update (TowerMsg.Place(cell, TowerDefs.frost)) m
+      Towers.handle (TowerMsg.Place(cell, TowerDefs.frost)) m
       let m' = m
 
       let alive =
@@ -287,7 +287,7 @@ let tests =
       let m = model()
       let cell = struct (3, 3)
 
-      Towers.update (TowerMsg.Place(cell, TowerDefs.cannon)) m
+      Towers.handle (TowerMsg.Place(cell, TowerDefs.cannon)) m
       let m' = m
 
       let alive =
@@ -311,11 +311,11 @@ let tests =
         let m = model()
         let cell = struct (3, 3)
 
-        Towers.update (TowerMsg.Place(cell, def)) m
+        Towers.handle (TowerMsg.Place(cell, def)) m
         let m' = m
 
         // Level 2: +10 % fire rate → the cooldown must shrink.
-        Towers.update (TowerMsg.Upgrade(0<TowerId>)) m'
+        Towers.handle (TowerMsg.Upgrade(0<TowerId>)) m'
         let m2 = m'
 
         let alive =
@@ -340,7 +340,7 @@ let tests =
         let m = model()
         let cell = struct (3, 3)
 
-        Towers.update (TowerMsg.Place(cell, def)) m
+        Towers.handle (TowerMsg.Place(cell, def)) m
         let m' = m
 
         let suppression = Dictionary<int<TowerId>, float32>()
@@ -368,7 +368,7 @@ let tests =
         let m = model()
         let cell = struct (3, 3)
 
-        Towers.update (TowerMsg.Place(cell, def)) m
+        Towers.handle (TowerMsg.Place(cell, def)) m
         let m' = m
         let tid = 0<TowerId>
 
@@ -381,7 +381,7 @@ let tests =
         | ValueNone -> failtest "effective def must exist"
 
         // Level 2 → +25 % damage, +10 % fire rate, +0.5 range.
-        Towers.update (TowerMsg.Upgrade tid) m'
+        Towers.handle (TowerMsg.Upgrade tid) m'
         let m2 = m'
 
         match m2.Levels |> CMap.tryGetValue tid with
@@ -401,7 +401,7 @@ let tests =
       let m = model()
       let cell = struct (3, 3)
 
-      Towers.update (TowerMsg.Place(cell, def)) m
+      Towers.handle (TowerMsg.Place(cell, def)) m
       let m' = m
 
       let alive =

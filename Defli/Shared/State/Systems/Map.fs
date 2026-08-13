@@ -1,13 +1,13 @@
-namespace Defli.World.Systems
+namespace Defli.State.Systems
 
 open System.Numerics
 open Mibo.Layout
-open Defli.World
+open Defli.State
 
 // ─────────────────────────────────────────────────────────────
 // Map sub-system — owns a LayeredGrid2D<MapTile> (one parallel
 // CellGrid2D per concern) and the path. Static content (built once
-// at world init, never mutated — same rule as Kimo's map/stores;
+// at state init, never mutated — same rule as Kimo's map/stores;
 // NOT adaptive).
 //
 // Layers (MapLayers):

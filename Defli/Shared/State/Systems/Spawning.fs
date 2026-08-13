@@ -1,8 +1,8 @@
-module Defli.World.Systems.Spawning
+module Defli.State.Systems.Spawning
 
 open System
 open System.Collections.Generic
-open Defli.World
+open Defli.State
 
 // ─────────────────────────────────────────────────────────────
 // Spawning sub-system (Kimo's Systems/Spawning.fs analog) — owns
@@ -65,7 +65,7 @@ module Spawning =
   /// at their fixed delays (the boss leads), then one weighted pick
   /// per spawn, spaced by the wave's interval. Each entry carries its
   /// own remaining delay, so queue order never affects timing.
-  let update (msg: SpawnMsg) (model: SpawningModel) : SpawnEvent[] =
+  let handle (msg: SpawnMsg) (model: SpawningModel) : SpawnEvent[] =
     match msg with
     | FillWave wave ->
       model.Queue.Clear()

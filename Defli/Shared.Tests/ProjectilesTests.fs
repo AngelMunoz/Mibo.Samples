@@ -5,11 +5,11 @@ open System.Numerics
 open Expecto
 open Mibo.Adaptive
 open Defli
-open Defli.World
-open Defli.World.Systems
+open Defli.State
+open Defli.State.Systems
 open TestData
-open Defli.World.Systems.Projectiles
-open Defli.World.Systems.Enemies
+open Defli.State.Systems.Projectiles
+open Defli.State.Systems.Enemies
 
 let private cfg = TestData.Fixtures.cfg
 let private map = MapModel.create cfg
@@ -24,7 +24,7 @@ let private positionsAt(pos: Vector2) =
   d
 
 let private spawnAt (m: ProjectilesModel) (pos: Vector2) =
-  Projectiles.update
+  Projectiles.handle
     (ProjectileMsg.Spawn {
       Pos = pos
       TargetEnemy = target
@@ -45,7 +45,7 @@ let tests =
     testCase "spawn adds a row" (fun () ->
       let m = model()
 
-      Projectiles.update
+      Projectiles.handle
         (ProjectileMsg.Spawn {
           Pos = Vector2.Zero
           TargetEnemy = target
@@ -96,7 +96,7 @@ let tests =
       // Frost-style shot: slowFactor 0.5 for 2 s.
       let mutable m = model()
 
-      Projectiles.update
+      Projectiles.handle
         (ProjectileMsg.Spawn {
           Pos = Vector2(10f, 0f)
           TargetEnemy = target
@@ -160,7 +160,7 @@ let tests =
         | ValueNone -> failtest "row must exist"
 
         // Enough time to cover the remaining 30 px → detonation, with the
-        // DEAD target's id on the impact (the router no-ops its damage;
+        // DEAD target's id on the impact (the sim update no-ops its damage;
         // a splash payload would blast the point).
         let events2 =
           Projectiles.tick 1.0f m3 (Dictionary<int<EnemyId>, Vector2>())
@@ -181,7 +181,7 @@ let tests =
     testCase "spawn carries the splash payload to Impact" (fun () ->
       let mutable m = model()
 
-      Projectiles.update
+      Projectiles.handle
         (ProjectileMsg.Spawn {
           Pos = Vector2(10f, 0f)
           TargetEnemy = target
@@ -233,11 +233,11 @@ let tests =
     testCase
       "Homing projection: render row tracks the target's live position"
       (fun () ->
-        // World-owned projection — build the pieces it joins.
+        // State-owned projection — build the pieces it joins.
         let enemies = Enemies.Enemies.init()
 
         let _ =
-          Enemies.Enemies.update
+          Enemies.Enemies.handle
             (EnemyMsg.Spawn Fixtures.runner)
             enemies
             map.Path
@@ -283,7 +283,7 @@ let tests =
         // Kill the enemy (despawn): the homing entry STAYS — the render
         // row falls back to the projectile's LastTargetPos (the sim
         // flies the shot to the detonation point; no render-side pop).
-        let _ = Enemies.Enemies.update (EnemyMsg.Despawn eid) enemies2 map.Path
+        let _ = Enemies.Enemies.handle (EnemyMsg.Despawn eid) enemies2 map.Path
 
         let enemies3 = enemies2
         let rows3 = projections.Homing |> AMap.getValue

@@ -8,8 +8,8 @@ open Mibo.Elmish
 open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics2D
 open Raylib_cs
-open Defli.World
-open Defli.World.Systems
+open Defli.State
+open Defli.State.Systems
 
 // ─────────────────────────────────────────────────────────────
 // EnemiesView — enemy sprites, boss aura rings and health bars from

@@ -4,7 +4,7 @@ open System.Numerics
 open Mibo.Elmish
 open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics2D
-open Defli.World.Systems.Camera
+open Defli.State.Systems.Camera
 
 // ─────────────────────────────────────────────────────────────
 // CameraView — the MonoGame EDGE of the neutral camera: builds the

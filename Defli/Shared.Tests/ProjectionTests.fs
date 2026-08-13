@@ -4,11 +4,11 @@ open System.Numerics
 open Expecto
 open Mibo.Adaptive
 open TestData
-open Defli.World
-open Defli.World.Systems
+open Defli.State
+open Defli.State.Systems
 open Defli
-open Defli.World.Systems.Enemies
-open Defli.World.Systems.Economy
+open Defli.State.Systems.Enemies
+open Defli.State.Systems.Economy
 
 // ─────────────────────────────────────────────────────────────
 // The ECS "query returns what the tables contain" contract: the
@@ -24,7 +24,7 @@ let private aliveView(m: EnemiesModel) = m.Alive |> AMap.getValue
 let private viewsView(m: EnemiesModel) = m.Views |> AMap.getValue
 
 let private spawn (m: EnemiesModel) (def: EnemyDef) =
-  let _ = Enemies.update (EnemyMsg.Spawn def) m map.Path
+  let _ = Enemies.handle (EnemyMsg.Spawn def) m map.Path
   let m' = m
   m'
 
@@ -49,7 +49,7 @@ let tests =
       m <- spawn m Fixtures.runner // id 2
 
       // Damage the tank (id 1).
-      let _ = Enemies.update (EnemyMsg.ApplyDamage(1<EnemyId>, 50)) m map.Path
+      let _ = Enemies.handle (EnemyMsg.ApplyDamage(1<EnemyId>, 50)) m map.Path
       let m' = m
 
       let expectedHp(eid: int<EnemyId>) =
@@ -69,7 +69,7 @@ let tests =
       let mutable m = spawn (Enemies.init()) Fixtures.grunt
       m <- spawn m Fixtures.runner
 
-      let _ = Enemies.update (EnemyMsg.ApplyDamage(0<EnemyId>, 999)) m map.Path
+      let _ = Enemies.handle (EnemyMsg.ApplyDamage(0<EnemyId>, 999)) m map.Path
       let m' = m
 
       Expect.equal (aliveView m').Count 1 "only runner alive"
@@ -80,7 +80,7 @@ let tests =
         1
         "count follows Alive"
 
-      let _ = Enemies.update (EnemyMsg.Despawn(0<EnemyId>)) m' map.Path
+      let _ = Enemies.handle (EnemyMsg.Despawn(0<EnemyId>)) m' map.Path
       let m2 = m'
 
       Expect.equal (viewsView m2).Count 1 "corpse removed"
@@ -93,7 +93,7 @@ let tests =
     testCase "repeated reads at a settled state are stable" (fun () ->
       let mutable m = spawn (Enemies.init()) Fixtures.tank
 
-      let _ = Enemies.update (EnemyMsg.ApplyDamage(0<EnemyId>, 10)) m map.Path
+      let _ = Enemies.handle (EnemyMsg.ApplyDamage(0<EnemyId>, 10)) m map.Path
       let m' = m
 
       let first = viewsView m'
@@ -150,11 +150,11 @@ let tests =
     testCase "game over aval follows lives" (fun () ->
       let e = Economy.init cfg
       Expect.isFalse (AVal.getValue e.GameOver) "not over"
-      Economy.update EconomyMsg.LoseLife e
+      Economy.handle EconomyMsg.LoseLife e
       Expect.isFalse (AVal.getValue e.GameOver) "still not over"
 
       for _ in 2 .. cfg.StartingLives do
-        Economy.update EconomyMsg.LoseLife e
+        Economy.handle EconomyMsg.LoseLife e
 
       Expect.isTrue (AVal.getValue e.GameOver) "over at zero")
 
@@ -163,7 +163,7 @@ let tests =
       let towers = Towers.Towers.init()
 
       // Tower at cell (2,3) — center (160, 224).
-      Towers.Towers.update
+      Towers.Towers.handle
         (Towers.TowerMsg.Place(struct (2, 3), TowerDefs.arrow))
         towers
 
@@ -190,7 +190,7 @@ let tests =
 
       // Boss ON the tower's cell → suppressed.
       let _ =
-        Enemies.update
+        Enemies.handle
           (EnemyMsg.SpawnAt(Fixtures.boss, Vector2(160f, 224f), 0f, 0))
           enemies
           map.Path
@@ -203,11 +203,11 @@ let tests =
         "suppressed in radius"
 
       // A non-boss at the same spot does NOT suppress.
-      let _ = Enemies.update (EnemyMsg.Despawn(0<EnemyId>)) e2 map.Path
+      let _ = Enemies.handle (EnemyMsg.Despawn(0<EnemyId>)) e2 map.Path
       let e3 = e2
 
       let _ =
-        Enemies.update
+        Enemies.handle
           (EnemyMsg.SpawnAt(Fixtures.grunt, Vector2(160f, 224f), 0f, 0))
           e3
           map.Path
@@ -220,11 +220,11 @@ let tests =
         "grunts don't suppress"
 
       // A boss OUTSIDE the radius (200 px away > Radius 128) doesn't either.
-      let _ = Enemies.update (EnemyMsg.Despawn(1<EnemyId>)) e4 map.Path
+      let _ = Enemies.handle (EnemyMsg.Despawn(1<EnemyId>)) e4 map.Path
       let e5 = e4
 
       let _ =
-        Enemies.update
+        Enemies.handle
           (EnemyMsg.SpawnAt(Fixtures.boss, Vector2(360f, 224f), 0f, 0))
           e5
           map.Path

@@ -1,12 +1,12 @@
-module Defli.World.Systems.Camera
+module Defli.State.Systems.Camera
 
 open System
 open System.Numerics
-open Defli.World
+open Defli.State
 
 // ─────────────────────────────────────────────────────────────
 // Camera sub-system — owns the single 2D camera (Kimo analog:
-// World/Systems/Camera.fs). The sim stores BACKEND-NEUTRAL camera
+// State/Systems/Camera.fs). The sim stores BACKEND-NEUTRAL camera
 // facts (CameraState: target/zoom/rotation + shake timer); the
 // native camera (raylib Camera2D, MonoGame Camera2D) is built from
 // them at the view edge ("convert at edges" — see Mibo.Samples).
@@ -31,9 +31,13 @@ type CameraMsg =
   /// follows the cursor, so the camera target moves opposite the
   /// drag, scaled by the current zoom. Conversion happens HERE (the
   /// subsystem owns the zoom); callers send raw screen pixels.
-  /// (Keyboard pan mirrors a drag, so the shell sends the opposite
-  /// sign.)
+  /// Keyboard pan mirrors a drag: Camera.tick applies the accumulated
+  /// AddKeyboardPan direction with the same sign convention.
   | Pan of screenDelta: Vector2
+  /// Keyboard pan: the pressed/released deltas ACCUMULATE in the model
+  /// (pressed adds, released subtracts — the shell's PanDir tracking);
+  /// Camera.tick applies the accumulated direction as a Pan each step.
+  | AddKeyboardPan of delta: Vector2
   /// Multiplicative zoom step (e.g. 1.1 = zoom in, 0.9 = zoom out).
   | ZoomBy of factor: float32
   | SetTarget of target: Vector2
@@ -53,7 +57,9 @@ type CameraState = {
   /// Rotation in degrees (Defli never rotates — always 0).
   Rotation: float32
   /// World bounds (0,0 → WorldSize) — clampToWorld keeps the target
-  /// so the view never shows void outside the map.
+  /// inside the world, soft-clamping axes whose view is wider than
+  /// the world (the target can slide until the world edge meets the
+  /// screen edge).
   WorldSize: Vector2
   /// Seconds of shake left (decayed by Camera.tick).
   ShakeRemaining: float32
@@ -68,11 +74,19 @@ type CameraModel() =
   [<DefaultValue>]
   val mutable State: CameraState
 
+  /// Accumulated keyboard pan direction (pressed adds, released
+  /// subtracts); Camera.tick consumes it as a Pan each step.
+  [<DefaultValue>]
+  val mutable KeyboardPan: Vector2
+
 module Camera =
 
   let MinZoom = 0.5f
   let MaxZoom = 3f
   let ShakeDuration = 0.35f
+  /// Keyboard pan speed in world pixels per second (the accumulated
+  /// AddKeyboardPan direction is scaled by it in Camera.tick).
+  let KeyboardPanSpeed = 500f
 
   let init(worldSize: Vector2) : CameraModel =
     CameraModel(
@@ -83,18 +97,20 @@ module Camera =
         WorldSize = worldSize
         ShakeRemaining = 0f
         ShakeStrength = 0f
-      }
+      },
+      KeyboardPan = Vector2.Zero
     )
 
   /// Cold path: apply an input intent by mutating the state in place
   /// (never re-creating it). No return.
-  let update (msg: CameraMsg) (model: CameraModel) : unit =
+  let handle (msg: CameraMsg) (model: CameraModel) : unit =
     match msg with
     | Pan d ->
       model.State <- {
         model.State with
             Target = model.State.Target - d / model.State.Zoom
       }
+    | AddKeyboardPan d -> model.KeyboardPan <- model.KeyboardPan + d
     | ZoomBy f ->
       model.State <- {
         model.State with
@@ -116,30 +132,43 @@ module Camera =
             ShakeStrength = 0f
       }
 
-  /// Hot path (per RoomTick): decay the shake timer.
+  /// Hot path (per RoomTick): apply the accumulated keyboard pan as a
+  /// Pan (drag semantics — the sign convention mirrors the shell's old
+  /// PanDir step, so no sign flip here), then decay the shake timer.
   let tick (dt: float32) (model: CameraModel) : unit =
+    if model.KeyboardPan <> Vector2.Zero then
+      handle (Pan(model.KeyboardPan * KeyboardPanSpeed * dt)) model
+
     if model.State.ShakeRemaining > 0f then
       model.State <- {
         model.State with
             ShakeRemaining = max 0f (model.State.ShakeRemaining - dt)
       }
 
+  let inline clampAxis (world: float32) (view: float32) =
+    if view >= world then
+      // View wider than the world: soft range around the center
+      // (min < max holds because view > world). At the extremes the
+      // world edge aligns with the screen edge and the excess shows
+      // void on the opposite side — keyboard panning never dead-ends.
+      struct (world - view / 2f, view / 2f)
+    else
+      struct (view / 2f, world - view / 2f)
   // ── Pure view math (backend-neutral, headless-testable) ──────
   // The backend-specific conversion (native camera structs, culling
   // rectangles) lives in the frontend view layers.
 
-  /// The clamped camera: the view limits the target so the visible
-  /// world never shows void beyond the map. Pure — the sim stores
-  /// render-independent facts; the view clamps a copy each frame.
-  let clampToWorld (state: CameraState) (viewport: Vector2) : CameraState =
+  /// The clamped camera: per axis, the target is kept inside the
+  /// world when the view fits; when the view is WIDER than the world
+  /// the clamp is soft — the target can still slide until the world
+  /// edge meets the screen edge, so keyboard panning works at every
+  /// zoom. Pure — the sim stores render-independent facts; the view
+  /// clamps a copy each frame.
+  let inline clampToWorld
+    (state: CameraState)
+    (viewport: Vector2)
+    : CameraState =
     let view = viewport / state.Zoom
-
-    let clampAxis (world: float32) (view: float32) =
-      if view >= world then
-        struct (world / 2f, world / 2f)
-      else
-        struct (view / 2f, world - view / 2f)
-
     let struct (minX, maxX) = clampAxis state.WorldSize.X view.X
     let struct (minY, maxY) = clampAxis state.WorldSize.Y view.Y
 
@@ -155,7 +184,7 @@ module Camera =
   /// Screen → world through the camera (the offset is the viewport
   /// center — the view builds it from the window size). Frontends
   /// compose clampToWorld + this so picking matches what is drawn.
-  let screenToWorld
+  let inline screenToWorld
     (state: CameraState)
     (viewport: Vector2)
     (screenPos: Vector2)
@@ -165,7 +194,7 @@ module Camera =
   /// The world-space rect the camera shows — (min, max) of the view
   /// centered on the CLAMPED target (the backend-neutral equivalent
   /// of raylib's viewportBounds helper).
-  let viewBounds
+  let inline viewBounds
     (state: CameraState)
     (viewport: Vector2)
     : struct (Vector2 * Vector2) =
