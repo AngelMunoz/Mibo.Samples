@@ -7,6 +7,9 @@ let private printUsage() =
   eprintfn
     "Usage: dotnet run --project BoneProbe -- [raw|palette|dimensions] <path> [-v|--verbosity full|summary] [-f|--focus <name>]"
 
+  eprintfn
+    "       dotnet run --project BoneProbe -- emit <models-dir> <output.fs>"
+
   eprintfn ""
   eprintfn "Commands:"
 
@@ -18,6 +21,9 @@ let private printUsage() =
 
   eprintfn
     "  dimensions  Batch report: per-model vertex extents + animation count (dir or .glb file)."
+
+  eprintfn
+    "  emit        Bake model extents into an F# dataset (Defli3D.State.Models, e.g. Models.fs)."
 
   eprintfn ""
   eprintfn "Options:"
@@ -44,6 +50,7 @@ let rec private parseOptions
     let opts = {
       Mode = Raw
       Path = path
+      OutputPath = ""
       Verbosity = Full
       Focus = None
     }
@@ -53,6 +60,7 @@ let rec private parseOptions
     let opts = {
       Mode = Palette
       Path = path
+      OutputPath = ""
       Verbosity = Full
       Focus = None
     }
@@ -62,6 +70,17 @@ let rec private parseOptions
     let opts = {
       Mode = Dimensions
       Path = path
+      OutputPath = ""
+      Verbosity = Full
+      Focus = None
+    }
+
+    parseOptions rest (Some opts)
+  | ("emit" :: modelsDir :: output :: rest), None ->
+    let opts = {
+      Mode = Emit
+      Path = modelsDir
+      OutputPath = output
       Verbosity = Full
       Focus = None
     }
@@ -92,3 +111,4 @@ let main argv =
     | Raw -> BoneProbe.RawAssimp.probe opts
     | Palette -> BoneProbe.Palette.probe opts
     | Dimensions -> BoneProbe.Dimensions.probe opts
+    | Emit -> BoneProbe.Emit.run opts.Path opts.OutputPath

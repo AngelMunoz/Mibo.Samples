@@ -11,6 +11,7 @@
     <Compile Include="RawAssimp.fs" />
     <Compile Include="Palette.fs" />
     <Compile Include="Dimensions.fs" />
+    <Compile Include="Emit.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

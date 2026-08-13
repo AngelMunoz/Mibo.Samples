@@ -149,8 +149,10 @@ let private measureSceneFull(scene: Scene) =
   struct (raw, world, meshes.ToArray())
 
 /// Scan one .glb into a ModelReport. Owns its own AssimpContext via
-/// Scene.tryLoad, so it is safe to call concurrently.
-let private scanOne(path: string) : ModelReport =
+/// Scene.tryLoad, so it is safe to call concurrently. Shared with the
+/// emit mode (BoneProbe.Emit) so the baked dataset measures models with
+/// the exact same flags and error semantics as this report.
+let scanOne(path: string) : ModelReport =
   let name = Path.GetFileName path
 
   let empty error loaded scene = {

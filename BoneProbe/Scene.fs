@@ -28,6 +28,7 @@ type Mode =
   | Raw
   | Palette
   | Dimensions
+  | Emit
 
 type Verbosity =
   | Full
@@ -36,6 +37,8 @@ type Verbosity =
 type Options = {
   Mode: Mode
   Path: string
+  /// Second positional arg — used by the emit mode (output .fs path).
+  OutputPath: string
   Verbosity: Verbosity
   Focus: string option
 }
