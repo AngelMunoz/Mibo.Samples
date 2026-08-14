@@ -1,10 +1,20 @@
 // Per-minute census + gap analysis for the main game thread.
+// Usage: dotnet fsi tools/probe-minute.fsx <trace.speedscope.json> [--adaptive <name>]
 open System
 open System.Collections.Generic
 open System.IO
 open System.Text.Json
 
 let path = fsi.CommandLineArgs[1]
+
+/// Module prefix of the adaptive library (default "Mibo.Adaptive";
+/// 2D-era traces used "AdaptiveSlop.Core").
+let adaptiveName =
+  fsi.CommandLineArgs
+  |> Array.tryFindIndex(fun a -> a = "--adaptive")
+  |> Option.bind(fun i -> fsi.CommandLineArgs |> Array.tryItem(i + 1))
+  |> Option.defaultValue "Mibo.Adaptive"
+
 let doc = JsonDocument.Parse(File.ReadAllText path)
 let root = doc.RootElement
 
@@ -14,6 +24,14 @@ let frames =
   |> Seq.toArray
 
 let frameName(i: int) = frames[i] |> snd
+
+/// The owning module/library of a frame name (before the first !).
+let moduleOf(n: string) =
+  match n.IndexOf '!' with
+  | -1 -> n
+  | i -> n.Substring(0, i)
+
+let isAdaptive(n: string) = moduleOf n = adaptiveName
 
 let events =
   root.GetProperty("profiles").EnumerateArray()
@@ -27,8 +45,6 @@ let events =
             e.GetProperty("frame").GetInt32(),
             e.GetProperty("at").GetDouble()))
   |> Seq.toArray
-
-let isAdaptive(n: string) = n.Contains "AdaptiveSlop"
 
 // per-minute: samples, adaptive samples, and the ≥120 ms gap count
 let minutes = ResizeArray<struct (int * int * int * int * int)>() // samples, aslop, bigGaps, totalGaps
@@ -76,7 +92,7 @@ for struct (t, f, at) in events do
 
 minutes.Add(struct (curMin, sMin, aMin, gapsMin, bigGapsMin))
 
-printfn "min  samples  aslop  aslop%%  gaps  bigGaps(≥120ms)"
+printfn "min  samples  adapt  adapt%%  gaps  bigGaps(≥120ms)"
 let mutable totS = 0
 let mutable totA = 0
 let mutable totB = 0
@@ -87,7 +103,7 @@ for struct (m, s, a, g, b) in minutes do
   totB <- totB + b
   printfn "%3d  %6d  %6d  %5.1f  %5d  %4d" m s a (100.0 * float a / float s) g b
 
-printfn "── totals: samples %d  aslop %d  bigGaps %d" totS totA totB
+printfn "── totals: samples %d  %s %d  bigGaps %d" totS adaptiveName totA totB
 
 // where are the big gaps: distribution over the session
 printfn ""

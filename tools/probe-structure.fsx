@@ -71,6 +71,45 @@ for prof in root.GetProperty("profiles").EnumerateArray() do
        |> Seq.map(fun kv -> sprintf "%d:%d" kv.Key kv.Value)
        |> String.concat " ")
 
+    // Frame-cadence check: bucket inter-sample gaps by vsync multiples
+    // (a 60 Hz display = 16.6667 ms). k=1 dominant ⇒ the game holds the
+    // vsync period; k=2/3 modes ⇒ missed vsyncs (collector hitches or
+    // GPU-bound frames). --vsync <ms> overrides the period.
+    let vsyncPeriod =
+      fsi.CommandLineArgs
+      |> Array.tryFindIndex(fun a -> a = "--vsync")
+      |> Option.bind(fun i -> fsi.CommandLineArgs |> Array.tryItem(i + 1))
+      |> Option.bind(fun s ->
+        match Double.TryParse s with
+        | true, v when v > 1.0 -> Some v
+        | _ -> None)
+      |> Option.defaultValue 16.6667
+
+    let vsyncBuckets = Dictionary<int, int>()
+
+    for g in gaps do
+      if g >= 2.0 then
+        let k = int(Math.Round(g / vsyncPeriod))
+
+        vsyncBuckets[k] <-
+          (if vsyncBuckets.ContainsKey k then vsyncBuckets[k] else 0) + 1
+
+    let vsyncTotal = vsyncBuckets.Values |> Seq.sum
+
+    if vsyncTotal > 0 then
+      printfn
+        "  vsync cadence (period %.2f ms): %s"
+        vsyncPeriod
+        (vsyncBuckets
+         |> Seq.sortBy _.Key
+         |> Seq.map(fun kv ->
+           sprintf
+             "k=%d:%d(%.1f%%)"
+             kv.Key
+             kv.Value
+             (100.0 * float kv.Value / float vsyncTotal))
+         |> String.concat " ")
+
     let cpuOpens =
       events
       |> Seq.filter(fun struct (t, f, _) -> t = "O" && frameName f = "CPU_TIME")

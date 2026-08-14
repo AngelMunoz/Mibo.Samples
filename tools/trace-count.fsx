@@ -1,10 +1,17 @@
 // trace-count.fsx
 //
 // Usage: dotnet fsi trace-count.fsx <trace.speedscope.json> [--tail <fraction>]
+//                                    [--draw <fragment>] [--update <fragment>]
+//                                    [--interesting <fragment>]...
 //
 // Counts "O" (open) events per frame name on the MAIN thread — i.e. how many
 // times each function was entered in the window. Used to derive frames/sec
 // and per-frame call counts (draw calls, constant-buffer applications, etc).
+//
+// --draw / --update pick the frame markers by substring (defaults match the
+// MonoGame shell: "MiboGame`2"+".Draw(" and "Game.DoUpdate"; raylib traces
+// use e.g. --draw "Renderer3D" --update "StepCore"). --interesting can be
+// repeated to replace the default interest list.
 
 open System
 open System.IO
@@ -30,6 +37,23 @@ let tailFraction =
       match Double.TryParse s with
       | true, v when v > 0.0 && v < 1.0 -> Some v
       | _ -> None))
+
+/// argv string option with a default.
+let argStr (flag: string) (def: string) =
+  fsi.CommandLineArgs
+  |> Array.tryFindIndex(fun a -> a = flag)
+  |> Option.bind(fun i -> fsi.CommandLineArgs |> Array.tryItem(i + 1))
+  |> Option.defaultValue def
+
+let drawFragment = argStr "--draw" ""
+let updateFragment = argStr "--update" ""
+
+let interestingFragments =
+  fsi.CommandLineArgs
+  |> Array.windowed 2
+  |> Array.filter(fun w -> w[0] = "--interesting")
+  |> Array.map(fun w -> w[1])
+  |> Array.distinct
 
 let doc = JsonDocument.Parse(File.ReadAllBytes path)
 let root = doc.RootElement
@@ -114,19 +138,25 @@ printfn
 let draws =
   counts
   |> Seq.tryPick(fun kv ->
-    if kv.Key.Contains "MiboGame`2" && kv.Key.Contains ".Draw(" then
-      Some kv.Value
-    else
-      None)
+    let ok =
+      if drawFragment <> "" then
+        kv.Key.Contains drawFragment
+      else
+        kv.Key.Contains "MiboGame`2" && kv.Key.Contains ".Draw("
+
+    if ok then Some kv.Value else None)
   |> Option.defaultValue 0L
 
 let updates =
   counts
   |> Seq.tryPick(fun kv ->
-    if kv.Key.Contains "Game.DoUpdate" then
-      Some kv.Value
-    else
-      None)
+    let ok =
+      if updateFragment <> "" then
+        kv.Key.Contains updateFragment
+      else
+        kv.Key.Contains "Game.DoUpdate"
+
+    if ok then Some kv.Value else None)
   |> Option.defaultValue 0L
 
 printfn
@@ -145,20 +175,23 @@ printfn "  per-frame    total   /sec  name"
 let interesting(kv: KeyValuePair<string, int64>) =
   let n = kv.Key
 
-  n.Contains "Pipelines"
-  || n.Contains "DrawInstancedPrimitives"
-  || n.Contains "ConstantBuffer"
-  || n.Contains "EffectPass"
-  || n.Contains "SetData"
-  || n.Contains "SetRenderTarget"
-  || n.Contains "ApplyState"
-  || n.Contains "DrawMesh"
-  || n.Contains "Palette"
-  || n.Contains "Present"
-  || n.Contains "Clear"
-  || n.Contains "EffectParameter.SetValue"
-  || n.Contains "DrawUserIndexed"
-  || n.Contains "DrawIndexedPrimitives"
+  if interestingFragments.Length > 0 then
+    interestingFragments |> Array.exists n.Contains
+  else
+    n.Contains "Pipelines"
+    || n.Contains "DrawInstancedPrimitives"
+    || n.Contains "ConstantBuffer"
+    || n.Contains "EffectPass"
+    || n.Contains "SetData"
+    || n.Contains "SetRenderTarget"
+    || n.Contains "ApplyState"
+    || n.Contains "DrawMesh"
+    || n.Contains "Palette"
+    || n.Contains "Present"
+    || n.Contains "Clear"
+    || n.Contains "EffectParameter.SetValue"
+    || n.Contains "DrawUserIndexed"
+    || n.Contains "DrawIndexedPrimitives"
 
 counts
 |> Seq.filter interesting

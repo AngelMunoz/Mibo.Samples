@@ -1,9 +1,11 @@
 // Microscope queries over a speedscope (evented) trace — read-only.
-//   dotnet fsi tools/analyze-subtree.fsx <trace.speedscope.json>
+//   dotnet fsi tools/analyze-subtree.fsx <trace.speedscope.json> [query ...]
 // Sample-based, same census semantics as analyze-trace.fsx: one
 // sample per distinct event timestamp; each sample ≈ 1 ms of BUSY
 // time (idle = no events on the stack). Prints the per-depth
 // panorama and subtree + child attribution of the top consumers.
+// Queries are frame-name substrings passed as positional args; with
+// no queries the default list runs.
 // ─────────────────────────────────────────────────────────────
 open System
 open System.Collections.Generic
@@ -11,11 +13,11 @@ open System.IO
 open System.Text.Json
 
 let path =
-  match fsi.CommandLineArgs with
-  | [| _; p |] -> p
-  | _ ->
+  match fsi.CommandLineArgs |> Array.tryItem 1 with
+  | Some p -> p
+  | None ->
     failwith
-      "usage: dotnet fsi tools/analyze-subtree.fsx <trace.speedscope.json>"
+      "usage: dotnet fsi tools/analyze-subtree.fsx <trace.speedscope.json> [query ...]"
 
 let doc = JsonDocument.Parse(File.ReadAllText path)
 let root = doc.RootElement
@@ -82,14 +84,17 @@ for depth in 0..6 do
   for (n, c) in counts do
     printfn "  %5.1f%%  (%5d)  %s" (100.0 * float c / float total) c n
 
-// Subtree + child attribution per query
-let queries = [
-  "Towers.tick"
-  "Renderer2D"
-  "Application.view"
-  "AdaptiveSlop.Core"
-  "Enemies+Enemies"
-]
+// Subtree + child attribution per query (frame-name substrings from argv).
+let queries =
+  match fsi.CommandLineArgs |> Array.skip 2 with
+  | [||] -> [
+      "Towers.tick"
+      "Application.update"
+      "Mibo.Adaptive"
+      "WorldView"
+      "Enemies+Enemies"
+    ]
+  | qs -> qs |> Array.toList
 
 for q in queries do
   printfn ""

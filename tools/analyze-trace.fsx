@@ -2,7 +2,10 @@
 // Speedscope (evented) trace analyzer — read-only analysis.
 // Reports real inclusive/exclusive times per frame, plus the
 // callers of the allocation/string leaves.
-// Usage: dotnet fsi tools/analyze-trace.fsx <trace.speedscope.json>
+// Usage: dotnet fsi tools/analyze-trace.fsx <trace.speedscope.json> [--adaptive <name>]
+//   --adaptive <name>  module prefix of the adaptive library frames
+//                      (default "Mibo.Adaptive"; 2D-era traces used
+//                      "AdaptiveSlop.Core")
 // ─────────────────────────────────────────────────────────────
 open System
 open System.Collections.Generic
@@ -25,7 +28,16 @@ let path =
   match fsi.CommandLineArgs with
   | [| _; p |] -> p
   | _ ->
-    failwith "usage: dotnet fsi tools/analyze-trace.fsx <trace.speedscope.json>"
+    failwith
+      "usage: dotnet fsi tools/analyze-trace.fsx <trace.speedscope.json> [--adaptive <name>]"
+
+/// Module prefix of the adaptive library ("Mibo.Adaptive" now,
+/// "AdaptiveSlop.Core" in the 2D-era traces).
+let adaptiveName =
+  fsi.CommandLineArgs
+  |> Array.tryFindIndex(fun a -> a = "--adaptive")
+  |> Option.bind(fun i -> fsi.CommandLineArgs |> Array.tryItem(i + 1))
+  |> Option.defaultValue "Mibo.Adaptive"
 
 let doc = JsonDocument.Parse(File.ReadAllText path)
 let root = doc.RootElement
@@ -163,14 +175,14 @@ for profile in profiles do
 
     let adaptiveSlopSpan =
       exclusive
-      |> Seq.filter(fun kv ->
-        (moduleOf(frameName kv.Key)) = "AdaptiveSlop.Core")
+      |> Seq.filter(fun kv -> (moduleOf(frameName kv.Key)) = adaptiveName)
       |> Seq.sumBy(fun kv -> kv.Value)
 
     printfn ""
 
     printfn
-      "  → AdaptiveSlop total: %.1f%% of wall time (%.2f s of %.2f s)"
+      "  → %s total: %.1f%% of wall time (%.2f s of %.2f s)"
+      adaptiveName
       (100.0 * adaptiveSlopSpan / duration)
       (adaptiveSlopSpan / 1000.0)
       (duration / 1000.0)
@@ -178,14 +190,14 @@ for profile in profiles do
     printfn ""
     printfn "── sample census (each sample ≈ 1 ms of BUSY time) ──"
     // Reconstruct the stack at each distinct timestamp: count samples whose
-    // stack contains an AdaptiveSlop frame (the chain), and samples with no
+    // stack contains an adaptive frame (the chain), and samples with no
     // managed stack (idle/native wait — invisible to the profiler).
     let mutable sampleCount = 0
     let mutable adaptiveSlopSamples = 0
     let mutable idleSamples = 0
     let mutable lastSampleAt = -1.0
     let stack = ResizeArray<int>()
-    let isAdaptive(n: string) = n.Contains "AdaptiveSlop.Core"
+    let isAdaptive(n: string) = moduleOf n = adaptiveName
 
     let census() =
       sampleCount <- sampleCount + 1
@@ -215,7 +227,8 @@ for profile in profiles do
       (float sampleCount / 1000.0)
 
     printfn
-      "  samples in AdaptiveSlop: %d (%.1f%% of busy time)"
+      "  samples in %s: %d (%.1f%% of busy time)"
+      adaptiveName
       adaptiveSlopSamples
       (100.0 * float adaptiveSlopSamples / float sampleCount)
 
@@ -223,8 +236,9 @@ for profile in profiles do
     printfn ""
 
     printfn
-      "  busy share of wall: %.1f%%  →  AdaptiveSlop wall share ≈ %.1f%%"
+      "  busy share of wall: %.1f%%  →  %s wall share ≈ %.1f%%"
       (100.0 * float sampleCount / float(duration / 1.0))
+      adaptiveName
       (100.0 * float adaptiveSlopSamples / duration)
 
     printfn ""
