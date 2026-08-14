@@ -56,3 +56,13 @@
 /processorParam:PremultiplyAlpha=True
 /processorParam:TextureFormat=Compressed
 /build:../../../assets/Fonts/Monogram.spritefont;Fonts/Monogram
+
+# The procedural aura effect (boss aura + range ring glow), built from
+# the repo-root shared assets dir. mgfxc compiles it per MonoGamePlatform
+# (DesktopGL → OPENGL/SM3.0, WindowsDX → HLSL/SM5.0, WindowsDX12 and
+# DesktopVK → SM6.0).
+#begin ../../../assets/shaders/Aura.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/build:../../../assets/shaders/Aura.fx;Shaders/Aura

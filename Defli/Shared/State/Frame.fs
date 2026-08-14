@@ -56,6 +56,9 @@ module Frame =
     /// The map — static world data (terrain/path/decorations/
     /// waypoints).
     Map: MapModel
+    /// The host's GameTime at the last update — the draw side's clock
+    /// (shader-driven auras pulse with TotalTime).
+    Time: GameTime
     /// World-sim diagnostics (the F3 overlay reads the display line).
     Diag: WorldDiag
     /// The camera — a backend-neutral snapshot at force time; the
@@ -97,6 +100,7 @@ module Frame =
         RangeRing = state.Projections.RangeRing |> AVal.getValue
         Vfx = state.Vfx
         Map = state.Map
+        Time = state.LastTime
         Diag = state.Diag
         Camera = state.Camera.State
       }

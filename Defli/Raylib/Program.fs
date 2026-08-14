@@ -37,6 +37,7 @@ let main _ =
     |> GameConfig.withTargetFPS 60
 
   let vfx = VfxView()
+  let aura = AuraView()
 
   // The assets are copied to the output directory; resolve them from
   // the exe location so the game runs from any working directory.
@@ -65,7 +66,7 @@ let main _ =
     |> AdaptiveProgram.withAssetsBasePath assetsBasePath
     |> AdaptiveProgram.withInput
     |> AdaptiveProgram.withRenderer(fun () ->
-      Renderer2D.create(WorldView.worldView shell vfx))
+      Renderer2D.create(WorldView.worldView shell vfx aura))
     |> AdaptiveProgram.withRenderer(fun () ->
       Renderer2D.createWith Renderer2DConfig.noClear (WorldView.hudView shell))
 

@@ -10,6 +10,7 @@ open Mibo.Elmish.Graphics2D
 open Raylib_cs
 open Defli.State
 open Defli.State.Systems
+open Defli.State.Systems.Camera
 
 // ─────────────────────────────────────────────────────────────
 // EnemiesView — enemy sprites, boss aura rings and health bars from
@@ -21,6 +22,10 @@ module EnemiesView =
 
   let view
     (ctx: GameContext)
+    (aura: AuraView)
+    (time: GameTime)
+    (camera: CameraState)
+    (viewport: Vector2)
     (alive: IReadOnlyDictionary<int<EnemyId>, EnemyView>)
     (defs: IReadOnlyDictionary<int<EnemyId>, EnemyDef>)
     (path: Vector2[])
@@ -35,17 +40,19 @@ module EnemiesView =
       |> ValueOption.iter(fun def ->
         let isBoss = def.Archetype = Boss
 
-        // Boss aura ring (Phase 6): the suppression radius, drawn
-        // faintly under everything else the boss overlaps.
+        // Boss aura (Phase 6): the suppression radius as a soft,
+        // pulsing glow — the aura shader owns every pixel of the
+        // disc; the radius band shimmers on the frame clock.
         if isBoss then
-          buffer
-            .circleOutline(
-              v.Pos,
-              BossAura.Radius,
-              Mibo.Color.create 255uy 60uy 60uy 70uy,
-              layer = Layers.Effects
-            )
-            .drop()
+          aura.Draw
+            camera
+            viewport
+            v.Pos
+            BossAura.Radius
+            (Mibo.Color.create 255uy 60uy 60uy 70uy)
+            0.9f
+            (float32 time.TotalTime.TotalSeconds)
+            buffer
 
         // Heading: fliers fly the straight spawn → base line; the rest
         // aim at the next waypoint (0° = up; raylib rotates CW).

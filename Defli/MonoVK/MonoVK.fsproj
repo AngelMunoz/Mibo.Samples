@@ -22,6 +22,9 @@
     <Compile Include="..\MonoDX12\CameraView.fs">
       <Link>CameraView.fs</Link>
     </Compile>
+    <Compile Include="..\MonoDX12\AuraView.fs">
+      <Link>AuraView.fs</Link>
+    </Compile>
     <Compile Include="..\MonoDX12\MapView.fs">
       <Link>MapView.fs</Link>
     </Compile>

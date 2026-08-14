@@ -351,6 +351,11 @@ module Application =
     : unit =
     let state = getState()
 
+    // Presentation clock: the host's GameTime is forced into the frame
+    // so the draw side (shader-driven auras) animates on the sim's
+    // clock — updated even while the sim is paused.
+    state.LastTime <- gameTime
+
     if not(AVal.getValue state.Paused) then
       let dt = float32 gameTime.ElapsedGameTime.TotalSeconds
       let t0 = Diagnostics.tickStart()

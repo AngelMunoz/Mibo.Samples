@@ -14,6 +14,9 @@ module Xna =
   let inline v2(v: System.Numerics.Vector2) =
     Microsoft.Xna.Framework.Vector2(v.X, v.Y)
 
+  let inline v4(v: System.Numerics.Vector4) =
+    Microsoft.Xna.Framework.Vector4(v.X, v.Y, v.Z, v.W)
+
 /// <summary>
 /// XNB asset names for the MonoGame content pipeline — no extension, resolved
 /// through <c>IAssets</c> (ContentManager) relative to the <c>Content</c> output
@@ -45,3 +48,6 @@ module Paths =
 
   [<Literal>]
   let Font = "Fonts/Monogram"
+
+  [<Literal>]
+  let Aura = "Shaders/Aura"

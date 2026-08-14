@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <Compile Include="CameraView.fs" />
+    <Compile Include="AuraView.fs" />
     <Compile Include="MapView.fs" />
     <Compile Include="EnemiesView.fs" />
     <Compile Include="TowersView.fs" />
@@ -42,6 +43,16 @@
     <Content Include="..\..\assets\kenney_tower-defense-top-down\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>assets\kenney_tower-defense-top-down\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
+    <!-- The aura GLSL shaders (the MonoGame clients build Aura.fx through
+         Content.mgcb instead; only the loose GLSL pair is copied here). -->
+    <Content Include="..\..\assets\shaders\aura.vs">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\shaders\aura.vs</Link>
+    </Content>
+    <Content Include="..\..\assets\shaders\aura.frag">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\shaders\aura.frag</Link>
     </Content>
   </ItemGroup>
 

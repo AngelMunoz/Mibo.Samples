@@ -20,6 +20,7 @@
   <ItemGroup>
     <Compile Include="Types.fs" />
     <Compile Include="CameraView.fs" />
+    <Compile Include="AuraView.fs" />
     <Compile Include="MapView.fs" />
     <Compile Include="EnemiesView.fs" />
     <Compile Include="TowersView.fs" />

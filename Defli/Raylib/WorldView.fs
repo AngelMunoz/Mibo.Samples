@@ -45,7 +45,13 @@ module WorldView =
         )
         .drop())
 
-  let private hoverOverlays (frame: RenderFrame) (buffer: RenderBuffer2D) =
+  let private hoverOverlays
+    (aura: AuraView)
+    (camera: CameraState)
+    (viewport: Vector2)
+    (frame: RenderFrame)
+    (buffer: RenderBuffer2D)
+    =
     let size = float32 Tiles.TileSize
 
     // Placement preview: the hovered cell's build status.
@@ -58,7 +64,8 @@ module WorldView =
     | PlacementStatus.TooExpensive ->
       drawOutline size (Mibo.Color.rgb 255uy 210uy 0uy) frame buffer
 
-    // Range ring: hovering an own tower shows its range circle.
+    // Range ring: hovering an own tower shows its range as a soft,
+    // pulsing glow (the aura shader), not a hard circle outline.
     frame.HoverCell
     |> ValueOption.iter2
       (fun def c ->
@@ -67,20 +74,22 @@ module WorldView =
             c
             (Vector2(float32 Tiles.TileSize, float32 Tiles.TileSize))
 
-        buffer
-          .circleOutline(
-            center,
-            float32 def.Range * size,
-            Mibo.Color.Blue,
-            layer = Layers.Effects
-          )
-          .drop())
+        aura.Draw
+          camera
+          viewport
+          center
+          (float32 def.Range * size)
+          Mibo.Color.Blue
+          0.92f
+          (float32 frame.Time.TotalTime.TotalSeconds)
+          buffer)
       frame.RangeRing
 
   /// The camera'd world pass (its own renderer — clears black).
   let worldView
     (shell: Shell)
     (vfx: VfxView)
+    (aura: AuraView)
     (ctx: GameContext)
     (frame: RenderFrame)
     (buffer: RenderBuffer2D)
@@ -99,10 +108,21 @@ module WorldView =
 
     MapView.view ctx frame.Map visible buffer
     TowersView.view ctx frame.TowerStatics frame.TowerLevels size buffer
-    EnemiesView.view ctx frame.Alive frame.Defs frame.Map.Path buffer
+
+    EnemiesView.view
+      ctx
+      aura
+      frame.Time
+      frame.Camera
+      viewport
+      frame.Alive
+      frame.Defs
+      frame.Map.Path
+      buffer
+
     ProjectilesView.view ctx frame.Projectiles buffer
     vfx.View ctx frame.Vfx buffer
-    hoverOverlays frame buffer
+    hoverOverlays aura frame.Camera viewport frame buffer
 
     buffer.endCamera(layer = Layers.Effects).drop()
 

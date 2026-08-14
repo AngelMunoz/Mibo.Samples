@@ -45,7 +45,14 @@ module WorldView =
         )
         .drop())
 
-  let private hoverOverlays (frame: RenderFrame) (buffer: RenderBuffer2D) =
+  let private hoverOverlays
+    (ctx: GameContext)
+    (aura: AuraView)
+    (camera: CameraState)
+    (viewport: Vector2)
+    (frame: RenderFrame)
+    (buffer: RenderBuffer2D)
+    =
     let size = float32 Tiles.TileSize
 
     // Placement preview: the hovered cell's build status.
@@ -58,12 +65,8 @@ module WorldView =
     | PlacementStatus.TooExpensive ->
       drawOutline size (Mibo.Color.rgb 255uy 210uy 0uy) frame buffer
 
-    // Range ring: hovering an own tower shows its range circle. Drawn
-    // as a regular polygon outline instead of circleOutline — MonoGame's
-    // circleOutline is a PrimitiveType.LineStrip that rasterizes as a
-    // filled disc on this backend, while polyOutline(thickness > 1)
-    // uses AddLineThick quads (the same reliable path as the
-    // placement-preview rectOutline).
+    // Range ring: hovering an own tower shows its range as a soft,
+    // pulsing glow (the aura shader), not a hard circle outline.
     frame.HoverCell
     |> ValueOption.iter2
       (fun def c ->
@@ -72,17 +75,16 @@ module WorldView =
             c
             (Vector2(float32 Tiles.TileSize, float32 Tiles.TileSize))
 
-        buffer
-          .polyOutline(
-            center,
-            48,
-            float32 def.Range * size,
-            0f,
-            Mibo.Color.Blue,
-            thickness = 2f,
-            layer = Layers.Effects
-          )
-          .drop())
+        aura.Draw
+          ctx
+          camera
+          viewport
+          center
+          (float32 def.Range * size)
+          Mibo.Color.Blue
+          0.92f
+          (float32 frame.Time.TotalTime.TotalSeconds)
+          buffer)
       frame.RangeRing
 
   /// The camera'd world pass (its own renderer — clears black). The
@@ -92,6 +94,7 @@ module WorldView =
   let worldView
     (shell: Shell)
     (vfx: VfxView)
+    (aura: AuraView)
     (ctx: GameContext)
     (frame: RenderFrame)
     (buffer: RenderBuffer2D)
@@ -112,10 +115,21 @@ module WorldView =
 
     MapView.view ctx frame.Map visible buffer
     TowersView.view ctx frame.TowerStatics frame.TowerLevels size buffer
-    EnemiesView.view ctx frame.Alive frame.Defs frame.Map.Path buffer
+
+    EnemiesView.view
+      ctx
+      aura
+      frame.Time
+      frame.Camera
+      viewport
+      frame.Alive
+      frame.Defs
+      frame.Map.Path
+      buffer
+
     ProjectilesView.view ctx frame.Projectiles buffer
     vfx.View ctx frame.Vfx buffer
-    hoverOverlays frame buffer
+    hoverOverlays ctx aura frame.Camera viewport frame buffer
 
     buffer.endCamera(layer = Layers.Effects).drop()
 

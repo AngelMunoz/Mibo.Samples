@@ -34,6 +34,7 @@ let main _ =
     |> GameConfig.withTargetFPS 60
 
   let vfx = VfxView()
+  let aura = AuraView()
 
   let program =
     // Raw XNA wheel is ±120 per notch: the per-notch zoom base keeps
@@ -47,7 +48,7 @@ let main _ =
     |> AdaptiveProgram.withConfig(fun _ -> config)
     |> AdaptiveProgram.withInput
     |> AdaptiveProgram.withRenderer(fun () ->
-      Renderer2D.create(WorldView.worldView shell vfx))
+      Renderer2D.create(WorldView.worldView shell vfx aura))
     |> AdaptiveProgram.withRenderer(fun () ->
       Renderer2D.createWith Renderer2DConfig.noClear (WorldView.hudView shell))
     |> AdaptiveMonoGameProgram.ofProgram

@@ -1,7 +1,9 @@
 namespace Defli.State
 
+open System
 open System.Numerics
 open Mibo.Adaptive
+open Mibo.Elmish
 open Defli
 open Defli.State.Systems
 
@@ -34,6 +36,12 @@ type State = {
   Vfx: Vfx.VfxModel
   Economy: Economy.EconomyModel
   Camera: Camera.CameraModel
+
+  /// The last GameTime the host handed to update — forced into the
+  /// frame so the draw side (shader-driven auras) animates on the
+  /// sim's clock instead of a backend-specific one. Presentation-only
+  /// state; the sim itself never reads it.
+  mutable LastTime: GameTime
 
   /// Tower kind the next placement uses — a CVal because the
   /// PlacementPreview projection joins on it (cold path writes).
@@ -119,6 +127,10 @@ module State =
       Vfx = vfx
       Economy = economy
       Camera = camera
+      LastTime = {
+        TotalTime = TimeSpan.Zero
+        ElapsedGameTime = TimeSpan.Zero
+      }
       SelectedTower = selectedTower
       HoverCell = hoverCell
       Paused = paused
