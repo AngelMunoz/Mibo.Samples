@@ -71,6 +71,14 @@
     <Project Path="Defli3D/MonoGL/MonoGL.fsproj" />
     <Project Path="Defli3D/MonoDX11/MonoDX11.fsproj" />
   </Folder>
+  <Folder Name="/PrimitiveGallery/">
+    <Project Path="PrimitiveGallery/Shared/Shared.fsproj" />
+    <Project Path="PrimitiveGallery/Raylib/Raylib.fsproj" />
+    <Project Path="PrimitiveGallery/MonoDX12/MonoDX12.fsproj" />
+    <Project Path="PrimitiveGallery/MonoVK/MonoVK.fsproj" />
+    <Project Path="PrimitiveGallery/MonoGL/MonoGL.fsproj" />
+    <Project Path="PrimitiveGallery/MonoDX11/MonoDX11.fsproj" />
+  </Folder>
   <Project Path="SpaceBattle/SpaceBattle.fsproj" />
   <Project Path="BoneProbe/BoneProbe.fsproj" />
 </Solution>
