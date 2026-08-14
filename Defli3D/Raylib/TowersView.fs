@@ -23,53 +23,17 @@ open Defli3D.State.Systems
 // weapon idles with a slow rotation. Documented choice — the
 // projectile Homing view could drive a muzzle but not the turret.
 //
-// Body: ONE pre-built kit model per tower, picked by def kind +
-// level like the MonoGame backend — tower-round-build-A..F for
-// arrow/frost, tower-square-build-A..F for cannon (1 → A … 6+ → F;
-// the defs carry no body field). The build sits at the cell center
-// with its base at y = 0.2 — the tile top (kit models are
-// bottom-anchored, min-Y = 0) — scaled by towerScale. The weapon
-// mounts at the tile top + scaled body height × 0.95 and rotates
-// around its own origin.
+// Body: the kit's pre-cut STACK parts (TowerLayout.stackFor —
+// bottom-a + middles + top-a/b/c, NO roof), one instanced draw per
+// piece, laid bottom→top on the tile top (TowerLayout.baseY). The
+// scale is the SHARED TowerLayout.towerScale (the sim's muzzle math
+// depends on it) and the pieces are bottom-anchored (min-Y = 0), so
+// a running unscaled height accumulator gives each piece's resting
+// Y. The weapon mounts FLUSH on the top piece at
+// TowerLayout.weaponY and rotates around its own origin.
 // ─────────────────────────────────────────────────────────────
 
 module TowersView =
-
-  /// Visual scale of tower bodies + weapons (1 = model size on a
-  /// 1-unit tile). 0.8 keeps the builds from crowding the tiles —
-  /// tune to taste; the weapon mount height follows.
-  let towerScale = 0.8f
-
-  /// The body model for a tower kind + level — the level's complete
-  /// build model (round family for arrow/frost, square for cannon;
-  /// 1 → A … 6+ → F, mirroring the MonoGame backend).
-  let private bodyModel (def: TowerDef) (level: int) : ModelInfo =
-    let idx = min (max level 1) 6
-
-    let round =
-      match idx with
-      | 1 -> Models.towerRoundBuildA
-      | 2 -> Models.towerRoundBuildB
-      | 3 -> Models.towerRoundBuildC
-      | 4 -> Models.towerRoundBuildD
-      | 5 -> Models.towerRoundBuildE
-      | _ -> Models.towerRoundBuildF
-
-    let square =
-      match idx with
-      | 1 -> Models.towerSquareBuildA
-      | 2 -> Models.towerSquareBuildB
-      | 3 -> Models.towerSquareBuildC
-      | 4 -> Models.towerSquareBuildD
-      | 5 -> Models.towerSquareBuildE
-      | _ -> Models.towerSquareBuildF
-
-    if def.Key = TowerDefs.cannon.Key then square else round
-
-  /// The world-space height of a tower's body top above y = 0 (tile
-  /// top 0.2 + the scaled body height) — the HUD's Lv-tag anchor.
-  let towerTop (def: TowerDef) (level: int) : float32 =
-    0.2f + (bodyModel def level).SizeY * towerScale
 
   /// Reused scratch: the frame's enemy positions (XZ), refilled once
   /// per frame so the per-tower aim scan never re-enumerates.
@@ -100,17 +64,27 @@ module TowersView =
       let cx = center.X
       let cy = center.Y
 
-      // Body — the level's complete build model, no rotation (the
-      // build parts are radially symmetric), scaled by towerScale,
-      // base at y = 0.2 (the tile top).
-      let body = bodyModel def level
+      // Body — the kit's stack parts (TowerLayout.stackFor,
+      // bottom→top, NO roof), one instanced draw per piece, each
+      // scaled by the shared TowerLayout.towerScale. The pieces are
+      // bottom-anchored (min-Y = 0), so a running unscaled height
+      // accumulator gives every piece's resting Y on the tile top
+      // (TowerLayout.baseY). No rotation — the parts are radially
+      // symmetric.
+      let scale = TowerLayout.towerScale
 
-      InstanceScratch.add
-        body.Name
-        (Raymath.MatrixMultiply(
-          Raymath.MatrixScale(towerScale, towerScale, towerScale),
-          Raymath.MatrixTranslate(cx, 0.2f, cy)
-        ))
+      let mutable acc = 0f
+
+      for piece in TowerLayout.stackFor def level do
+        let pieceY = TowerLayout.baseY + acc * scale
+        acc <- acc + piece.SizeY
+
+        InstanceScratch.add
+          piece.Name
+          (Raymath.MatrixMultiply(
+            Raymath.MatrixScale(scale, scale, scale),
+            Raymath.MatrixTranslate(cx, pieceY, cy)
+          ))
 
       // Weapon — yaw toward the nearest in-range enemy (effective
       // range incl. upgrades), idle slow rotation otherwise.
@@ -136,17 +110,17 @@ module TowersView =
           // Idle: slow sweep, per-tower phase so they don't sync.
           time * 0.5f + float32(int(tid % 7<TowerId>))
 
-      // Weapon on the tower top — mounted at the tile top + the
-      // scaled body height × 0.95 (the kit's mount fraction), scaled
+      // Weapon on the tower top — mounted FLUSH on the top piece
+      // (TowerLayout.weaponY = baseY + scaled stack height), scaled
       // with the body; rotate at its own origin, then place.
       let weaponInfo = def.WeaponModel
-      let weaponY = 0.2f + body.SizeY * 0.95f * towerScale
+      let weaponY = TowerLayout.weaponY def level
 
       InstanceScratch.add
         weaponInfo.Name
         (Raymath.MatrixMultiply(
           Raymath.MatrixMultiply(
-            Raymath.MatrixScale(towerScale, towerScale, towerScale),
+            Raymath.MatrixScale(scale, scale, scale),
             Raymath.MatrixRotateY(yaw)
           ),
           Raymath.MatrixTranslate(cx, weaponY, cy)

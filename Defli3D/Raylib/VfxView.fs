@@ -20,11 +20,13 @@ open Defli3D.State.Systems.Vfx
 //
 // Each effect kind gets its real kenney texture (Defli parity — the
 // 2D version used one texture per kind; see Raylib.fsproj for the
-// copied asset packs). Per-kind height offsets are a view concern
-// (the sim spawns at ground level): the muzzle flash lifts to the
-// tower top so it reads above the bodies; the rest rise on their own
-// Rise term. Textures resolve lazily through IAssets (cached by
-// path) the first frame a kind's pool is non-empty.
+// copied asset packs). MuzzleDust shares the smoke sprite — the sim
+// pre-tints those particles tan, so the view draws p.Color as-is.
+// Particles spawn at their TRUE world Y — the
+// sim carries muzzle heights (TowerLayout.muzzleY / VfxMsg's y) — so
+// the view draws at Position.Y as-is (the old per-kind lift hack is
+// dead). Textures resolve lazily through IAssets (cached by path)
+// the first frame a kind's pool is non-empty.
 // ─────────────────────────────────────────────────────────────
 
 module VfxView =
@@ -34,6 +36,7 @@ module VfxView =
     | Explosion -> 1
     | DeathPoof -> 2
     | Muzzle -> 3
+    | MuzzleDust -> 6
     | Placement -> 4
     | BaseHit -> 5
 
@@ -51,6 +54,13 @@ module VfxView =
   [<Literal>]
   let MuzzlePath = "kenney_smoke_particles/Flash/flash00.png"
 
+  /// Dust — the smoke sprite plus the sim's slow-expanding params
+  /// and tan base color read as dust (dirt_01 read as sparks). The
+  /// sim spawns these pre-tinted tan (Color.rgb 200 180 150) and the
+  /// view draws p.Color as-is — no view-side tint.
+  [<Literal>]
+  let MuzzleDustPath = "kenney_smoke_particles/Black smoke/blackSmoke05.png"
+
   [<Literal>]
   let PlacementPath = "kenney_particle_pack/dirt_01.png"
 
@@ -64,16 +74,9 @@ module VfxView =
     | Explosion -> ExplosionPath
     | DeathPoof -> DeathPoofPath
     | Muzzle -> MuzzlePath
+    | MuzzleDust -> MuzzleDustPath
     | Placement -> PlacementPath
     | BaseHit -> BaseHitPath
-
-  /// Per-kind lift above the sim's ground-plane spawn (view concern —
-  /// the muzzle bursts at the tower's CELL, the flash belongs on the
-  /// tower top).
-  let inline heightOffset(kind: VfxKind) =
-    match kind with
-    | Muzzle -> 1.2f
-    | _ -> 0f
 
   let inline ensure (arr: 'T[]) (capacity: int) : 'T[] =
     if arr.Length >= capacity then
@@ -104,7 +107,6 @@ module VfxView =
       sizes[idx] <- sizeScratch
       colors[idx] <- colorScratch
 
-      let lift = heightOffset kind
       let tex = assets.Texture(textureOf kind)
 
       for i = 0 to pool.Count - 1 do
@@ -112,8 +114,9 @@ module VfxView =
 
         texScratch[i] <- tex
 
-        posScratch[i] <-
-          Vector3(p.Position.X, p.Position.Y + lift, p.Position.Z)
+        // The sim carries the true world Y (muzzle bursts spawn at
+        // the tower top) — draw at Position.Y as-is.
+        posScratch[i] <- p.Position
 
         sizeScratch[i] <- p.Size
         colorScratch[i] <- RaylibColor.toRaylibColor p.Color
@@ -131,11 +134,11 @@ module VfxView =
 [<Sealed>]
 type VfxView() =
 
-  /// Grow-only scratch per pool — all six kinds share the layout.
-  let textures = Array.init 6 (fun _ -> Array.empty<Texture2D>)
-  let positions = Array.init 6 (fun _ -> Array.empty<Vector3>)
-  let sizes = Array.init 6 (fun _ -> Array.empty<Vector2>)
-  let colors = Array.init 6 (fun _ -> Array.empty<Raylib_cs.Color>)
+  /// Grow-only scratch per pool — all seven kinds share the layout.
+  let textures = Array.init 7 (fun _ -> Array.empty<Texture2D>)
+  let positions = Array.init 7 (fun _ -> Array.empty<Vector3>)
+  let sizes = Array.init 7 (fun _ -> Array.empty<Vector2>)
+  let colors = Array.init 7 (fun _ -> Array.empty<Raylib_cs.Color>)
 
   /// The view: one billboardBatch per kind/pool.
   member _.View (ctx: GameContext) (model: VfxModel) (buffer: RenderBuffer3D) =
@@ -145,5 +148,6 @@ type VfxView() =
     VfxView.drawPool VfxKind.Explosion model.Explosion assets data buffer
     VfxView.drawPool VfxKind.DeathPoof model.DeathPoof assets data buffer
     VfxView.drawPool VfxKind.Muzzle model.Muzzle assets data buffer
+    VfxView.drawPool VfxKind.MuzzleDust model.MuzzleDust assets data buffer
     VfxView.drawPool VfxKind.Placement model.Placement assets data buffer
     VfxView.drawPool VfxKind.BaseHit model.BaseHit assets data buffer

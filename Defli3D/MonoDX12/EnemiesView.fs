@@ -12,18 +12,16 @@ open Defli3D.State.Frame
 open Defli3D.State.Systems
 
 // ─────────────────────────────────────────────────────────────
-// EnemiesView — UFO hulls, weapons, boss aura rings and health bars
-// from the frame's Alive/Defs snapshots (read as plain dictionary
-// values — no graph access at draw). One instanced draw per hull /
-// weapon model (InstanceScratch groups by model path, so the boss —
-// the grunt hull at 1.6 × enemyScale — shares the grunt group with a
-// scaled instance matrix). Models are bottom-anchored (MapView module
-// header); the hull base height is 0.2 (0.8 for fliers), with a
-// deterministic hover bob and a slow idle spin.
+// EnemiesView — UFO hulls, boss aura rings and health bars from the
+// frame's Alive/Defs snapshots (read as plain dictionary values —
+// no graph access at draw). One instanced draw per hull model
+// (InstanceScratch groups by model path, so the boss — the grunt
+// hull at 1.6 × EnemyLayout.enemyScale — shares the grunt group
+// with a scaled instance matrix). Models are bottom-anchored (MapView
+// module header); the hull rests on the shared EnemyLayout.hoverY
+// (0.2 for walkers, 0.8 for fliers), with a deterministic hover bob
+// and a slow idle spin.
 //
-// Weapons are top-mounted on the hull and aimed at the heading (the
-// direction to the next waypoint — the 2D port's heading convention;
-// yaw = atan2(dx, dz) assumes the weapon's barrel along +Z).
 // Health bars are camera-facing billboard quads (shared white
 // texture, DepthRead — no depth write): the fill quad blends over
 // the background quad, drawn in one batch per frame.
@@ -31,16 +29,9 @@ open Defli3D.State.Systems
 
 module EnemiesView =
 
-  /// Visual scale of enemy hulls + weapons (1 = model size; UFO
-  /// hulls are 1.0 wide). 0.7 reads better next to the scaled
-  /// towers — tune to taste. Bosses still ride their def.Scale
-  /// (1.6) ON TOP of this constant; the aura ring keeps the SIM
-  /// radius (BossAura.Radius — do NOT scale).
-  let enemyScale = 0.7f
-
-  /// Hulls + weapons (untinted) and the boss aura rings (tinted,
-  /// translucent — selection-b) go through the shared InstanceScratch:
-  /// reset → fill → draw per frame, zero allocation once warm.
+  /// Hulls (untinted) and the boss aura rings (tinted, translucent —
+  /// selection-b) go through the shared InstanceScratch: reset →
+  /// fill → draw per frame, zero allocation once warm.
 
   // Health-bar billboard scratch (XNA arrays — the billboardBatch
   // payload). Grow-only, reused across frames.
@@ -51,71 +42,51 @@ module EnemiesView =
 
   let mutable private barCount = 0
 
-  /// Hull base height (world units): fliers ride higher above the
-  /// ground plane.
-  let inline private baseHeight(def: EnemyDef) : float32 =
-    if def.Archetype = EnemyArchetype.Flier then 0.8f else 0.2f
-
   /// Deterministic hover bob: fixed-frequency sine with a per-enemy
   /// phase (id-derived — stable across despawns, unlike an
-  /// enumeration index).
+  /// enumeration index), riding on the shared EnemyLayout.hoverY
+  /// anchor (0.2 walkers / 0.8 fliers).
   let inline private hoverY
     (def: EnemyDef)
     (eid: int<EnemyId>)
     (time: float32)
     : float32 =
     let phase = float32(int eid % 9) * 0.7f
-    baseHeight def + 0.05f * MathF.Sin(time * 2f + phase)
+    EnemyLayout.hoverY def + 0.05f * MathF.Sin(time * 2f + phase)
 
   /// Slow idle spin (radians), phase-per-enemy.
   let inline private spinY (eid: int<EnemyId>) (time: float32) : float32 =
     let phase = float32(int eid % 7) * 0.9f
     time * 0.5f + phase
 
-  /// Yaw that aims the weapon along the enemy's heading — the
-  /// direction to the next waypoint (0 on the last segment).
-  let inline private headingYaw
-    (path: System.Numerics.Vector2[])
-    (v: EnemyView)
-    : float32 =
-    if v.PathIndex >= path.Length - 1 then
-      0f
-    else
-      let d = path[v.PathIndex + 1] - v.Pos
-      MathF.Atan2(d.X, d.Y)
-
-  /// The hull transform: scale (boss 1.6 × enemyScale) · idle spin ·
-  /// translation at (x, hover, z).
+  /// The hull transform: scale (boss 1.6 × EnemyLayout.enemyScale) ·
+  /// idle spin · translation at (x, hover, z).
   let private hullTransform
     (def: EnemyDef)
     (eid: int<EnemyId>)
     (v: EnemyView)
     (time: float32)
     : Matrix =
-    Matrix.CreateScale(def.Scale * enemyScale)
+    Matrix.CreateScale(def.Scale * EnemyLayout.enemyScale)
     * Matrix.CreateRotationY(spinY eid time)
     * Matrix.CreateTranslation(v.Pos.X, hoverY def eid time, v.Pos.Y)
 
-  /// The weapon transform: same position/scale as the hull, aimed at
-  /// the heading (top-mounted — the weapon base sits on the hull top).
-  let private weaponTransform
-    (path: System.Numerics.Vector2[])
-    (def: EnemyDef)
-    (eid: int<EnemyId>)
-    (v: EnemyView)
-    (time: float32)
-    : Matrix =
-    let y = hoverY def eid time + def.HullModel.SizeY * def.Scale * enemyScale
+  /// selection-b's outer vertex radius (measured via vertex probe:
+  /// the octagon's corners sit at (±0.5, ±0.4) → √(0.5² + 0.4²) ≈
+  /// 0.6403). Aura/ring scales divide the sim radius by this so the
+  /// octagon's corners land exactly on the sim's circle.
+  let private selectionBVertexRadius = 0.6403f
 
-    Matrix.CreateScale(def.Scale * enemyScale)
-    * Matrix.CreateRotationY(headingYaw path v)
-    * Matrix.CreateTranslation(v.Pos.X, y, v.Pos.Y)
-
-  /// The boss aura ring: selection-b scaled to BossAura.Radius × 2,
-  /// translucent red per-instance tint (alpha routes the draw through
-  /// the pipeline's sorted translucent pass).
+  /// The boss aura ring: selection-b flattened to a thin band (the
+  /// 0.2-tall mesh at 0.5 Y-scale reads as a ground ring), scaled so
+  /// its outer vertices land exactly on the sim radius
+  /// (BossAura.Radius — the aura must not read bigger than the
+  /// suppression radius), translucent red per-instance tint (alpha
+  /// routes the draw through the pipeline's sorted translucent pass).
   let private auraTransform(v: EnemyView) : Matrix =
-    Matrix.CreateScale(BossAura.Radius * 2f)
+    let s = BossAura.Radius / selectionBVertexRadius
+
+    Matrix.CreateScale(s, 0.5f, s)
     * Matrix.CreateTranslation(v.Pos.X, 0f, v.Pos.Y)
 
   let private auraColor = Color(255, 60, 60, 70)
@@ -128,14 +99,13 @@ module EnemiesView =
     (time: float32)
     : float32 =
     hoverY def eid time
-    + def.HullModel.SizeY * def.Scale * enemyScale
-    + 0.15f * def.Scale * enemyScale
+    + def.HullModel.SizeY * def.Scale * EnemyLayout.enemyScale
+    + 0.15f * def.Scale * EnemyLayout.enemyScale
 
-  /// Hulls, weapons, aura rings and health bars from the frame's
-  /// Alive/Defs snapshots.
+  /// Hulls, aura rings and health bars from the frame's Alive/Defs
+  /// snapshots.
   let view (ctx: GameContext) (frame: RenderFrame) (buffer: RenderBuffer3D) =
     let time = Time.now()
-    let path = frame.Map.Path
 
     InstanceScratch.reset()
     barCount <- 0
@@ -153,7 +123,7 @@ module EnemiesView =
         barSizes <- Array.zeroCreate needed
         barColors <- Array.zeroCreate needed
 
-    // Fill the hull/weapon/aura batches + the bar quads.
+    // Fill the hull/aura batches + the bar quads.
     let mutable barSlot = 0
 
     for KeyValueV(eid, v) in frame.Alive do
@@ -161,11 +131,6 @@ module EnemiesView =
       | ValueNone -> ()
       | ValueSome def ->
         InstanceScratch.add def.HullModel.Path (hullTransform def eid v time)
-
-        match def.WeaponModel with
-        | ValueSome weapon ->
-          InstanceScratch.add weapon.Path (weaponTransform path def eid v time)
-        | ValueNone -> ()
 
         if def.Archetype = EnemyArchetype.Boss then
           InstanceScratch.addTinted
@@ -175,7 +140,7 @@ module EnemiesView =
 
         if v.Hp < v.MaxHp then
           let frac = float32 v.Hp / float32 v.MaxHp
-          let s = def.Scale * enemyScale
+          let s = def.Scale * EnemyLayout.enemyScale
           let y = barY def eid v time
           let w = 0.75f * s
           let h = 0.09f * s

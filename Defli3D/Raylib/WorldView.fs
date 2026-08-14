@@ -1,6 +1,5 @@
 namespace Defli3D.Raylib
 
-open System
 open System.Numerics
 open Mibo
 open Mibo.Elmish
@@ -27,8 +26,10 @@ open Defli3D.State.Systems.Camera
 //     cell, tinted by PlacementStatus (raylib instanced draws have
 //     no per-instance colors, so a single .mesh draw with a tinted
 //     Material3D.unlit override carries the tint).
-//   * range ring — a flat 48-segment line circle at y ≈ 0.26
-//     (line3D; emitted only while hovering an own tower).
+//   * range ring — the Models.selectionB octagon scaled to the
+//     tower's exact def.Range, flat on the tile tops and translucent
+//     blue (unlit, Opacity 0.43 — the MonoGame selection tint; no
+//     more line circle).
 // ─────────────────────────────────────────────────────────────
 
 module WorldView =
@@ -73,24 +74,49 @@ module WorldView =
         let struct (mesh, _) = meshes[mi]
         buffer.mesh(mesh, transform, material) |> ignore
 
-  /// Range ring: the hovered own tower's effective range as a flat
-  /// 48-segment line circle at y ≈ 0.26 (just above the tiles).
-  let private rangeRing (frame: RenderFrame) (buffer: RenderBuffer3D) =
+  /// selection-b's outer-vertex radius — MEASURED via vertex probe:
+  /// the ring is an octagon whose outer vertices sit at
+  /// √(0.5² + 0.4²) = 0.6403 (the 1.0 AABB's corners are NOT on the
+  /// mesh), so scaling it to the AABB overdraws the radius by 1.28×.
+  /// The range ring divides by this so the ring lands exactly on the
+  /// tower's def.Range.
+  [<Literal>]
+  let private selectionBOuterRadius = 0.6403f
+
+  /// Range ring: the hovered own tower's effective range as a flat,
+  /// exact-radius octagon (Models.selectionB, Y-squashed to a
+  /// 0.05-tall band on the tile tops) — translucent blue, matching
+  /// the MonoGame selection tint.
+  let private rangeRing
+    (ctx: GameContext)
+    (frame: RenderFrame)
+    (buffer: RenderBuffer3D)
+    =
     frame.RangeRing
     |> ValueOption.iter(fun def ->
       let c = hoverCenter frame
-      let r = float32 def.Range
-      let segments = 48
+      let s = float32 def.Range / selectionBOuterRadius
 
-      for i = 0 to segments - 1 do
-        let a0 = float32 i / float32 segments * 2f * MathF.PI
-        let a1 = float32(i + 1) / float32 segments * 2f * MathF.PI
+      let transform =
+        Raymath.MatrixMultiply(
+          Raymath.MatrixScale(s, 0.25f, s),
+          Raymath.MatrixTranslate(c.X, 0.21f, c.Y)
+        )
 
-        let p0 = Vector3(c.X + MathF.Cos a0 * r, 0.26f, c.Y + MathF.Sin a0 * r)
+      // The MonoGame selection tint (Color(30,40,255,110)) — unlit
+      // blue with translucency.
+      let material = {
+        Material3D.unlit(
+          Mibo.Color.op_Implicit(Mibo.Color.rgb 30uy 40uy 255uy)
+        ) with
+            Opacity = 0.43f
+      }
 
-        let p1 = Vector3(c.X + MathF.Cos a1 * r, 0.26f, c.Y + MathF.Sin a1 * r)
+      let meshes = ModelMeshes.resolve Models.selectionB
 
-        buffer.line3D(p0, p1, Mibo.Color.Blue) |> ignore)
+      for mi = 0 to meshes.Length - 1 do
+        let struct (mesh, _) = meshes[mi]
+        buffer.mesh(mesh, transform, material) |> ignore)
 
   /// Cached level-tag strings — one static allocation, reused every
   /// frame (no per-frame string building).
@@ -102,7 +128,7 @@ module WorldView =
   let private tagOffset = Vector2(-20f, -26f)
 
   /// Per-tower "Lv N" tags: each tower's body top (cell center, tile
-  /// top + scaled body height — TowersView.towerTop) projected
+  /// top + scaled stack height — TowerLayout.towerTop) projected
   /// world→screen through the sim camera pair, drawn in the HUD pass.
   /// Off-screen towers are skipped by the projection (behind the
   /// camera or outside the viewport → ValueNone).
@@ -120,7 +146,7 @@ module WorldView =
         |> ValueOption.defaultValue 1
 
       let center = Cells.center s.Cell (Vector2.One)
-      let top = Vector3(center.X, TowersView.towerTop s.Def level, center.Y)
+      let top = Vector3(center.X, TowerLayout.towerTop s.Def level, center.Y)
 
       match
         Camera.worldToScreen
@@ -190,12 +216,12 @@ module WorldView =
 
     MapView.view ctx frame buffer
     TowersView.view ctx frame.TowerStatics frame.TowerLevels frame.Alive buffer
-    EnemiesView.view ctx frame.Alive frame.Defs frame.Map.Path buffer
+    EnemiesView.view ctx frame.Alive frame.Defs buffer
     ProjectilesView.view ctx frame.Projectiles buffer
     vfx.View ctx frame.Vfx buffer
 
     placementRing ctx frame buffer
-    rangeRing frame buffer
+    rangeRing ctx frame buffer
 
     buffer.endCamera().drop()
 

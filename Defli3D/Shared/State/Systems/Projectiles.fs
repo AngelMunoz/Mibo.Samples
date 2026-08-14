@@ -19,6 +19,13 @@ open Defli3D.State
 // mid-flight leaves the shot seeking its LastTargetPos instead: it
 // detonates there rather than vanishing mid-air.
 //
+// The 3D homing: each tick the shot also integrates Y toward the
+// target's hull-center height (TargetY — frozen at fire time from
+// EnemyLayout.impactY) in lockstep with the XZ seek: the same
+// step/dist fraction of the height gap, so the shell arrives AT the
+// hull when the seek arrives — no more detonating at muzzle height
+// in the air beside the target. XZ seek logic unchanged.
+//
 // Positions are logical XZ-plane coordinates in world units.
 // ─────────────────────────────────────────────────────────────
 
@@ -50,6 +57,8 @@ module Projectiles =
       model.Rows
       |> CMap.addOrUpdate pid {
         Pos = spawn.Pos
+        Y = spawn.Height
+        TargetY = spawn.TargetY
         TargetEnemy = spawn.TargetEnemy
         LastTargetPos = spawn.LastTargetPos
         Damage = spawn.Damage
@@ -61,7 +70,8 @@ module Projectiles =
         ProjectileModel = spawn.ProjectileModel
       }
 
-  /// Hot path: advance toward the target's live position; impact or
+  /// Hot path: advance toward the target's live position — XZ seek
+  /// plus Y homing toward the hull center (TargetY) — impact or
   /// expire. `positions` is a transient read of Enemies.Positions
   /// (direct value from the sim update). A target that despawns mid-flight
   /// no longer removes the shot: it flies on to the target's LAST
@@ -112,6 +122,7 @@ module Projectiles =
               Enemy = row.TargetEnemy
               Damage = row.Damage
               Pos = row.Pos
+              Y = row.Y
               SlowFactor = row.SlowFactor
               SlowSeconds = row.SlowSeconds
               SplashRadius = row.SplashRadius
@@ -123,6 +134,13 @@ module Projectiles =
 
           removes.Add pid
         else
+          // Y-homing: cover the same fraction of the height gap the
+          // XZ seek covers this tick, so the shell arrives at the
+          // hull center when the seek arrives. This branch only runs
+          // while dist > step + hitThreshold, so step/dist < 1 — the
+          // min 1f guard is for degenerate cases only.
+          let y' = row.Y + (row.TargetY - row.Y) * min 1f (step / dist)
+
           if isNull updates then
             updates <- ResizeArray()
 
@@ -131,6 +149,7 @@ module Projectiles =
                     {
                       row with
                           Pos = row.Pos + (d / dist) * step
+                          Y = y'
                           Lifetime = lifetime
                           LastTargetPos =
                             if live then targetPos else row.LastTargetPos

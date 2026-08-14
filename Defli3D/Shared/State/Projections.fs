@@ -59,6 +59,8 @@ type Projections
 
             ValueSome {
               Pos = row.Pos
+              Y = row.Y
+              TargetY = row.TargetY
               TargetPos = pos |> ValueOption.defaultValue row.LastTargetPos
               Model = row.ProjectileModel
             })

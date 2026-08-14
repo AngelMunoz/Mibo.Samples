@@ -173,6 +173,13 @@ module Towers =
           if isNull events then
             events <- ResizeArray()
 
+          // The muzzle height needs the tower's LEVEL (the body stack
+          // grows with it). The def here is the EFFECTIVE one —
+          // effectiveDef preserves Key/WeaponModel, which is all
+          // TowerLayout reads.
+          let level =
+            model.Levels |> CMap.tryGetValue tid |> ValueOption.defaultValue 1
+
           events.Add(
             Fired {
               Tower = tid
@@ -182,6 +189,7 @@ module Towers =
               SlowSeconds = def.SlowSeconds
               SplashRadius = def.SplashRadius
               ProjectileModel = def.ProjectileModel
+              Height = TowerLayout.muzzleY def level
             }
           )
 

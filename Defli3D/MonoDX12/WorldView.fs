@@ -63,8 +63,6 @@ module WorldView =
         m.Path
       for m in Models.enemies do
         m.Path
-      for m in Models.enemyWeapons do
-        m.Path
       for m in Models.selectionRings do
         m.Path
     |]
@@ -87,17 +85,27 @@ module WorldView =
     | PlacementStatus.TooExpensive ->
       Microsoft.Xna.Framework.Color(255, 210, 0, 150)
 
-  /// Range ring tint — translucent blue (alpha routes the draw through
-  /// the pipeline's sorted translucent pass).
-  let private rangeRingTint = Microsoft.Xna.Framework.Color(80, 140, 255, 90)
+  /// selection-b's outer vertex radius (measured via vertex probe:
+  /// the octagon's corners sit at (±0.5, ±0.4) → √(0.5² + 0.4²) ≈
+  /// 0.6403). The range ring divides the tower's fire range by this
+  /// so the octagon's corners land exactly on the range circle —
+  /// everything under the marker is in range.
+  let private selectionBVertexRadius = 0.6403f
+
+  /// Range ring tint — translucent pure blue (hue-matching the raylib
+  /// backend's opaque Mibo.Color.Blue ring; alpha routes the draw
+  /// through the pipeline's sorted translucent pass and keeps the
+  /// ring from blocking vision).
+  let private rangeRingTint = Microsoft.Xna.Framework.Color(30, 40, 255, 110)
 
   /// The hover overlays: the placement preview disc (selection-a at
   /// the hover cell, tinted by build status) and the range ring of
-  /// the hovered own tower (selection-b scaled to the range diameter,
-  /// translucent blue — the same idiom as the boss aura). Both go
-  /// through the shared InstanceScratch (reset → fill → final draw on
-  /// top — each view owns its reset, so the last draw emits only the
-  /// overlays).
+  /// the hovered own tower (selection-b's octagon scaled so its outer
+  /// vertices land exactly on the fire range — everything under the
+  /// marker is in range; a flat 0.25 Y-scale keeps the band 0.05
+  /// tall so it doesn't block vision). Both go through the shared
+  /// InstanceScratch (reset → fill → final draw on top — each view
+  /// owns its reset, so the last draw emits only the overlays).
   /// NOTE: no line3D circle here — line primitives are broken on the
   /// MonoGame DX12 runtime (the PSO topology type is never set, line
   /// draws rasterize as garbage). The ring mesh works everywhere.
@@ -122,11 +130,11 @@ module WorldView =
       (fun def struct (hx, hy) ->
         let x = float32 hx + 0.5f
         let z = float32 hy + 0.5f
-        let rangeDiameter = float32 def.Range * 2f
+        let s = float32 def.Range / selectionBVertexRadius
 
         InstanceScratch.addTinted
           Models.selectionB.Path
-          (Matrix.CreateScale rangeDiameter
+          (Matrix.CreateScale(s, 0.25f, s)
            * Matrix.CreateTranslation(x, 0.21f, z))
           rangeRingTint)
       frame.RangeRing
@@ -186,7 +194,7 @@ module WorldView =
   let private tagOffset = Vector2(-20f, -26f)
 
   /// Per-tower "Lv N" tags: each tower's body top (cell center, tile
-  /// top + scaled body height — TowersView.towerTop) projected
+  /// top + scaled stack height — TowerLayout.towerTop) projected
   /// world→screen through the sim camera pair, drawn in the HUD pass.
   /// Off-screen towers are skipped by the projection (behind the
   /// camera or outside the viewport → ValueNone).
@@ -205,7 +213,7 @@ module WorldView =
         |> ValueOption.defaultValue 1
 
       let center = Cells.center s.Cell (Vector2.One)
-      let top = Vector3(center.X, TowersView.towerTop s.Def level, center.Y)
+      let top = Vector3(center.X, TowerLayout.towerTop s.Def level, center.Y)
 
       match
         Camera.worldToScreen

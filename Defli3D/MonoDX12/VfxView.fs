@@ -12,18 +12,22 @@ open Defli3D.State.Systems.Vfx
 
 // ─────────────────────────────────────────────────────────────
 // VfxView — the MonoGame EDGE of the VFX pools. The sim integrates
-// backend-neutral Particle3D (positions/sizes/alphas on the XZ
-// ground plane); the view renders each pool as one camera-facing
-// billboard batch (per-kind kenney textures, alpha-blended,
-// DepthRead). Scratch buffers are per-kind and grow-only — steady
-// state allocates nothing (the deferred commands hold their own
-// arrays, so one shared buffer would make every command read the
-// LAST kind's particles — Defli's VfxView rationale).
+// backend-neutral Particle3D (positions/sizes/alphas; particles
+// spawn at their TRUE world Y — muzzle bursts at the tower top,
+// ground effects at 0); the view renders each pool as one
+// camera-facing billboard batch (per-kind kenney textures,
+// alpha-blended, DepthRead). Scratch buffers are per-kind and
+// grow-only — steady state allocates nothing (the deferred commands
+// hold their own arrays, so one shared buffer would make every
+// command read the LAST kind's particles — Defli's VfxView
+// rationale).
 //
-// Per-kind textures (Defli parity), albedo tints and the muzzle
-// height lift (muzzle flashes spawn at the tower top) are view-edge
-// concerns per Vfx.fs. The XNB asset names mirror the raylib loose
-// paths minus the extension (see Content.mgcb).
+// Per-kind textures (Defli parity) and albedo tints are view-edge
+// concerns per Vfx.fs — no height lift: the sim owns the spawn Y.
+// The XNB asset names mirror the raylib loose paths minus the
+// extension (see Content.mgcb). MuzzleDust deliberately reuses
+// DeathPoof's blackSmoke05 — soft smoke reads as dust, where
+// dirt_01 read as sparks.
 // ─────────────────────────────────────────────────────────────
 
 module VfxView =
@@ -35,6 +39,7 @@ module VfxView =
     | Muzzle -> 3
     | Placement -> 4
     | BaseHit -> 5
+    | MuzzleDust -> 6
 
   /// XNB asset names (the .mgcb mirrors the raylib loose paths minus
   /// the extension — Defli's mapping).
@@ -50,6 +55,12 @@ module VfxView =
   [<Literal>]
   let MuzzlePath = "kenney_smoke_particles/Flash/flash00"
 
+  /// The ballista's dust burst (MuzzleDust) reuses the blackSmoke05
+  /// smoke texture — soft smoke reads as dust, where dirt_01 read
+  /// as sparks at this size.
+  [<Literal>]
+  let MuzzleDustPath = "kenney_smoke_particles/Black smoke/blackSmoke05"
+
   [<Literal>]
   let PlacementPath = "kenney_particle_pack/dirt_01"
 
@@ -63,26 +74,23 @@ module VfxView =
     | Explosion -> ExplosionPath
     | DeathPoof -> DeathPoofPath
     | Muzzle -> MuzzlePath
+    | MuzzleDust -> MuzzleDustPath
     | Placement -> PlacementPath
     | BaseHit -> BaseHitPath
 
-  /// Per-kind albedo tint (the sim stores white particles; the look
-  /// is a view-edge concern). Alpha rides the particle's fade.
+  /// Per-kind albedo tint. The sim bakes a base color into the
+  /// particles (tan for MuzzleDust, white for the rest — Vfx.fs);
+  /// this view overrides RGB via tintOf to match, so MuzzleDust's
+  /// tint mirrors the sim's tan. Alpha rides the particle's fade.
   let inline tintOf(kind: VfxKind) =
     match kind with
     | Impact -> Color(255, 220, 130)
     | Explosion -> Color(255, 150, 70)
     | DeathPoof -> Color(185, 185, 195)
     | Muzzle -> Color(255, 255, 225)
+    | MuzzleDust -> Color(200, 180, 150)
     | Placement -> Color(165, 135, 95)
     | BaseHit -> Color(145, 145, 155)
-
-  /// Height lift for effects that spawn at a meaningful height (the
-  /// muzzle flash at the tower top) — a view-edge concern per Vfx.fs.
-  let inline heightOf(kind: VfxKind) =
-    match kind with
-    | Muzzle -> 0.9f
-    | _ -> 0f
 
   let drawPool
     (kind: VfxKind)
@@ -103,13 +111,11 @@ module VfxView =
         rotations[idx] <- Array.zeroCreate capacity
 
       let tint = tintOf kind
-      let lift = heightOf kind
 
       for i = 0 to pool.Count - 1 do
         let p = pool.Particles[i]
 
-        positions[idx][i] <-
-          Vector3(p.Position.X, p.Position.Y + lift, p.Position.Z)
+        positions[idx][i] <- Vector3(p.Position.X, p.Position.Y, p.Position.Z)
 
         sizes[idx][i] <- Vector2(p.Size.X, p.Size.Y)
         colors[idx][i] <- Color(tint.R, tint.G, tint.B, p.Color.A)
@@ -132,11 +138,11 @@ module VfxView =
 type VfxView() =
 
   /// Per-kind billboardBatch payloads (XNA arrays).
-  let positions = Array.init 6 (fun _ -> Array.empty<Vector3>)
-  let sizes = Array.init 6 (fun _ -> Array.empty<Vector2>)
-  let colors = Array.init 6 (fun _ -> Array.empty<Color>)
-  let rotations = Array.init 6 (fun _ -> Array.empty<float32>)
-  let textures = Array.init 6 (fun _ -> Array.zeroCreate<Texture2D> 1)
+  let positions = Array.init 7 (fun _ -> Array.empty<Vector3>)
+  let sizes = Array.init 7 (fun _ -> Array.empty<Vector2>)
+  let colors = Array.init 7 (fun _ -> Array.empty<Color>)
+  let rotations = Array.init 7 (fun _ -> Array.empty<float32>)
+  let textures = Array.init 7 (fun _ -> Array.zeroCreate<Texture2D> 1)
 
   /// One billboard batch per kind/texture.
   member _.View (ctx: GameContext) (model: VfxModel) (buffer: RenderBuffer3D) =
@@ -146,5 +152,6 @@ type VfxView() =
     VfxView.drawPool VfxKind.Explosion model.Explosion assets data buffer
     VfxView.drawPool VfxKind.DeathPoof model.DeathPoof assets data buffer
     VfxView.drawPool VfxKind.Muzzle model.Muzzle assets data buffer
+    VfxView.drawPool VfxKind.MuzzleDust model.MuzzleDust assets data buffer
     VfxView.drawPool VfxKind.Placement model.Placement assets data buffer
     VfxView.drawPool VfxKind.BaseHit model.BaseHit assets data buffer

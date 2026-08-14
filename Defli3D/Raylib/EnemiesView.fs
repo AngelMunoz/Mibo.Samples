@@ -12,34 +12,34 @@ open Defli3D.State
 open Defli3D.State.Systems
 
 // ─────────────────────────────────────────────────────────────
-// EnemiesView — enemy hulls + weapons from the frame's Alive/Defs
-// snapshots (transient views read as plain dictionaries — no graph
-// access at draw). One .instanced draw per hull model and per weapon
-// model (shared InstanceScratch); health bars are a single
-// billboardBatch above the enemies; bosses get a semi-transparent
-// aura ring (Models.selectionB scaled to BossAura.Radius × 2).
+// EnemiesView — enemy hulls from the frame's Alive/Defs snapshots
+// (transient views read as plain dictionaries — no graph access at
+// draw). One .instanced draw per hull model (shared InstanceScratch);
+// health bars are a single billboardBatch above the enemies; bosses
+// get a semi-transparent aura ring (Models.selectionB — an octagon
+// whose OUTER vertices sit at radius 0.6403, not 0.5 — scaled so
+// those vertices land exactly on BossAura.Radius).
 //
 // Motion is VIEW-edge presentation on top of the sim's XZ positions:
 //   * hover bob — deterministic: sin(time · 2.2 + id-based phase),
 //     ground enemies hover around y = 0.2 (tile top), fliers ~0.8.
-//   * slow spin — the hull rotates lazily around +Y (time + phase);
-//     the mounted weapon instead aims at the travel heading (next
-//     waypoint — Defli's 2D heading), so saucers read as alive while
-//     still steering down the road.
-//   * boss — def.Scale (1.6) scales hull + weapon ON TOP of the
-//     enemyScale constant (the aura ring keeps the sim radius).
+//   * slow spin — the hull rotates lazily around +Y (time + phase).
+//   * boss — def.Scale (1.6) scales the hull ON TOP of the shared
+//     EnemyLayout.enemyScale (the aura ring keeps the sim radius).
 // Time comes from Raylib.GetTime() (the view has no GameTime — the
 // renderer draws after the sim, so the same value is stable per frame).
 // ─────────────────────────────────────────────────────────────
 
 module EnemiesView =
 
-  /// Visual scale of enemy hulls + weapons (1 = model size; UFO
-  /// hulls are 1.0 wide). 0.7 reads better next to the scaled
-  /// towers — tune to taste. Bosses still ride their def.Scale
-  /// (1.6) ON TOP of this constant; the aura ring keeps the SIM
-  /// radius (BossAura.Radius — do NOT scale).
-  let enemyScale = 0.7f
+  /// selection-b's outer-vertex radius — MEASURED via vertex probe:
+  /// the ring is an octagon whose outer vertices sit at
+  /// √(0.5² + 0.4²) = 0.6403 (the 1.0 AABB's corners are NOT on the
+  /// mesh), so scaling it to the AABB overdraws the radius by 1.28×.
+  /// The aura divides by this so the ring lands exactly on the sim's
+  /// BossAura.Radius.
+  [<Literal>]
+  let private selectionBOuterRadius = 0.6403f
 
   /// Grow-only scratch for the health-bar billboard batch (two quads
   /// per enemy: black backing + red fill). Preallocated, reused every
@@ -72,31 +72,12 @@ module EnemiesView =
   let inline private phaseOf(eid: int<EnemyId>) : float32 =
     float32(int(eid % 7<EnemyId>)) * 0.9f
 
-  /// The travel heading (radians, yaw around +Y): fliers fly the
-  /// straight spawn → base line; the rest aim at the next waypoint
-  /// (0 rad = facing +Z; the weapon models' forward is +Z).
-  let inline private headingYaw
-    (v: EnemyView)
-    (def: EnemyDef)
-    (path: Vector2[])
-    =
-    if def.Archetype = EnemyArchetype.Flier then
-      let d = path[path.Length - 1] - path[0]
-      MathF.Atan2(d.X, d.Y)
-    elif v.PathIndex >= path.Length - 1 then
-      0f
-    else
-      let d = path[v.PathIndex + 1] - v.Pos
-      MathF.Atan2(d.X, d.Y)
-
-  /// Hulls + weapons go through the shared InstanceScratch (grouped
-  /// by model name): reset → fill → draw per frame, zero allocation
-  /// once warm.
+  /// Hulls go through the shared InstanceScratch (grouped by model
+  /// name): reset → fill → draw per frame, zero allocation once warm.
   let view
     (ctx: GameContext)
     (alive: IReadOnlyDictionary<int<EnemyId>, EnemyView>)
     (defs: IReadOnlyDictionary<int<EnemyId>, EnemyDef>)
-    (path: Vector2[])
     (buffer: RenderBuffer3D)
     =
     let time = float32(Raylib.GetTime())
@@ -112,12 +93,14 @@ module EnemiesView =
         let isBoss = def.Archetype = EnemyArchetype.Boss
         let phase = phaseOf eid
 
-        // Hover bob + slow spin around the sim's XZ position.
-        let baseY = if def.Archetype = EnemyArchetype.Flier then 0.8f else 0.2f
+        // Hover bob + slow spin around the sim's XZ position. The
+        // resting height is the shared EnemyLayout.hoverY (tile top
+        // for walkers, flight altitude for fliers).
+        let baseY = EnemyLayout.hoverY def
 
         let y = baseY + 0.06f * MathF.Sin(time * 2.2f + phase)
         let spin = time * 0.8f + phase
-        let scale = def.Scale * enemyScale
+        let scale = def.Scale * EnemyLayout.enemyScale
         let pos = Vector3(v.Pos.X, y, v.Pos.Y)
 
         // Raymath ops produce raylib's native (GLSL column-major) layout, so
@@ -131,39 +114,21 @@ module EnemiesView =
           def.HullModel.Name
           (Raymath.MatrixMultiply(Raymath.MatrixMultiply(scaleM, spinM), transM))
 
-        // Weapon mount — aimed at the travel heading (the weapon
-        // models' forward is +Z), riding the hull's hover, offset
-        // scaled with the hull.
-        match def.WeaponModel with
-        | ValueNone -> ()
-        | ValueSome wm ->
-          let yaw = headingYaw v def path
-          let weaponPos = Vector3(v.Pos.X, y + 0.08f * scale, v.Pos.Y)
-
-          InstanceScratch.add
-            wm.Name
-            (Raymath.MatrixMultiply(
-              Raymath.MatrixMultiply(scaleM, Raymath.MatrixRotateY(yaw)),
-              Raymath.MatrixTranslate(weaponPos.X, weaponPos.Y, weaponPos.Z)
-            ))
-
         // Boss aura ring — the suppression radius on the ground,
         // semi-transparent (Material3D.Opacity — one mesh draw per
-        // boss, they are rare).
+        // boss, they are rare). The XZ scale maps the mesh's OUTER
+        // vertices (selectionBOuterRadius) onto BossAura.Radius; the
+        // Y scale squashes the 0.2-tall ring flat (0.1).
         if isBoss then
           let auraInfo = Models.selectionB
           let auraMeshes = ModelMeshes.resolve auraInfo
+          let auraScale = BossAura.Radius / selectionBOuterRadius
 
           let auraTransform =
             Raymath.MatrixMultiply(
-              Raymath.MatrixScale(
-                BossAura.Radius * 2f,
-                1f,
-                BossAura.Radius * 2f
-              ),
+              Raymath.MatrixScale(auraScale, 0.5f, auraScale),
               Raymath.MatrixTranslate(v.Pos.X, 0.25f, v.Pos.Y)
             )
-
 
           for mi = 0 to auraMeshes.Length - 1 do
             let struct (mesh, material) = auraMeshes[mi]

@@ -27,6 +27,8 @@ let private spawnAt (m: ProjectilesModel) (pos: Vector2) =
   Projectiles.handle
     (ProjectileMsg.Spawn {
       Pos = pos
+      Height = 0f
+      TargetY = 0.5f // hull center above the muzzle — the Y-homing gap
       TargetEnemy = target
       LastTargetPos = pos
       Damage = 5
@@ -48,6 +50,8 @@ let tests =
       Projectiles.handle
         (ProjectileMsg.Spawn {
           Pos = Vector2.Zero
+          Height = 0f
+          TargetY = 0.5f
           TargetEnemy = target
           LastTargetPos = Vector2.Zero
           Damage = 5
@@ -65,6 +69,8 @@ let tests =
       | ValueSome row ->
         Expect.equal row.TargetEnemy target "target"
         Expect.equal row.Damage 5 "damage"
+        Expect.equal row.Y 0f "Y seeded from the spawn height"
+        Expect.equal row.TargetY 0.5f "hull-center target carried"
       | ValueNone -> failtest "row must exist")
 
     testCase "homing: seeks the target's live position and impacts" (fun () ->
@@ -76,7 +82,12 @@ let tests =
       let m2 = m
 
       match m2.Rows |> CMap.tryGetValue(0<ProjectileId>) with
-      | ValueSome row -> Expect.equal row.Pos.X 0.15625f "moved toward target"
+      | ValueSome row ->
+        Expect.equal row.Pos.X 0.15625f "moved toward target"
+
+        // Y-homing: 0.1 s tick covers step/dist = 0.2 of the height
+        // gap (0.5) → Y = 0.1.
+        Expect.equal row.Y 0.1f "Y homes toward the hull center"
       | ValueNone -> failtest "row must exist"
 
       // Enough time to cover the remaining 0.625 units.
@@ -90,6 +101,7 @@ let tests =
         Expect.equal impact.Projectile (0<ProjectileId>) "projectile id"
         Expect.equal impact.Enemy target "enemy id"
         Expect.equal impact.Damage 5 "damage"
+        Expect.equal impact.Y 0.1f "impact carries the flight height"
       | _ -> failtest "expected exactly one Impact"
 
       Expect.equal ((m3.Rows |> AMap.getValue).Count) 0 "removed on impact")
@@ -101,6 +113,8 @@ let tests =
       Projectiles.handle
         (ProjectileMsg.Spawn {
           Pos = Vector2(0.15625f, 0f) // 10 px ÷ 64
+          Height = 0f
+          TargetY = 0f
           TargetEnemy = target
           LastTargetPos = Vector2(0.15625f, 0f)
           Damage = 4
@@ -194,6 +208,8 @@ let tests =
       Projectiles.handle
         (ProjectileMsg.Spawn {
           Pos = Vector2(0.15625f, 0f)
+          Height = 0f
+          TargetY = 0f
           TargetEnemy = target
           LastTargetPos = Vector2(0.15625f, 0f)
           Damage = 25
@@ -276,6 +292,8 @@ let tests =
 
         for KeyValueV(pid, v) in rows do
           Expect.equal v.Pos Vector2.Zero "projectile pos"
+          Expect.equal v.Y 0f "Y seeded from the spawn height"
+          Expect.equal v.TargetY 0.5f "hull-center target carried"
           Expect.equal v.TargetPos map.Path[0] "target pos from Positions"
 
         // Move the enemy; the homing row follows.

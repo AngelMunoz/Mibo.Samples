@@ -19,7 +19,7 @@ module EnemyDefs =
     Speed = 1.0f
     GoldReward = 3
     HullModel = Models.enemyUfoA
-    WeaponModel = ValueSome Models.enemyUfoAWeapon
+    WeaponModel = ValueNone
     Scale = 1f
   }
 
@@ -41,7 +41,7 @@ module EnemyDefs =
     Speed = 0.55f
     GoldReward = 7
     HullModel = Models.enemyUfoC
-    WeaponModel = ValueSome Models.enemyUfoCWeapon
+    WeaponModel = ValueNone
     Scale = 1f
   }
 
@@ -70,7 +70,7 @@ module EnemyDefs =
     Speed = 0.4f
     GoldReward = 50
     HullModel = Models.enemyUfoA
-    WeaponModel = ValueSome Models.enemyUfoAWeapon
+    WeaponModel = ValueNone
     Scale = 1.6f
   }
 

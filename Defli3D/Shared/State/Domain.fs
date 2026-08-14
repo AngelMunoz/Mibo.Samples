@@ -115,7 +115,8 @@ type EnemyDef = {
   /// Hull model from the tower-defense kit (enemy-ufo-*).
   HullModel: ModelInfo
   /// Weapon model mounted on the hull, aimed at the heading by the
-  /// view (ValueNone = no weapon mount).
+  /// view (ValueNone = no weapon mount). No current def sets it —
+  /// the UFOs float weaponless; kept for future defs.
   WeaponModel: ModelInfo voption
   /// Uniform render scale (boss = the grunt hull at 1.6×).
   Scale: float32
@@ -241,6 +242,15 @@ type TowerRuntime = {
 [<Struct>]
 type ProjectileRow = {
   Pos: Vector2
+  /// The shot's CURRENT flight height (seeded from the spawn's
+  /// muzzle Y). The sim integrates it toward TargetY in lockstep
+  /// with the XZ seek, so the shell arrives at the target's hull
+  /// center when the seek arrives.
+  Y: float32
+  /// The target hull's center Y at fire time (EnemyLayout.impactY)
+  /// — the Y-homing destination. Frozen at spawn: no mid-flight
+  /// re-lookups.
+  TargetY: float32
   TargetEnemy: int<EnemyId>
   /// The target's last recorded position. Live-tracked while the
   /// target is alive; when the target despawns mid-flight the shot
@@ -266,6 +276,12 @@ type ProjectileRow = {
 [<Struct>]
 type ProjectileSpawn = {
   Pos: Vector2
+  /// World-space Y of the muzzle at fire time — the shot's flight
+  /// origin (TowerLayout.muzzleY via TowerShot.Height).
+  Height: float32
+  /// The target hull's center Y at fire time (EnemyLayout.impactY)
+  /// — the Y-homing destination the flight integrates toward.
+  TargetY: float32
   TargetEnemy: int<EnemyId>
   /// Seeded by Application from the target's live position at fire time.
   LastTargetPos: Vector2
@@ -320,17 +336,25 @@ type TowerShot = {
   SlowSeconds: float32
   SplashRadius: float32
   ProjectileModel: ModelInfo
+  /// World-space Y of the muzzle at fire time (presentation payload
+  /// — the sim integrates XZ only; TowerLayout.muzzleY).
+  Height: float32
 }
 
 /// A projectile impact (ProjectileEvent.Impact payload) — what hit.
-/// Pos is the detonation point; on a splash hit Application fans out
-/// one ApplyDamage per enemy within SplashRadius of it.
+/// Pos is the detonation point; Y is the flight height at detonation
+/// (the flight homes on the target's hull center, so bursts spawn up
+/// ON the hull, not at ground level). On a splash hit Application
+/// fans out one ApplyDamage per enemy within SplashRadius of it.
 [<Struct>]
 type ProjectileImpact = {
   Projectile: int<ProjectileId>
   Enemy: int<EnemyId>
   Damage: int
   Pos: Vector2
+  /// The flight height at detonation (the shell's Y when the XZ seek
+  /// arrived — spawn Y + however much of the Y-homing it covered).
+  Y: float32
   SlowFactor: float32
   SlowSeconds: float32
   SplashRadius: float32
@@ -347,9 +371,16 @@ type SlowApply = {
 /// Render row of the state-owned Homing projection
 /// (Projectiles.Rows × Enemies.Positions). TargetPos is the target's
 /// live position while it lives, the row's LastTargetPos after.
+/// Y is the shot's current flight height and TargetY the hull-center
+/// destination it homes on — the sim now integrates Y alongside the
+/// XZ seek (3D homing toward the hull center), so the shell visibly
+/// descends/rises onto the target instead of flying flat at muzzle
+/// height.
 [<Struct>]
 type HomingView = {
   Pos: Vector2
+  Y: float32
+  TargetY: float32
   TargetPos: Vector2
   Model: ModelInfo
 }

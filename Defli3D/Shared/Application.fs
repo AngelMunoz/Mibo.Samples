@@ -95,7 +95,7 @@ module Application =
         Economy.Economy.handle (Economy.EarnGold reward) state.Economy
         Enemies.Enemies.despawn eid state.Enemies
 
-        Vfx.Vfx.handle (Vfx.Burst(Vfx.VfxKind.DeathPoof, pos)) state.Vfx
+        Vfx.Vfx.handle (Vfx.Burst(Vfx.VfxKind.DeathPoof, pos, 0f)) state.Vfx
 
         // Boss split-on-death (Phase 6): grunts burst from the corpse.
         // Spawned SYNCHRONOUSLY (the FillWave-on-WaveStarted precedent):
@@ -124,7 +124,7 @@ module Application =
         let basePos = Cells.center state.Map.BaseCell (State.cellSize state)
 
         Economy.Economy.handle Economy.LoseLife state.Economy
-        Vfx.Vfx.handle (Vfx.Burst(Vfx.VfxKind.BaseHit, basePos)) state.Vfx
+        Vfx.Vfx.handle (Vfx.Burst(Vfx.VfxKind.BaseHit, basePos, 0f)) state.Vfx
         Camera.Camera.handle (Camera.Shake 0.125f) state.Camera
 
   let handleSpawnEvents
@@ -191,7 +191,7 @@ module Application =
             handleEnemyEvents state events
 
             Vfx.Vfx.handle
-              (Vfx.Burst(Vfx.VfxKind.Explosion, impact.Pos))
+              (Vfx.Burst(Vfx.VfxKind.Explosion, impact.Pos, impact.Y))
               state.Vfx)
         else
           let enemyEvents =
@@ -208,16 +208,19 @@ module Application =
               }
               state.Enemies
 
-          Vfx.Vfx.handle (Vfx.Burst(Vfx.VfxKind.Impact, impact.Pos)) state.Vfx
+          Vfx.Vfx.handle
+            (Vfx.Burst(Vfx.VfxKind.Impact, impact.Pos, impact.Y))
+            state.Vfx
 
   let handleTowerEvents (state: State) (events: Towers.TowerEvent seq) : unit =
     for ev in events do
       match ev with
       | Towers.Fired shot ->
-        // Muzzle pos from the static row; projectile speed from the
-        // EFFECTIVE def (the upgrade projection) — the +10 %/level
-        // fire-rate/range upgrades must not be dropped here.
-        let struct (pos, speed) =
+        // Muzzle pos + the tower's def key from the static row;
+        // projectile speed from the EFFECTIVE def (the upgrade
+        // projection) — the +10 %/level fire-rate/range upgrades must
+        // not be dropped here.
+        let struct (pos, speed, defKey) =
           state.Towers.Statics
           |> CMap.tryGetValue shot.Tower
           |> ValueOption.map(fun s ->
@@ -228,8 +231,9 @@ module Application =
               |> ValueOption.defaultValue s.Def
 
             struct (Cells.center s.Cell (State.cellSize state),
-                    eff.ProjectileSpeed))
-          |> ValueOption.defaultValue struct (Vector2.Zero, 0f)
+                    eff.ProjectileSpeed,
+                    s.Def.Key))
+          |> ValueOption.defaultValue struct (Vector2.Zero, 0f, "")
 
         // Seed the shot's last-known target position from the live
         // row (fall back to the muzzle): a target that dies
@@ -239,9 +243,22 @@ module Application =
           |> CMap.tryGetValue shot.Enemy
           |> ValueOption.defaultValue pos
 
+        // The target's hull-center Y at fire time (EnemyLayout.impactY)
+        // — the flight Y-homing drives the shell down/up to it. If
+        // the target's def row is already gone (died earlier this
+        // frame), fall back to a typical ground-hull center (0.35:
+        // walkers hover at 0.2 with ~0.3-tall scaled hulls — mid-hull).
+        let targetY =
+          state.Enemies.Defs
+          |> CMap.tryGetValue shot.Enemy
+          |> ValueOption.map EnemyLayout.impactY
+          |> ValueOption.defaultValue 0.35f
+
         Projectiles.Projectiles.handle
           (Projectiles.Spawn {
             Pos = pos
+            Height = shot.Height
+            TargetY = targetY
             TargetEnemy = shot.Enemy
             LastTargetPos = lastTargetPos
             Damage = shot.Damage
@@ -253,7 +270,17 @@ module Application =
           })
           state.Projectiles
 
-        Vfx.Vfx.handle (Vfx.Burst(Vfx.VfxKind.Muzzle, pos)) state.Vfx
+        // Muzzle VFX per weapon kind: the ballista is a bow, so it
+        // gets a dust puff instead of a fire flash (cannon + turret
+        // keep the flash). The burst spawns at the shot's muzzle
+        // height (the shot carries the sim-computed Y).
+        let muzzleKind =
+          if defKey = "arrow" then
+            Vfx.VfxKind.MuzzleDust
+          else
+            Vfx.VfxKind.Muzzle
+
+        Vfx.Vfx.handle (Vfx.Burst(muzzleKind, pos, shot.Height)) state.Vfx
 
   // ── The per-frame sim (ex-Router.update) ───────────────────────────
 
@@ -287,7 +314,8 @@ module Application =
       Vfx.Vfx.handle
         (Vfx.Burst(
           Vfx.VfxKind.Placement,
-          Cells.center cell (State.cellSize state)
+          Cells.center cell (State.cellSize state),
+          0f
         ))
         state.Vfx
 

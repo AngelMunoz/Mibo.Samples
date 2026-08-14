@@ -17,6 +17,8 @@ open Defli3D.State
 //   Explosion — a clustered fireball: quick fade
 //   DeathPoof — slow puffs that EXPAND, rise, linger
 //   Muzzle    — a single stationary flash at the barrel
+//   MuzzleDust— a few slow tan dust puffs at the barrel (the
+//              ballista is a bow — no fire flash)
 //   Placement — low dust clumps that settle fast
 //   BaseHit   — a bigger smoke cloud at the base
 //
@@ -27,13 +29,16 @@ open Defli3D.State
 // bursts — no RNG stream (index-based angles/speed tiers;
 // golden-angle rotation spread).
 //
-// 3D port: positions live on the XZ ground plane (a burst's Vector2
-// pos is x/z, y starts at 0); velocities stay XZ; the per-kind rise
-// is a Y drift so impacts read from the orbit camera. Sizes/speeds
-// are world units (Defli's px ÷ 64). The sim integrates only
-// backend-neutral data — billboard vs instanced-mesh rendering,
-// mesh/material handle caches and any per-kind height offset (e.g.
-// muzzle at the tower top) are VIEW-edge concerns.
+// 3D port: a burst is a world-space point — the msg's Vector2 pos
+// is x/z and its y IS the world-space spawn height (previously
+// particles always spawned at y = 0 and the VIEWS hardcoded a
+// muzzle lift; that hack is gone — the sim carries muzzle heights
+// now). Velocities stay XZ; the per-kind rise is a Y drift on top
+// of the spawn height so impacts read from the orbit camera.
+// Sizes/speeds are world units (Defli's px ÷ 64). The sim
+// integrates only backend-neutral data — billboard vs
+// instanced-mesh rendering and mesh/material handle caches are
+// VIEW-edge concerns.
 // ─────────────────────────────────────────────────────────────
 
 [<Struct>]
@@ -42,6 +47,7 @@ type VfxKind =
   | Explosion
   | DeathPoof
   | Muzzle
+  | MuzzleDust
   | Placement
   | BaseHit
 
@@ -71,11 +77,15 @@ type VfxModel() =
   member val Explosion = VfxPool 256 with get, set
   member val DeathPoof = VfxPool 256 with get, set
   member val Muzzle = VfxPool 128 with get, set
+  member val MuzzleDust = VfxPool 128 with get, set
   member val Placement = VfxPool 128 with get, set
   member val BaseHit = VfxPool 128 with get, set
 
+/// Burst — spawn one burst of `kind` at the world-space point
+/// (pos is x/z, y is the spawn height: muzzle bursts spawn at the
+/// tower top, ground effects pass 0).
 [<Struct>]
-type VfxMsg = Burst of kind: VfxKind * pos: Vector2
+type VfxMsg = Burst of kind: VfxKind * pos: Vector2 * y: float32
 
 module Vfx =
 
@@ -99,6 +109,7 @@ module Vfx =
     | Explosion -> struct (7, 0.7f, 0.69f, 420f, 0.4f, 0.16f, 5f)
     | DeathPoof -> struct (5, 0.4f, 0.56f, 110f, 0.22f, 0.28f, 3f)
     | Muzzle -> struct (1, 0f, 0.5f, 640f, 0.31f, 0f, 0f)
+    | MuzzleDust -> struct (4, 0.25f, 0.45f, 300f, 0.25f, 0.35f, 4f)
     | Placement -> struct (5, 0.4f, 0.28f, 260f, 0.16f, 0.09f, 4f)
     | BaseHit -> struct (6, 0.47f, 0.63f, 130f, 0.25f, 0.19f, 3f)
 
@@ -109,11 +120,21 @@ module Vfx =
   /// Cold path: spawn a burst into the kind's pool (deterministic
   /// spread — index-based angles, three speed tiers, golden-angle
   /// rotation so overlapping puffs don't read as copies). The burst
-  /// position is a ground-plane XZ point; particles start at y = 0.
+  /// position is a world-space point: the msg's Vector2 is x/z and
+  /// its y is the spawn height (muzzle bursts spawn at the tower
+  /// top, ground effects at 0).
   let handle (msg: VfxMsg) (model: VfxModel) : unit =
     match msg with
-    | Burst(kind, pos) ->
+    | Burst(kind, pos, y) ->
       let struct (count, speed, size, _, _, _, _) = paramsOf kind
+
+      // Dust puffs spawn tan (ground dust) — the raylib view draws
+      // the particle color directly; MonoGame tints per kind.
+      // Everything else stays white.
+      let baseColor =
+        match kind with
+        | VfxKind.MuzzleDust -> Color.rgb 200uy 180uy 150uy
+        | _ -> Color.White
 
       let pool =
         match kind with
@@ -121,6 +142,7 @@ module Vfx =
         | Explosion -> model.Explosion
         | DeathPoof -> model.DeathPoof
         | Muzzle -> model.Muzzle
+        | MuzzleDust -> model.MuzzleDust
         | Placement -> model.Placement
         | BaseHit -> model.BaseHit
 
@@ -134,10 +156,10 @@ module Vfx =
 
         pool.Particles[pool.Count] <-
           {
-            Position = Vector3(pos.X, 0f, pos.Y)
+            Position = Vector3(pos.X, y, pos.Y)
             Size = Vector2(size, size)
             Rotation = float32((i * 137) % 360)
-            Color = Color.White
+            Color = baseColor
           }
 
         pool.Velocities[pool.Count] <- velocity
@@ -199,5 +221,6 @@ module Vfx =
     stepPool dt VfxKind.Explosion model.Explosion
     stepPool dt VfxKind.DeathPoof model.DeathPoof
     stepPool dt VfxKind.Muzzle model.Muzzle
+    stepPool dt VfxKind.MuzzleDust model.MuzzleDust
     stepPool dt VfxKind.Placement model.Placement
     stepPool dt VfxKind.BaseHit model.BaseHit

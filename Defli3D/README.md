@@ -14,6 +14,11 @@ assessment in `../Defli/README.md` (section 6): 60 fps, 0.55 ms/frame busy,
 | B `Raylib.exe_20260813_170851` | Raylib | 483.4 s | ~30 Hz (49 % at 33 ms) | 4.4 % | 0.26 % |
 | C `MonoDX12.exe_20260813_172612` | MonoDX12 | 557.0 s | 60 Hz (81 % of frames) | 9.3 % | 0.40 % |
 
+The file names are the default artifact names of the capture sessions (the
+`<process>_<timestamp>` naming of `dotnet-trace collect`). The trace files
+are local capture artifacts; they are **not stored in the repository**.
+Section 5 captures and reproduces them from a clean checkout.
+
 ## 1. Method note
 
 - The traces use the evented format with the `CPU_TIME` pseudo-frame.
@@ -151,34 +156,112 @@ Watch items, in order:
 
 ## 5. Reproduction
 
+The traces are not stored in the repository. Capture them, then analyze
+them with the tools in `../tools`. All commands below run from the
+repository root (`../`).
+
+### 5.1 Capture
+
+Prerequisites:
+
+- .NET SDK (the `dotnet trace` diagnostics command; otherwise install the
+  equivalent global tool: `dotnet tool install -g dotnet-trace` and use
+  `dotnet-trace` below).
+- A built backend, e.g. `dotnet build Defli3D/MonoDX12 -c Release` (or
+  `Defli3D/Raylib`).
+
+Attach to a running game (the method used for these traces):
+
 ```bash
-# sample census + adaptive share + allocation/string callers
-dotnet fsi tools/analyze-trace.fsx <trace.speedscope.json> [--adaptive Mibo.Adaptive]
+# list .NET processes and find the game pid
+# (dotnet trace ps also works on Windows)
+dotnet trace ps
 
-# subtree + child attribution; queries are positional argv
-dotnet fsi tools/analyze-subtree.fsx <trace.speedscope.json> [query ...]
+# attach: gc-verbose keeps the GC events the gcprobe needs
+# Ctrl+C finalizes the file; it also finalizes when the app exits
+dotnet trace collect --format SpeedScope --profile gc-verbose -p <pid>
+```
 
-# structure: gap histogram, vsync cadence (frame-count truth), CPU_TIME spans
-dotnet fsi tools/probe-structure.fsx <trace.speedscope.json> [--vsync 16.6667]
+This produces `<Process>_<timestamp>.speedscope.json` in the current
+directory (the names in the tables above). The GC probe additionally needs
+the `.nettrace`: if the capture above did not keep one, capture again
+without `--format` and convert it:
+
+```bash
+# nettrace variant (for tools/gcprobe)
+dotnet trace collect --profile gc-verbose -p <pid>
+dotnet trace convert --format SpeedScope -o <name>.speedscope.json <name>.nettrace
+```
+
+Capture from the get-go (trace the app at launch):
+
+```bash
+dotnet trace collect --format SpeedScope --profile gc-verbose -- Defli3D/MonoDX12/bin/Release/<tfm>/MonoDX12.exe
+```
+
+(`<tfm>` is the project's target framework, see `Defli3D/MonoDX12/MonoDX12.fsproj`.)
+
+Session shape that reproduces the findings: start at wave 1 and play into
+the end-game waves (20–35), keep the game fully warm (towers maxed, enemies
+active) for the traced window, and trace for 4–9 minutes (or until game
+over). The tables above are the reference; per-session variance follows the
+wave mix.
+
+### 5.2 Telemetry (the recompute counters)
+
+Run the game without the tracer and play until game over:
+
+```bash
+dotnet run --project Defli3D/MonoDX12 -c Release
+```
+
+The summary prints once at the game-over transition (the one-shot print in
+`Shared/Application.fs`): forced frames, paused frames, and the per-node
+recompute counters. The stable unit is the per-forced-frame ratio (Homing
+≈ 25, Suppression ≈ 18, Views ≈ 9, Alive ≈ 8.5, BossPositions ≈ 8.3;
+upgrade/hover chains < 0.1).
+
+### 5.3 Analyze
+
+```bash
+# sample census: busy share, Mibo.Adaptive share, allocation/string callers
+# --adaptive defaults to Mibo.Adaptive; 2D-era traces: --adaptive AdaptiveSlop.Core
+dotnet fsi tools/analyze-trace.fsx <trace.speedscope.json>
+
+# structure: gap histogram, vsync cadence (the frame-count truth), CPU_TIME spans
+dotnet fsi tools/probe-structure.fsx <trace.speedscope.json>
 
 # per-minute busy/adaptive ramp
-dotnet fsi tools/probe-minute.fsx <trace.speedscope.json> [--adaptive Mibo.Adaptive]
+dotnet fsi tools/probe-minute.fsx <trace.speedscope.json>
+
+# subtree + child attribution; queries are positional argv
+dotnet fsi tools/analyze-subtree.fsx <trace.speedscope.json> "Mibo.Adaptive" "Towers.tick" "Application.update" "WorldView"
 
 # per-function open rates; markers are argv fragments
-dotnet fsi trace-count.fsx <trace.speedscope.json> [--draw <frag>] [--update <frag>] [--interesting <frag>]...
+# raylib: --draw "Renderer3D" --update "StepCore"
+dotnet fsi trace-count.fsx <trace.speedscope.json>
 
-# GC lifecycle from the nettrace
+# GC counts + stop-the-world pauses (needs the .nettrace)
 dotnet run --project tools/gcprobe -- <trace.nettrace>
 ```
 
-The tools are backend- and namespace-agnostic: pass `--adaptive AdaptiveSlop.Core`
-for 2D-era traces, `--draw/--update` fragments for any loop shape. Traces were
-collected with `dotnet-trace collect --profile gc-verbose -o out.nettrace --name <exe>`
-and converted with `dotnet-trace convert --format Speedscope`.
+Expected output that matches the tables:
+
+- MonoGame backends: vsync cadence k=1 ≈ 81–91 % (60 Hz), busy ≈ 9–13 % of
+  wall, Mibo.Adaptive ≈ 0.07 ms/frame, GC ≈ 0.9–1.1/s with max STW
+  ≈ 1.4–1.5 ms.
+- Raylib: cadence k=1 ≈ 32 % / k=2 ≈ 49 % (~30 Hz pacing), busy ≈ 4.4 %,
+  Mibo.Adaptive ≈ 0.09 ms/frame, GC ≈ 0.44/s with max STW < 0.8 ms.
+
+All tools are backend- and namespace-agnostic (filters pass through argv).
+The vsync cadence of `probe-structure.fsx` is the frame-count source of
+truth; the open counts of `trace-count.fsx` are sample runs, not frame
+counts (section 1).
 
 ## 6. Project status
 
 Sim core, backends (Raylib, MonoDX12/MonoDX11/MonoVK/MonoGL), the Content
-pipeline and the model dataset are in place. The three traces above are the
-first 3D captures: MonoDX12 (two sessions) and Raylib (one session). The
-remaining backends and the test suite are next.
+pipeline and the model dataset are in place. Three capture sessions were
+analyzed for this assessment: MonoDX12 (two sessions) and Raylib (one
+session), each captured per section 5. The remaining backends and the test
+suite are next.
