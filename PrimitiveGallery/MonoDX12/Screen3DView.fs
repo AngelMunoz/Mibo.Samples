@@ -45,33 +45,83 @@ module Screen3DView =
       (Microsoft.Xna.Framework.Vector3(0f, 1f, 0f))
       (45f * MathF.PI / 180f)
 
-  /// Material3D.unlit takes an XNA Color — convert from Mibo.Color.
-  let private material(color: Mibo.Color) : Material3D =
-    Material3D.unlit(MonoGameColor.toMonoGameColor color)
+  /// Inspection spin speed (radians/second) — one full turn ≈ 8s (matches
+  /// the raylib client).
+  let private rotationSpeed = 0.8f
 
-  /// Unit primitives are centered on the origin; scale then translate.
-  let private transform (position: Vector3) (scale: Vector3) : XnaMatrix =
-    XnaMatrix.CreateScale(scale.X, scale.Y, scale.Z)
-    * XnaMatrix.CreateTranslation(position.X, position.Y, position.Z)
+  /// Lit albedo material — shading reveals vertex/normal orientation.
+  let private material(color: Mibo.Color) : Material3D =
+    Material3D.colored(MonoGameColor.toMonoGameColor color)
+
+  /// The MonoGame plane primitive lies on XY with its normal on +Z; raylib's
+  /// GenMeshPlane lies on XZ with normal +Y. Lay planes flat so this client
+  /// matches the raylib picture. (The orientation difference is a known
+  /// framework divergence — FPSSample orients decals against the +Z plane —
+  /// so the gallery compensates per-backend like FPSSample does.)
+  let private layPlaneFlat = XnaMatrix.CreateRotationX(-MathF.PI / 2f)
+
+  /// Unit primitives are centered on the origin: spin around Y through the
+  /// shape's own center, then scale, then translate. The ground stays static.
+  /// Planes scale in their LOCAL axes first (raylib semantics: scale.X/Z are
+  /// the world extents of a flat plane), then lay flat, then spin.
+  let private transform
+    (position: Vector3)
+    (scale: Vector3)
+    (spins: bool)
+    (layFlat: bool)
+    (elapsed: float32)
+    : XnaMatrix =
+    let spin =
+      if spins then
+        XnaMatrix.CreateRotationY(elapsed * rotationSpeed)
+      else
+        XnaMatrix.Identity
+
+    let basis = if layFlat then layPlaneFlat * spin else spin
+
+    let s =
+      if layFlat then
+        // local X → world X (scale.X), local Y → world Z (scale.Z)
+        XnaMatrix.CreateScale(scale.X, scale.Z, scale.Y)
+      else
+        XnaMatrix.CreateScale(scale.X, scale.Y, scale.Z)
+
+    s * basis * XnaMatrix.CreateTranslation(position.X, position.Y, position.Z)
 
   let private drawShape
     (buffer: RenderBuffer3D)
     (prims: Primitive3D.PrimitiveSet)
+    (elapsed: float32)
     (shape: Shape3D)
     : unit =
+    let spins, layFlat =
+      match shape with
+      | Shape3D.Plane(name, _, _, _) -> (name <> "ground"), true
+      | _ -> true, false
+
     match shape with
     | Shape3D.Cube(_, p, s, c) ->
-      buffer.mesh(prims.Cube, transform p s, material c) |> ignore
+      buffer.mesh(prims.Cube, transform p s spins layFlat elapsed, material c)
+      |> ignore
     | Shape3D.Sphere(_, p, s, c) ->
-      buffer.mesh(prims.Sphere, transform p s, material c) |> ignore
+      buffer.mesh(prims.Sphere, transform p s spins layFlat elapsed, material c)
+      |> ignore
     | Shape3D.Cylinder(_, p, s, c) ->
-      buffer.mesh(prims.Cylinder, transform p s, material c) |> ignore
+      buffer.mesh(
+        prims.Cylinder,
+        transform p s spins layFlat elapsed,
+        material c
+      )
+      |> ignore
     | Shape3D.Plane(_, p, s, c) ->
-      buffer.mesh(prims.Plane, transform p s, material c) |> ignore
+      buffer.mesh(prims.Plane, transform p s spins layFlat elapsed, material c)
+      |> ignore
     | Shape3D.Torus(_, p, s, c) ->
-      buffer.mesh(prims.Torus, transform p s, material c) |> ignore
+      buffer.mesh(prims.Torus, transform p s spins layFlat elapsed, material c)
+      |> ignore
     | Shape3D.Cone(_, p, s, c) ->
-      buffer.mesh(prims.Cone, transform p s, material c) |> ignore
+      buffer.mesh(prims.Cone, transform p s spins layFlat elapsed, material c)
+      |> ignore
 
   /// The 3D pass: full-screen for Shapes3D, split-right for Split, and a
   /// full-screen sky clear (no geometry) for Shapes2D so the noClear 2D
@@ -113,7 +163,7 @@ module Screen3DView =
         .drop()
 
       for shape in Layout3D.shapes do
-        drawShape buffer prims shape
+        drawShape buffer prims frame.Elapsed shape
 
       for line in Layout3D.lines do
         buffer.line3D(line.Start, line.Finish, line.Color) |> ignore

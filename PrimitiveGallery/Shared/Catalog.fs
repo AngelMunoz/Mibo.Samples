@@ -235,6 +235,28 @@ module Layout2D =
       rel c 38f -12f
     |]
 
+    // Fan demo: hub + open 180° arc whose rim alternates radius (38/20) so
+    // every triangle has a visible outer edge — a uniform-radius arc reads
+    // as a plain semicircle and hides the fan's triangles. Increasing angle
+    // runs clockwise on this Y-down screen, so the rim stays the winding
+    // regression check.
+    let fanArc c =
+      let radii = [| 38f; 20f; 38f; 20f; 38f; 20f; 38f |]
+      let start = 180f * System.MathF.PI / 180f
+      let step = 30f * System.MathF.PI / 180f
+
+      [|
+        for i = 0 to 6 do
+          let a = start + float32 i * step
+
+          rel
+            c
+            (System.MathF.Cos(a) * radii[i])
+            (System.MathF.Sin(a) * radii[i])
+      |]
+
+    let fanCell c = Array.append [| c |] (fanArc c)
+
     [|
       Shape2D.FillRect("fillRect", rect 0 0, Mibo.Color.Red)
       Shape2D.RectOutline("rectOutline", rect 1 0, Mibo.Color.Blue, 3f)
@@ -353,30 +375,23 @@ module Layout2D =
         rel (center 0 4) 55f 30f,
         magenta
       )
-      // Deliberately CLOCKWISE rim — filled primitives must render in any
-      // winding order on every backend (raylib culls clockwise unless the
-      // framework normalizes it), so this cell doubles as the regression
-      // check for that contract.
-      Shape2D.TriangleFan(
-        "triangleFan",
-        [|
-          center 1 4
-          rel (center 1 4) -50f -30f
-          rel (center 1 4) 50f -30f
-          rel (center 1 4) 50f 30f
-          rel (center 1 4) -50f 30f
-        |],
-        orange
-      )
+      // Deliberately CLOCKWISE rim (increasing arc angle, Y-down screen)
+      // — filled primitives must render in any winding order on every
+      // backend, so this cell doubles as the regression check for that
+      // contract.
+      Shape2D.TriangleFan("triangleFan", fanCell(center 1 4), orange)
+      // Wavy zigzag band: the strip's coverage is visibly narrower than
+      // its bounding box, so the triangulation reads at a glance instead
+      // of collapsing into a filled rectangle.
       Shape2D.TriangleStrip(
         "triangleStrip",
         [|
-          rel (center 2 4) -50f -30f
-          rel (center 2 4) -50f 30f
-          rel (center 2 4) 0f -30f
-          rel (center 2 4) 0f 30f
-          rel (center 2 4) 50f -30f
-          rel (center 2 4) 50f 30f
+          rel (center 2 4) -55f -25f
+          rel (center 2 4) -40f 0f
+          rel (center 2 4) -15f -35f
+          rel (center 2 4) 0f -8f
+          rel (center 2 4) 25f -30f
+          rel (center 2 4) 40f -2f
         |],
         purple
       )

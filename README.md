@@ -181,6 +181,23 @@ dotnet run --project AnimatedInstancing/MonoGL     # OpenGL (fallback path)
 dotnet run --project AnimatedInstancing/MonoVK     # Vulkan
 ```
 
+### PrimitiveGallery
+
+A visual regression gallery for Mibo's render primitives: every 2D shape command (`fillRect` … `polyOutline`) in labeled cells, and the 3D unit primitives (`Primitive3D.cube/sphere/cylinder/plane/torus/cone`) plus `line3D` demos, all on one adaptive shell (Defli3D layout). Screens: **1** = 2D shapes, **2** = 3D shapes, **3** = split (2D grid + 3D scene in one frame). Run the same layout on every backend and compare side by side; findings go in [PrimitiveGallery/README.md](PrimitiveGallery/README.md).
+
+```bash
+# raylib backend (any platform)
+dotnet run --project PrimitiveGallery/Raylib
+
+# MonoGame backends
+dotnet run --project PrimitiveGallery/MonoDX12   # DirectX 12 (Windows)
+dotnet run --project PrimitiveGallery/MonoDX11   # DirectX 11 (Windows)
+dotnet run --project PrimitiveGallery/MonoGL     # OpenGL
+dotnet run --project PrimitiveGallery/MonoVK     # Vulkan
+```
+
+Controls: **1/2/3** or **Tab** to switch screens.
+
 ## Building
 
 ```bash
