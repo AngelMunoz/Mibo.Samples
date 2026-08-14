@@ -114,9 +114,14 @@ module VfxView =
 
         texScratch[i] <- tex
 
-        // The sim carries the true world Y (muzzle bursts spawn at
-        // the tower top) — draw at Position.Y as-is.
-        posScratch[i] <- p.Position
+        // Ground effects spawn at Y=0; the billboard is centered on the
+        // position, so without a lift half the quad sinks below the floor
+        // (the "square/dimension" look seen from above). Lift the draw Y so
+        // the quad's bottom stays at/above the floor; muzzle bursts already
+        // sit high, so max() leaves them where the sim put them.
+        let liftedY = max p.Position.Y (p.Size.Y * 0.5f)
+
+        posScratch[i] <- Vector3(p.Position.X, liftedY, p.Position.Z)
 
         sizeScratch[i] <- p.Size
         colorScratch[i] <- RaylibColor.toRaylibColor p.Color

@@ -88,6 +88,11 @@ module BossAura =
   /// Fire-rate multiplier for suppressed towers (0.5 = halved).
   let Factor = 0.5f
 
+  /// Visual radius (world units) of the boss body aura — a fresnel shell
+  /// centered on the hull, slightly larger than the boss body so it reads
+  /// as a glow surrounding it. Gameplay suppression still uses Radius.
+  let VisualRadius = 1.3f
+
   /// Grunts spawned at the corpse when a boss dies.
   let SplitCount = 3
 

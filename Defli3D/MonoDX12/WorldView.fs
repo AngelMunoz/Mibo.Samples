@@ -90,13 +90,13 @@ module WorldView =
   /// 0.6403). The range ring divides the tower's fire range by this
   /// so the octagon's corners land exactly on the range circle —
   /// everything under the marker is in range.
-  let private selectionBVertexRadius = 0.6403f
+  /// Range disc tint — translucent pure blue. Opacity<1 (set on the material)
+  /// routes the draw through the pipeline's sorted translucent pass so the disc
+  /// tints the firing-range area without blocking vision.
+  let private rangeDiscColor = Microsoft.Xna.Framework.Color(30, 40, 255)
 
-  /// Range ring tint — translucent pure blue (hue-matching the raylib
-  /// backend's opaque Mibo.Color.Blue ring; alpha routes the draw
-  /// through the pipeline's sorted translucent pass and keeps the
-  /// ring from blocking vision).
-  let private rangeRingTint = Microsoft.Xna.Framework.Color(30, 40, 255, 110)
+  /// Unit primitives — the range disc is a thin Cylinder. Built once.
+  let mutable private primitives: Primitive3D.PrimitiveSet voption = ValueNone
 
   /// The hover overlays: the placement preview disc (selection-a at
   /// the hover cell, tinted by build status) and the range ring of
@@ -125,19 +125,39 @@ module WorldView =
           (Matrix.CreateTranslation(x, 0.21f, z))
           (previewTint status))
 
-    frame.HoverCell
-    |> ValueOption.iter2
-      (fun def struct (hx, hy) ->
-        let x = float32 hx + 0.5f
-        let z = float32 hy + 0.5f
-        let s = float32 def.Range / selectionBVertexRadius
+    ()
 
-        InstanceScratch.addTinted
-          Models.selectionB.Path
-          (Matrix.CreateScale(s, 0.25f, s)
-           * Matrix.CreateTranslation(x, 0.21f, z))
-          rangeRingTint)
-      frame.RangeRing
+  /// Builds the unit primitives (range disc) once — the Cylinder needs a
+  /// GraphicsDevice, so it is lazy on the first frame.
+  let private ensurePrimitives(ctx: GameContext) =
+    match primitives with
+    | ValueSome _ -> ()
+    | ValueNone ->
+      primitives <-
+        ValueSome(Primitive3D.create(MonoGameGameContext.getGraphicsDevice ctx))
+
+  /// The hovered tower's firing range as a translucent tinted DISC (a thin
+  /// Cylinder) filling the range area — replaces the old flat selection-b
+  /// octagon ring. Opacity<1 routes it through the translucent pass (alpha
+  /// blend, depth-write off) so it tints the area without blocking vision.
+  let private rangeDisc (frame: RenderFrame) (buffer: RenderBuffer3D) =
+    match primitives, frame.RangeRing, frame.HoverCell with
+    | ValueSome set, ValueSome def, ValueSome struct (hx, hy) ->
+      let x = float32 hx + 0.5f
+      let z = float32 hy + 0.5f
+      let r = float32 def.Range
+      // Unit cylinder is centered on origin (Y [-0.5,+0.5]); scale to the
+      // range radius + a thin height, lift just above the tile top (0.2).
+      let transform =
+        Matrix.CreateScale(r, 0.04f, r) * Matrix.CreateTranslation(x, 0.22f, z)
+
+      let material = {
+        Material3D.unlit(rangeDiscColor) with
+            Opacity = 0.30f
+      }
+
+      buffer.mesh(set.Cylinder, transform, material) |> ignore
+    | _ -> ()
 
   // ── The world pass ──────────────────────────────────────────
 
@@ -180,6 +200,8 @@ module WorldView =
     vfx.View ctx frame.Vfx buffer
     hoverOverlays frame buffer
     InstanceScratch.draw buffer
+    ensurePrimitives ctx
+    rangeDisc frame buffer
     buffer.endCamera().drop()
 
   // ── The HUD pass ────────────────────────────────────────────

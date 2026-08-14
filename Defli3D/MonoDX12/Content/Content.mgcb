@@ -35,30 +35,51 @@
 # mirrors the raylib loose path minus the extension, so the MonoGame
 # view resolves the same logical keys through IAssets.
 
+# VFX particle textures: mipmaps on so the 3D billboard stays soft when it is
+# minified by perspective (the dense black smoke otherwise reads as a solid
+# square). PremultiplyAlpha is the MGCB default but is set explicitly because
+# it must stay on together with GenerateMipmaps.
 #begin ../../../assets/kenney_particle_pack/spark_01.png
 /importer:TextureImporter
 /processor:TextureProcessor
+/processorParam:GenerateMipmaps=True
+/processorParam:PremultiplyAlpha=True
 /build:../../../assets/kenney_particle_pack/spark_01.png;kenney_particle_pack/spark_01
 
 #begin ../../../assets/kenney_particle_pack/dirt_01.png
 /importer:TextureImporter
 /processor:TextureProcessor
+/processorParam:GenerateMipmaps=True
+/processorParam:PremultiplyAlpha=True
 /build:../../../assets/kenney_particle_pack/dirt_01.png;kenney_particle_pack/dirt_01
 
 #begin ../../../assets/kenney_smoke_particles/Explosion/explosion03.png
 /importer:TextureImporter
 /processor:TextureProcessor
+/processorParam:GenerateMipmaps=True
+/processorParam:PremultiplyAlpha=True
 /build:../../../assets/kenney_smoke_particles/Explosion/explosion03.png;kenney_smoke_particles/Explosion/explosion03
 
 #begin ../../../assets/kenney_smoke_particles/Black smoke/blackSmoke05.png
 /importer:TextureImporter
 /processor:TextureProcessor
+/processorParam:GenerateMipmaps=True
+/processorParam:PremultiplyAlpha=True
 /build:../../../assets/kenney_smoke_particles/Black smoke/blackSmoke05.png;kenney_smoke_particles/Black smoke/blackSmoke05
 
 #begin ../../../assets/kenney_smoke_particles/Flash/flash00.png
 /importer:TextureImporter
 /processor:TextureProcessor
+/processorParam:GenerateMipmaps=True
+/processorParam:PremultiplyAlpha=True
 /build:../../../assets/kenney_smoke_particles/Flash/flash00.png;kenney_smoke_particles/Flash/flash00
+
+# Boss body aura — a fresnel rim effect (drawn via DrawImmediate with an
+# alpha blend + depth-read). Mirrors Platformer3D's Toon.fx build.
+#begin Aura.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/build:Aura.fx;Aura
 
 #begin ../../../assets/kenney_tower_defense_kit/Models/detail-crystal-large.glb
 /importer:FbxImporter

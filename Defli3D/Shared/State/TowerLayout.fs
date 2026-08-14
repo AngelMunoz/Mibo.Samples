@@ -9,10 +9,27 @@ namespace Defli3D.State
 // (Towers.Fired carries Height; muzzle VFX bursts spawn at it).
 //
 // Convention: 1 cell = 1 world unit; tower tiles' top surface is
-// at y = 0.2; the kit models are bottom-anchored (min-Y = 0), so
-// a piece's SizeY is also its rise. All pieces are the pre-cut
-// stack parts WITHOUT the roof — the weapon mounts flush on the
-// top piece.
+// at y = 0.2; the kit models are bottom-anchored (min-Y = 0, verified
+// via BoneProbe), so a piece's SizeY is also its rise. The body is
+// stacked WITHOUT the roof — the weapon mounts flush on the top piece.
+//
+// Per-level composition (base + bottom always; the gun sits on the
+// topmost piece):
+//   level 1 — base + bottom                       (minimal stub)
+//   level 2 — base + bottom + top-A
+//   level 3 — base + bottom + middle + top-B
+//   level 4 — base + bottom + middle×2 + top-B
+//   level 5 — base + bottom + middle×3 + top-C
+// Each level adds one piece, so the height grows monotonically and
+// weaponY (= baseY + scaled stackHeight) rises with the level.
+//
+// Variety (independent of level): the bottom and middle VARIANT
+// (A/B/C) is chosen per tower from a deterministic cell-hash seed.
+// Bottom/middle A/B/C share SizeY within a family (verified in
+// Models.fs), so variety does not change the stack height — the gun
+// stays exactly at the top, no overlaps. The top variant is
+// level-driven (A→B→C). The base is towerRoundBase for BOTH families
+// (no square-base asset ships in the kit).
 // ─────────────────────────────────────────────────────────────
 
 module TowerLayout =
@@ -24,93 +41,145 @@ module TowerLayout =
   /// needs it shared.
   let towerScale = 0.6f
 
-  /// The kit piece family for a tower def: square for the cannon,
-  /// round for everything else (arrow + frost today). Returns the
-  /// family's five pieces — the bottom/middle a-variants plus the
-  /// three top variants stackFor maps levels onto.
-  let roundPieces =
-    struct (Models.towerRoundBottomA,
-            Models.towerRoundMiddleA,
-            Models.towerRoundTopA,
-            Models.towerRoundTopB,
-            Models.towerRoundTopC)
+  // ── Per-family variant pools ───────────────────────────────
+  // Within a tier the A/B/C variants share SizeY (round bottom/middle
+  // 0.6, square 0.5), so picking a variant changes only the silhouette,
+  // never the stack height.
+  let private roundBottoms = [|
+    Models.towerRoundBottomA
+    Models.towerRoundBottomB
+    Models.towerRoundBottomC
+  |]
 
-  let squarePieces =
-    struct (Models.towerSquareBottomA,
-            Models.towerSquareMiddleA,
-            Models.towerSquareTopA,
-            Models.towerSquareTopB,
-            Models.towerSquareTopC)
+  let private roundMiddles = [|
+    Models.towerRoundMiddleA
+    Models.towerRoundMiddleB
+    Models.towerRoundMiddleC
+  |]
 
-  let inline family(def: TowerDef) =
-    if def.Key = "cannon" then squarePieces else roundPieces
+  let private roundTops = [|
+    Models.towerRoundTopA
+    Models.towerRoundTopB
+    Models.towerRoundTopC
+  |]
 
-  /// Builds ONE level's stack array (bottom→top, no roof). Runs once
-  /// at module init to precompute the per-family level tables —
-  /// stackFor hands out those cached arrays, so the per-frame render
+  let private squareBottoms = [|
+    Models.towerSquareBottomA
+    Models.towerSquareBottomB
+    Models.towerSquareBottomC
+  |]
+
+  let private squareMiddles = [|
+    Models.towerSquareMiddleA
+    Models.towerSquareMiddleB
+    Models.towerSquareMiddleC
+  |]
+
+  let private squareTops = [|
+    Models.towerSquareTopA
+    Models.towerSquareTopB
+    Models.towerSquareTopC
+  |]
+
+  /// The shared foundation pad for BOTH families (no tower-square-base
+  /// ships in the kit, so square/cannon reuses the round pad).
+  let private basePiece = Models.towerRoundBase
+
+  /// Deterministic variant seed (0..2) from a tower's cell — stable
+  /// across level-ups (the cell never changes) so a tower keeps its
+  /// bottom/middle detailing as it grows.
+  let variantSeed (cx: int) (cy: int) : int = ((cx * 7 + cy * 13) % 3 + 3) % 3
+
+  /// Middle-floor count per level (the tower gains one floor per level
+  /// past L2). L1/L2 have no middle.
+  let inline private middleCount(level: int) : int =
+    match level with
+    | 1
+    | 2 -> 0
+    | 3 -> 1
+    | 4 -> 2
+    | _ -> 3 // 5 and above clamp to 3
+
+  /// The cap (top) variant index per level, or -1 when there is no cap
+  /// (L1 only). A at L2, B at L3-4, C at L5+.
+  let inline private capIndex(level: int) : int =
+    match level with
+    | 1 -> -1
+    | 2 -> 0
+    | 3
+    | 4 -> 1
+    | _ -> 2
+
+  /// Builds ONE (family, level, variant) stack array (bottom→top, no
+  /// roof): [base; bottom(variant); middle(variant)×middleCount; cap?].
+  /// Runs once at module init to precompute the per-family level tables
+  /// — stackFor hands out those cached arrays, so the per-frame render
   /// path (both backends call stackFor per tower per frame) allocates
   /// nothing.
-  let inline buildStack
+  let inline private buildStack
     (level: int)
-    (struct (bottom, middle, topA, topB, topC))
+    (variant: int)
+    (bottoms: _[], middles: _[], tops: _[])
     : ModelInfo[] =
-    let middleCount =
-      match level with
-      | 1 -> 0
-      | 2
-      | 3 -> 1
-      | 4
-      | 5 -> 2
-      | _ -> 3
+    let mc = middleCount level
+    let cap = capIndex level
+    let count = 2 + mc + (if cap >= 0 then 1 else 0)
+    let stack = Array.zeroCreate<ModelInfo> count
+    stack[0] <- basePiece
+    stack[1] <- bottoms[variant]
 
-    let top =
-      if level >= 5 then topC
-      elif level >= 3 then topB
-      else topA
+    for i = 0 to mc - 1 do
+      stack[2 + i] <- middles[variant]
 
-    let stack = Array.zeroCreate<ModelInfo>(2 + middleCount)
-    stack[0] <- bottom
+    if cap >= 0 then
+      stack[2 + mc] <- tops[cap]
 
-    for i in 1..middleCount do
-      stack[i] <- middle
-
-    stack[middleCount + 1] <- top
     stack
 
-  /// Cached body stacks per family, indexed by level − 1 (levels
-  /// 1..6; anything above 6 clamps to the level-6 stack).
-  let roundStacks = [| for level in 1..6 -> buildStack level roundPieces |]
+  /// Cached body stacks per (family, level, variant), indexed by
+  /// (level-1)*3 + variant (levels 1..5, variants 0..2). Public so the
+  /// inline accessors below can reference them; callers treat the
+  /// returned array as read-only.
+  let roundStacks = [|
+    for level in 1..5 do
+      for variant in 0..2 do
+        buildStack level variant (roundBottoms, roundMiddles, roundTops)
+  |]
 
-  let squareStacks = [| for level in 1..6 -> buildStack level squarePieces |]
+  let squareStacks = [|
+    for level in 1..5 do
+      for variant in 0..2 do
+        buildStack level variant (squareBottoms, squareMiddles, squareTops)
+  |]
 
   /// The tower BODY as a stack of pre-cut kit pieces, bottom→top,
-  /// WITHOUT a roof — the weapon rests on the top piece. Level →
-  /// stack (bottom/middle stay on the a variants; only the top
-  /// varies a/b/c):
-  ///   level 1  — bottom-a + top-a
-  ///   level 2  — bottom-a + middle-a + top-a
-  ///   level 3  — bottom-a + middle-a + top-b
-  ///   level 4  — bottom-a + middle-a ×2 + top-b
-  ///   level 5  — bottom-a + middle-a ×2 + top-c
-  ///   level 6+ — bottom-a + middle-a ×3 + top-c
-  /// Returns a SHARED cached array — callers must treat it as
-  /// read-only.
-  let inline stackFor (def: TowerDef) (level: int) : ModelInfo[] =
+  /// WITHOUT a roof — the weapon rests on the top piece. `variantSeed`
+  /// (0..2, from the tower cell) selects the bottom/middle detailing;
+  /// it does not change the stack height. Returns a SHARED cached array
+  /// — callers must treat it as read-only.
+  let inline stackFor
+    (def: TowerDef)
+    (level: int)
+    (variantSeed: int)
+    : ModelInfo[] =
     let stacks = if def.Key = "cannon" then squareStacks else roundStacks
-    stacks[min (max level 1) 6 - 1]
+    let lv = min (max level 1) 5
+    let v = variantSeed % 3
+    stacks[(lv - 1) * 3 + v]
 
-  /// Sum of the stack pieces' SizeY (unscaled model heights). Reads
-  /// the cached stack — no allocation.
+  /// Sum of the stack pieces's SizeY (unscaled model heights). Variant-
+  /// independent (bottom/middle variants share SizeY), so the canonical
+  /// variant 0 is used. Reads the cached stack — no allocation.
   let inline stackHeight (def: TowerDef) (level: int) : float32 =
-    stackFor def level |> Array.sumBy(fun piece -> piece.SizeY)
+    stackFor def level 0 |> Array.sumBy(fun piece -> piece.SizeY)
 
   /// The tile top — tower bodies sit on it (the ground tiles are
   /// bottom-anchored with their top surface at y = 0.2).
   let baseY = 0.2f
 
-  /// The weapon's resting Y — flush ON the top piece (all pieces
-  /// are bottom-anchored, so the stack top is baseY + scaled stack
-  /// height). The tower body top is the same height by construction.
+  /// The weapon's resting Y — flush ON the top piece (all pieces are
+  /// bottom-anchored, so the stack top is baseY + scaled stack height).
+  /// The tower body top is the same height by construction.
   let inline weaponY (def: TowerDef) (level: int) : float32 =
     baseY + stackHeight def level * towerScale
 

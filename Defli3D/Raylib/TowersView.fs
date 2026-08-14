@@ -63,6 +63,9 @@ module TowersView =
       let center = Cells.center s.Cell (Vector2.One)
       let cx = center.X
       let cy = center.Y
+      let struct (ix, iy) = s.Cell
+      // Per-tower bottom/middle variant (stable across level-ups).
+      let variant = TowerLayout.variantSeed ix iy
 
       // Body — the kit's stack parts (TowerLayout.stackFor,
       // bottom→top, NO roof), one instanced draw per piece, each
@@ -75,7 +78,7 @@ module TowersView =
 
       let mutable acc = 0f
 
-      for piece in TowerLayout.stackFor def level do
+      for piece in TowerLayout.stackFor def level variant do
         let pieceY = TowerLayout.baseY + acc * scale
         acc <- acc + piece.SizeY
 

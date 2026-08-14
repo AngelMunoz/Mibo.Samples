@@ -79,14 +79,11 @@ module WorldView =
   /// √(0.5² + 0.4²) = 0.6403 (the 1.0 AABB's corners are NOT on the
   /// mesh), so scaling it to the AABB overdraws the radius by 1.28×.
   /// The range ring divides by this so the ring lands exactly on the
-  /// tower's def.Range.
-  [<Literal>]
-  let private selectionBOuterRadius = 0.6403f
-
-  /// Range ring: the hovered own tower's effective range as a flat,
-  /// exact-radius octagon (Models.selectionB, Y-squashed to a
-  /// 0.05-tall band on the tile tops) — translucent blue, matching
-  /// the MonoGame selection tint.
+  /// Range disc: the hovered own tower's effective range as a translucent
+  /// tinted DISC (a thin Cylinder primitive) filling the range area —
+  /// replaces the old flat selection-b octagon ring. Opacity<1 routes it
+  /// through the translucent pass (alpha blend, depth-write off) so it tints
+  /// the area without blocking vision.
   let private rangeRing
     (ctx: GameContext)
     (frame: RenderFrame)
@@ -95,28 +92,24 @@ module WorldView =
     frame.RangeRing
     |> ValueOption.iter(fun def ->
       let c = hoverCenter frame
-      let s = float32 def.Range / selectionBOuterRadius
+      let r = float32 def.Range
 
+      // Unit cylinder centered on origin (Y [-0.5,+0.5]); scale to the range
+      // radius + a thin height, lift just above the tile top (0.2).
       let transform =
         Raymath.MatrixMultiply(
-          Raymath.MatrixScale(s, 0.25f, s),
-          Raymath.MatrixTranslate(c.X, 0.21f, c.Y)
+          Raymath.MatrixScale(r, 0.04f, r),
+          Raymath.MatrixTranslate(c.X, 0.22f, c.Y)
         )
 
-      // The MonoGame selection tint (Color(30,40,255,110)) — unlit
-      // blue with translucency.
       let material = {
         Material3D.unlit(
           Mibo.Color.op_Implicit(Mibo.Color.rgb 30uy 40uy 255uy)
         ) with
-            Opacity = 0.43f
+            Opacity = 0.30f
       }
 
-      let meshes = ModelMeshes.resolve Models.selectionB
-
-      for mi = 0 to meshes.Length - 1 do
-        let struct (mesh, _) = meshes[mi]
-        buffer.mesh(mesh, transform, material) |> ignore)
+      buffer.mesh(Primitive3D.cylinder, transform, material) |> ignore)
 
   /// Cached level-tag strings — one static allocation, reused every
   /// frame (no per-frame string building).

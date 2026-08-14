@@ -115,7 +115,14 @@ module VfxView =
       for i = 0 to pool.Count - 1 do
         let p = pool.Particles[i]
 
-        positions[idx][i] <- Vector3(p.Position.X, p.Position.Y, p.Position.Z)
+        // Ground effects spawn at Y=0; the billboard is centered on the
+        // position, so half the quad sinks below the floor without a lift
+        // (the "square/dimension" look seen from above). Lift the draw Y so
+        // the quad's bottom stays at/above the floor; muzzle bursts already
+        // sit high, so max() leaves them untouched.
+        let liftedY = max p.Position.Y (p.Size.Y * 0.5f)
+
+        positions[idx][i] <- Vector3(p.Position.X, liftedY, p.Position.Z)
 
         sizes[idx][i] <- Vector2(p.Size.X, p.Size.Y)
         colors[idx][i] <- Color(tint.R, tint.G, tint.B, p.Color.A)

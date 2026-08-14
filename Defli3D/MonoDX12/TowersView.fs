@@ -60,6 +60,8 @@ module TowersView =
       let x = float32 cx + 0.5f
       let z = float32 cy + 0.5f
       let center = System.Numerics.Vector2(x, z)
+      // Per-tower bottom/middle variant (stable across level-ups).
+      let variant = TowerLayout.variantSeed cx cy
 
       // Body: the level's stack, pieces bottom→top with a running
       // UNSCALED height accumulator — each piece rests on the one
@@ -67,7 +69,7 @@ module TowersView =
       // pieces are radially symmetric).
       let mutable acc = 0f
 
-      for piece in TowerLayout.stackFor s.Def level do
+      for piece in TowerLayout.stackFor s.Def level variant do
         let pieceY = TowerLayout.baseY + acc * TowerLayout.towerScale
 
         InstanceScratch.add
