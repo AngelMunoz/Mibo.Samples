@@ -41,6 +41,8 @@ module EnemiesView =
   // centered on the hull. The fresnel makes the rim read as a glow; the
   // hull is drawn first (depth written) so the shell's back hemisphere is
   // depth-occluded. Same uniform names as the MonoGame Aura.fx contract.
+  // DrawMesh binds the MATERIAL's shader (rmodels.c — BeginShaderMode is
+  // overridden for the draw), so the material must carry the aura shader.
 
   let private auraVs =
     "
@@ -87,7 +89,8 @@ void main() {
 }
 "
 
-  /// Shader uniform locations + the default material DrawMesh needs.
+  /// Shader uniform locations + the material DrawMesh needs (its shader
+  /// must be the aura shader — DrawMesh binds material.shader).
   [<Struct>]
   type private AuraShader = {
     Shader: Shader
@@ -95,6 +98,9 @@ void main() {
     MatModel: int
     NormalMatrix: int
     CameraPos: int
+    AuraColor: int
+    AuraPower: int
+    AuraIntensity: int
     Material: Material
   }
 
@@ -131,14 +137,21 @@ void main() {
       ShaderUniformDataType.Vec3
     )
 
-  /// Loads the aura shader + the default DrawMesh material once, and sets the
-  /// constant aura tuning uniforms. Idempotent. raylib calls need an open
-  /// window, so this is lazy on the first frame a boss is alive.
+  /// Loads the aura shader + the material DrawMesh needs, and caches the
+  /// uniform locations. Idempotent. raylib calls need an open window, so
+  /// this is lazy on the first frame a boss is alive. The material's
+  /// shader is the aura shader (DrawMesh binds material.shader); the
+  /// tuning uniforms are set per-frame while the shader is current
+  /// (uniform uploads hit the CURRENT program, so they cannot be set at
+  /// load time).
   let private ensureAura() : AuraShader =
     match auraShader with
     | ValueSome s -> s
     | ValueNone ->
       let shader = Raylib.LoadShaderFromMemory(auraVs, auraFs)
+
+      let mutable material = Raylib.LoadMaterialDefault()
+      material.Shader <- shader
 
       let s = {
         Shader = shader
@@ -146,23 +159,11 @@ void main() {
         MatModel = Raylib.GetShaderLocation(shader, "matModel")
         NormalMatrix = Raylib.GetShaderLocation(shader, "normalMatrix")
         CameraPos = Raylib.GetShaderLocation(shader, "cameraPos")
-        Material = Raylib.LoadMaterialDefault()
+        AuraColor = Raylib.GetShaderLocation(shader, "auraColor")
+        AuraPower = Raylib.GetShaderLocation(shader, "auraPower")
+        AuraIntensity = Raylib.GetShaderLocation(shader, "auraIntensity")
+        Material = material
       }
-
-      setShaderVec3
-        shader
-        (Raylib.GetShaderLocation(shader, "auraColor"))
-        auraTint
-
-      setShaderFloat
-        shader
-        (Raylib.GetShaderLocation(shader, "auraPower"))
-        auraPower
-
-      setShaderFloat
-        shader
-        (Raylib.GetShaderLocation(shader, "auraIntensity"))
-        auraIntensity
 
       auraShader <- ValueSome s
       s
@@ -276,7 +277,7 @@ void main() {
     // DrawImmediate runs outside BeginMode3D (which disabled depth test),
     // so re-enable depth TEST (the hull occludes each shell's back), turn
     // depth WRITE off (the rim must not occlude the scene), and use the
-    // default alpha blend.
+    // default alpha blend (straight — the shell's tint scales with alpha).
     if bossCenters.Count > 0 then
       let aura = ensureAura()
       let shader = aura.Shader
@@ -293,6 +294,12 @@ void main() {
           Raylib.BeginBlendMode BlendMode.Alpha
           Raylib.BeginShaderMode shader
 
+          // Tuning constants — uniform uploads hit the CURRENT program,
+          // so these must be set while the aura shader is bound.
+          setShaderVec3 shader aura.AuraColor auraTint
+          setShaderFloat shader aura.AuraPower auraPower
+          setShaderFloat shader aura.AuraIntensity auraIntensity
+
           let r = BossAura.VisualRadius
 
           for i = 0 to bossCenters.Count - 1 do
@@ -306,6 +313,9 @@ void main() {
 
             // Uniform scale: matModel works as the normal matrix (the
             // fragment normalizes), avoiding a transpose(inverse).
+            // DrawMesh ends by unbinding the program (rlDisableShader),
+            // so re-bind before each draw's uniform uploads.
+            Rlgl.EnableShader shader.Id
             Raylib.SetShaderValueMatrix(shader, aura.MatModel, transform)
             Raylib.SetShaderValueMatrix(shader, aura.NormalMatrix, transform)
             Raylib.DrawMesh(Primitive3D.sphere, aura.Material, transform)

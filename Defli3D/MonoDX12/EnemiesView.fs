@@ -25,8 +25,10 @@ open Defli3D.State.Systems
 // The boss aura is a fresnel SHELL — a unit sphere (Primitive3D.Sphere)
 // scaled to BossAura.VisualRadius and centered on the hull, drawn with
 // the Aura effect through DrawImmediate so the view owns the blend
-// (AlphaBlend) and depth (DepthRead — test on, write off): the
-// beginEffect scope runs its draws inline with the pass's OPAQUE state,
+// (NonPremultiplied — Aura.fx outputs straight color, and straight-alpha
+// blending keeps the fresnel falloff; AlphaBlend would add the tint at
+// full strength) and depth (DepthRead — test on, write off):
+// the beginEffect scope runs its draws inline with the pass's OPAQUE state,
 // which would make the shell solid. The hull is drawn first (depth
 // written) so the aura's back hemisphere is occluded; the fresnel makes
 // the rim read as a glow around the boss.
@@ -193,12 +195,13 @@ module EnemiesView =
 
     // Boss body auras: one DrawImmediate that draws every boss's fresnel
     // shell. The hulls are already drawn (depth written), so each shell's
-    // back hemisphere is depth-occluded; AlphaBlend + DepthRead keep the
-    // rim glow from occluding the scene.
+    // back hemisphere is depth-occluded; NonPremultiplied (straight alpha —
+    // Aura.fx outputs straight color) + DepthRead keep the rim glow from
+    // occluding the scene and give the tint its fresnel falloff.
     if bossCenters.Count > 0 then
       ensureAura assets gd
 
-      match auraEffect, auraPrimitives with
+      match struct (auraEffect, auraPrimitives) with
       | ValueSome effect, ValueSome primitives ->
         buffer
           .drawImmediate(fun scene ->
@@ -214,7 +217,7 @@ module EnemiesView =
             let prevBlend = gd.BlendState
             let prevDepth = gd.DepthStencilState
 
-            gd.BlendState <- BlendState.AlphaBlend
+            gd.BlendState <- BlendState.NonPremultiplied
             gd.DepthStencilState <- DepthStencilState.DepthRead
 
             for i = 0 to bossCenters.Count - 1 do
@@ -236,6 +239,9 @@ module EnemiesView =
             gd.DepthStencilState <- prevDepth
             gd.BlendState <- prevBlend)
           .drop()
+      // ensureAura sets both halves together, so a lone or missing half
+      // cannot occur — without both resources there is nothing to draw.
+      | _ -> ()
 
     // Health bars: one billboardBatch (backgrounds then fills — the
     // fill quads blend over the backgrounds; DepthRead keeps them

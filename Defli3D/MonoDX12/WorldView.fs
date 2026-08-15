@@ -100,13 +100,11 @@ module WorldView =
   let mutable private primitives: Primitive3D.PrimitiveSet voption = ValueNone
 
   /// The hover overlays: the placement preview disc (selection-a at
-  /// the hover cell, tinted by build status) and the range ring of
-  /// the hovered own tower (selection-b's octagon scaled so its outer
-  /// vertices land exactly on the fire range — everything under the
-  /// marker is in range; a flat 0.25 Y-scale keeps the band 0.05
-  /// tall so it doesn't block vision). Both go through the shared
-  /// InstanceScratch (reset → fill → final draw on top — each view
-  /// owns its reset, so the last draw emits only the overlays).
+  /// the hover cell, tinted by build status — through the shared
+  /// InstanceScratch: reset → fill → final draw on top, so the last
+  /// draw emits only the overlays) and the range disc of the hovered
+  /// own tower (a thin translucent Cylinder — rangeDisc — tinting the
+  /// firing-range area without blocking vision).
   /// NOTE: no line3D circle here — line primitives are broken on the
   /// MonoGame DX12 runtime (the PSO topology type is never set, line
   /// draws rasterize as garbage). The ring mesh works everywhere.
@@ -189,7 +187,7 @@ module WorldView =
             Opacity = 0.30f
       }
 
-      buffer.mesh(set.Cylinder, transform, material) |> ignore
+      buffer.meshSlice(set.Cylinder, transform, material).drop()
     | _ -> ()
 
   // ── The world pass ──────────────────────────────────────────

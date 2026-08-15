@@ -28,10 +28,9 @@ open Defli3D.State.Systems.Camera
 //     cell, tinted by PlacementStatus (raylib instanced draws have
 //     no per-instance colors, so a single .mesh draw with a tinted
 //     Material3D.unlit override carries the tint).
-//   * range ring — the Models.selectionB octagon scaled to the
-//     tower's exact def.Range, flat on the tile tops and translucent
-//     blue (unlit, Opacity 0.43 — the MonoGame selection tint; no
-//     more line circle).
+//   * range disc — the tower's exact def.Range as a translucent blue
+//     DISC (a thin unlit Cylinder, Opacity 0.30 — straight alpha: the
+//     tint contributes color×opacity over the terrain).
 // ─────────────────────────────────────────────────────────────
 
 module WorldView =
