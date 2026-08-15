@@ -1,6 +1,6 @@
 # Defli3D — Adaptive Architecture Trace Assessment (3D)
 
-**Date:** 2026-08-13
+**Date:** 2026-08-15
 **Status:** Analysis only. The tools in `../tools` were parameterized during this
 assessment (`--adaptive`, query argv, `--draw`/`--update` markers, `--vsync`).
 **Scope:** The 3D port of Defli (adaptive tower defense; same Mibo.Adaptive
@@ -13,8 +13,13 @@ assessment in `../Defli/README.md` (section 6): 60 fps, 0.55 ms/frame busy,
 | A `MonoDX12.exe_20260813_125642` | MonoDX12 | 242.6 s | 60 Hz (91 % of frames) | 13.0 % | 0.44 % |
 | B `Raylib.exe_20260813_170851` | Raylib | 483.4 s | ~30 Hz (49 % at 33 ms) | 4.4 % | 0.26 % |
 | C `MonoDX12.exe_20260813_172612` | MonoDX12 | 557.0 s | 60 Hz (81 % of frames) | 9.3 % | 0.40 % |
+| D `MonoDX12.exe_20260815_104949` | MonoDX12 | 104.3 s | 60 Hz (97.3 % of frames) | 14.8 % | 0.40 % |
+| E `Raylib.exe_20260815_112342` | Raylib | 754.3 s | ~30 Hz (63.1 % at 33 ms) | 6.6 % | 0.34 % |
 
-The file names are the default artifact names of the capture sessions (the
+Sessions D and E are the late-game follow-up: waves 36+ (the 20–35 range of
+A–C), game speed up to 4× per the capture session. They validate the current
+commit (presenter views, frame-carried clock, zero-copy model parts). The file
+names are the default artifact names of the capture sessions (the
 `<process>_<timestamp>` naming of `dotnet-trace collect`). The trace files
 are local capture artifacts; they are **not stored in the repository**.
 Section 5 captures and reproduces them from a clean checkout.
@@ -35,124 +40,164 @@ Section 5 captures and reproduces them from a clean checkout.
   catches it (~30–50 % of frames). The frame count comes from the vsync
   cadence histogram in `probe-structure.fsx` (inter-sample gaps bucketed by
   16.67 ms multiples; k=1 = one vsync = clean frame).
+- **The sim steps once per rendered frame, at the backend's real frame time**
+  (the hosts build `ElapsedGameTime` from the backend clock; the game has no
+  time-scale control). The session context (waves 36+, up to 4×) shows up as
+  heavier per-tick work, not as more steps per second. D holds 60 steps/s at
+  60 Hz; E runs ~30 steps/s at its ~30 Hz pacing. Per-frame numbers below use
+  nominal frame counts (60 Hz for the MonoGame traces, observed ~30 Hz for
+  raylib): D ÷6 257, E ÷22 629.
 - The missed-vsync tail (k=2, k=3) is the trace collector's doing. The user
   reports the tracer causes hitches; the games hold their pacing outside
-  those. Per-frame numbers below use nominal frame counts (60 Hz for the
-  MonoGame traces, observed ~30 Hz for raylib).
+  those (D is the cleanest capture yet: k=1 at 97.3 %).
 
 ## 2. Macroscopic — what the game is doing
 
-The game is not CPU-bound. The thread is busy 4.4–13 % of wall time. The
+The game is not CPU-bound. The thread is busy 6.6–14.8 % of wall time. The
 frame pace is set by the renderer path, not by the simulation.
 
-| Metric | 2D post-joinOn | A (MonoDX12) | B (Raylib) | C (MonoDX12) |
-| --- | --- | --- | --- | --- |
-| Busy per frame | 0.55 ms | 2.16 ms | 1.48 ms | 1.55 ms |
-| Update side | ~47 % (pre-joinOn) | 20.5 % | 42.3 % (StepCore) | 26.6 % |
-| Draw side | 6.5 % | 65.2 % | 41.5 % (Renderer3D) | 58.7 % (DoDraw) |
-| zeroCreate samples | 1 219 | 5 429 | 6 660 | 10 898 |
-| GCs / STW max | 188 / 0.69 ms | 271 / 1.40 ms | 212 / 0.79 ms | 499 / 1.49 ms |
+| Metric | 2D post-joinOn | A (MonoDX12) | B (Raylib) | C (MonoDX12) | D (MonoDX12) | E (Raylib) |
+| --- | --- | --- | --- | --- | --- | --- |
+| Busy per frame | 0.55 ms | 2.16 ms | 1.48 ms | 1.55 ms | 2.47 ms | 2.19 ms |
+| Update side | ~47 % (pre-joinOn) | 20.5 % | 42.3 % (StepCore) | 26.6 % | 22.2 % | 39.2 % |
+| Draw side | 6.5 % | 65.2 % | 41.5 % (Renderer3D) | 58.7 % (DoDraw) | 56.1 % (Renderer3D) | 58.5 % (Renderer3D) |
+| zeroCreate samples | 1 219 | 5 429 | 6 660 | 10 898 | 2 528 | 12 721 |
+| GCs / STW max | 188 / 0.69 ms | 271 / 1.40 ms | 212 / 0.79 ms | 499 / 1.49 ms | 129 / 1.04 ms | 450 / 0.62 ms |
 
 Draw-side composition (share of busy samples):
 
-- **A:** `WorldView.worldView` 76.7 % of draw (MapView + volume instancing
-  31.4 %, InstanceScratch 26.2 %, `ModelCache.boneOf` 13.3 %, TowersView
-  11.4 %). Native (`CPU_TIME`) is 67 % of draw — the DX12/GPU path.
-- **B:** `WorldView.worldView` 39.2 % (TowersView 13.5 %, ProjectilesView
-  7.8 %, EnemiesView 7.3 %, VfxView 1.2 %). The raylib backend has **no
-  per-frame MapView pass** and its pipeline `Execute` is only 1.3 % of busy
-  (vs 8.0 % in C). Its CPU draw cost is the cheapest of the three.
-- **C:** `WorldView.worldView` 43.5 % (MapView 13.1 %, TowersView 7.9 %,
-  ProjectilesView 5.1 %, EnemiesView 3.8 %, hoverOverlays 2.1 %), pipeline
-  `Execute` 8.0 %, HUD 0.5 %.
+- **D:** `WorldView.Render` 42.8 % of busy (MapView 17.9 % incl. the instanced
+  volume pass 17.9 %, of which 16.4 % is native `CPU_TIME`; TowersView 10.4 %;
+  ProjectilesView 2.8 %; EnemiesView 1.9 %; hoverOverlays 0.7 %), pipeline
+  `Execute` 6.4 %, HUD 0.3 %. The MonoGame native draw component is unchanged
+  in shape.
+- **E:** `WorldView.Render` 40.1 % (TowersView **22.2 %** — up from 13.5 % in
+  B, and ~70 % of it is `InstanceGroups.Add`; ProjectilesView 4.8 %;
+  EnemiesView 3.7 %; VfxView 0.9 %; rangeRing 0.2 %). The raylib backend still
+  has **no per-frame MapView pass** (1 sample). Its CPU draw cost is dominated
+  by the tower groups (the maxed late-game build) plus the per-group
+  doubling growth: `InstanceGroups.Add` is 92.3 % of the trace's zeroCreate
+  (0.52 samples/frame, vs 0.41 in B).
+- The update side grew with the session: 22.2 % (D) / 39.2 % (E) of busy —
+  the waves-36+ tick does ~2× the per-frame work of the 20–35 sessions
+  (0.55 / 0.86 ms per frame, vs 0.37–0.44 in A–C). Section 3 attributes it.
 
 Cadence observations:
 
-- The MonoGame backends hold 60 Hz for most frames (A: k=1 91.3 %, C: k=1
-  81.0 %). The k≥2 tail (5.7 % / 19 %) is the tracer hitch pattern.
-- Raylib is paced at ~30 Hz in this environment (k=1 32.2 %, k=2 49.4 %).
-  Its CPU busy is only 4.4 %, so this is not CPU work — it is the
-  present/GL pacing of the environment. Confirm on GPU hardware.
-- Trace A had eight native busy-stalls of 0.9–2.2 s inside Draw, spaced
-  ~30–35 s apart (wave cadence). They contain no sim and no adaptive frames.
-  They are first-use pipeline/shader work or WARP-class rasterization; a
-  no-collector session on GPU hardware would attribute them.
+- **D holds 60 Hz almost perfectly: k=1 97.3 %, k=2 2.5 %** — the cleanest of
+  the five sessions. One gap ≥120 ms total (the collector attach). The
+  wave-cadence native stalls of session A did not reproduce (the longest
+  native span here is 536 ms, at the session edge).
+- E is paced at ~30 Hz like B (k=1 63.1 %, k=2 32.7 %), with a k≥3 tail of
+  4.2 % and 111 gaps ≥120 ms — 57 of them in the first 2.5 min (attach) and
+  43 in the last 2 min (detach); mid-session ~1.4/min. This is the tracer
+  hitch pattern, not game work (the longest native span is 851 ms, at the
+  session edges). The user reports the hitches are the tracing tool's doing —
+  known finding.
 
 ## 3. Microscopic — what the simulation is doing
 
-Per-frame sim cost (all three traces match the 2D session almost exactly):
+Per-frame sim cost (all five 3D traces vs the 2D post-joinOn reference):
 
-| Item | A (÷14 553) | B (÷14 470) | C (÷33 419) | 2D post-joinOn |
-| --- | --- | --- | --- | --- |
-| `Towers.tick` | 0.177 ms | 0.225 ms | 0.167 ms | 0.159 ms |
-| `Projectiles.tick` (homing) | 0.135 ms | 0.129 ms | 0.107 ms | 0.114 ms |
-| `Enemies.tick` | 0.061 ms | 0.074 ms | 0.054 ms | ~0.05 ms |
-| **Mibo.Adaptive machinery** | **0.074 ms** | **0.088 ms** | **0.066 ms** | **0.18 ms** |
-| Frame budget used (16.7 ms) | 13.0 % | 8.9 % | 9.3 % | 3.3 % |
+| Item | A (÷14 553) | B (÷14 470) | C (÷33 419) | D (÷6 257) | E (÷22 629) | 2D post-joinOn |
+| --- | --- | --- | --- | --- | --- | --- |
+| `Towers.tick` | 0.177 ms | 0.225 ms | 0.167 ms | 0.111 ms | 0.210 ms | 0.159 ms |
+| `Projectiles.tick` (homing) | 0.135 ms | 0.129 ms | 0.107 ms | 0.062 ms | 0.087 ms | 0.114 ms |
+| `Enemies.tick` | 0.061 ms | 0.074 ms | 0.054 ms | **0.309 ms** | **0.278 ms** | ~0.05 ms |
+| `Waves.tick` | — | — | — | 0.015 ms | 0.024 ms | — |
+| **Mibo.Adaptive machinery** | **0.074 ms** | **0.088 ms** | **0.066 ms** | **0.067 ms** | **0.112 ms** | **0.18 ms** |
+| Frame budget used | 13.0 % | 8.9 % | 9.3 % | 14.8 % | 6.6 % | 3.3 % |
 
-- **Mibo.Adaptive is 0.066–0.088 ms/frame across all three 3D backends —
-  2–2.7× cheaper per frame than the 2D post-joinOn (0.18 ms).**
+- **Mibo.Adaptive is 0.067–0.112 ms/frame in the late game — still 1.6–2.7×
+  cheaper per frame than the 2D post-joinOn (0.18 ms).** D matches A/C almost
+  exactly (0.067 vs 0.066–0.074); E grew 27 % vs B (0.112 vs 0.088) — and that
+  growth is entity volume, not machinery: the enemy-view join chain
+  (FilterMapNode 2.4 % of E's busy, JoinMapNode 2.0 % — reads that scale with
+  alive enemies) while the sim's own update side grew ~2×.
 - All adaptive samples are in the update side. The draw side reads the
-  packed `RenderFrame` and touches zero adaptive frames (0 samples in draw).
+  packed `RenderFrame` and touches zero adaptive frames (0 samples in draw,
+  both sessions).
 - The adaptive work is the read-time gate: per-key node reads
-  (`AdaptiveNode<float>` cooldownA 0.9–1.8 % of busy, `voption<int>`
-  targetA 0.4–0.9 %, `EnemyView` reads 0.6 %, `MapLookupNode` Motion/EnemyDef
-  0.2–1.0 %), `FilterMapNode.GetValue` 0.5–1.0 %, the Homing
-  `JoinMapNode.CreateEntry` 0.3 %.
-- The write side is dead: `pushMapDelta`/`OnDeltas` ≈ 0 samples;
-  `CommitJournal` 1 sample in C; `ChangeableMap.Apply` 8 samples in C.
-  `diffSubscriptions` is 139 samples (0.6 %) in B, 86 in A.
-- Telemetry (session A, 61 236 forced frames, game over at the end, 0 paused
-  frames): per-frame element recomputes are cheap version checks — Homing
-  join 24.7/frame (≈25 projectiles in flight), Suppression 17.9/frame,
-  Views join 9.2/frame, Alive filter 8.5/frame, BossPositions 8.3/frame;
-  upgrade/hover chains are rare (EffectiveDef 0.09, RangeRing 0.015,
-  PlacementPreview 0.034, Banner 0.001, GameOver 0.0003 per frame). The
-  measured cost of all of it is the 0.07 ms/frame above.
+  (`AdaptiveNode<float>` cooldownA 0.7 % / 1.3 % of busy, `voption<int>`
+  targetA 0.3 % / 0.7 %), the `Views` join chain above, `ElementMapNode`
+  ScanElements 0.4 % (E), and the Homing `JoinMapNode` — whose `CreateEntry`
+  is now ~0 (2 samples in D, ~15 in E; the per-entry version checks in
+  `DrainJournal` 0.2–1.2 %).
+- The write side is dead: `pushMapDelta`/`OnDeltas`/`CommitJournal`/
+  `ChangeableMap.Apply` ≈ 0 samples in both; `diffSubscriptions` is 29 samples
+  in D (0.005 ms/frame) and 236 in E (0.010 ms/frame).
+- **The new #1 sim cost is `Enemies.tick`: 0.28–0.31 ms/frame — ~5× the
+  waves 20–35 sessions — with ~100 % of its samples inside
+  `List<int>.AddWithResize` (the tick's lazily-allocated per-tick
+  `ResizeArray` buffers for arrivals/expired growing through the doubling
+  ladder; 1 923 growth events in D ≈ 0.31/frame).** The wave-36+ tick collects
+  far more arrivals/expirations per step than the 20–35 range; every tick
+  pays the growth from scratch. Game code, not adaptive (the cmap journal is
+  a reused array — `ChangeableMap` internals show ~0 samples).
 - Allocation drip: sim-side zeroCreate is flat and linear in entities
-  (adaptive `Recompute` arrays: 750+454+17 in C ≈ 1 224 samples, 2.4 % of
-  busy). The renderer owns the allocations: `InstanceScratch` is 88.5–89.1 %
-  of every trace's zeroCreate (A 4 828, B 5 937, C 9 646 samples) — the
-  per-group doubling growth during the entity ramp.
-- GC (from the nettrace, `tools/gcprobe`): all pauses < 1.5 ms (A max 1.40,
-  B max 0.79, C max 1.49; 98–100 % under 1 ms). Raylib (0.44/s) matches the
-  2D post-joinOn rate (0.33/s); MonoGame DX12 allocates more (0.90–1.12/s)
-  and pays ~2.7× the GC frequency. STW totals: A 148 ms, B 65 ms, C 263 ms
-  over their sessions. GC cannot be felt: the worst pause is 9 % of one
-  frame budget.
+  (adaptive `Recompute` arrays ≈ 0.02 samples/frame in D, 0.04 in E — same as
+  C's 0.037). The renderer owns the allocations: `InstanceScratch`
+  (`InstanceGroups.Append`/`Add`) is 94.7 % (D) / 92.3 % (E) of every trace's
+  zeroCreate — the per-group doubling growth during the entity ramp.
+- GC (from the nettrace, `tools/gcprobe`): all pauses < 1.1 ms (D max 1.04,
+  E max 0.62; D 128/129 under 1 ms, E all under 1 ms). MonoDX12 allocates at
+  the highest rate yet (1.24/s, vs 0.90–1.12 in A/C — the heavier late-game
+  tick plus the InstanceScratch growth); Raylib rose with the entity load
+  (0.60/s, vs 0.44 in B). STW totals: D 61 ms, E 117 ms over their sessions.
+  GC cannot be felt: the worst pause is 6 % of one frame budget.
 
 ## 4. Verdict
 
-- **Mibo.Adaptive does not drag the game.** It costs 0.07–0.09 ms/frame
-  (≈0.4–0.5 % of the 16.7 ms budget) — cheaper per frame than the validated
-  2D post-joinOn baseline (0.18 ms/frame), with a dead write side and flat
-  allocations.
-- **The simulation matches the 2D per-frame cost almost exactly.** The same
-  code, the same wave range, the same per-frame behavior on three backends.
-- **The renderer owns the frame.** Draw is 41–65 % of busy; the sim is
-  21–42 %. The `InstanceScratch` growth is the top allocation source and the
-  GC driver. The MonoGame draw path carries a large native component
-  (`CPU_TIME`) that the raylib path does not.
-- **The frame pace is environmental, not architectural.** MonoGame holds
-  60 Hz; raylib paces at ~30 Hz in this capture. Both have collector hitches
-  in the k≥2 cadence tail. Nothing in the trace points at the sim or the
-  adaptive graph for a missed frame.
+- **Mibo.Adaptive does not drag the game, not even at waves 36+.** It costs
+  0.067–0.112 ms/frame (≈0.4–0.5 % of a 16.7 ms budget; 2.7–5.1 % of busy
+  samples) — MonoDX12 identical to the 20–35 sessions, Raylib +27 % purely
+  from entity-volume reads. The write side is dead, the draw side reads the
+  packed frame with zero adaptive frames, and the Recompute allocation rate
+  is unchanged per frame. The sim's own plain-code costs grew 5×
+  (Enemies.tick) while the adaptive layer grew 1.3× — the graph absorbs the
+  late-game load better than the sim's per-tick lists.
+- **The new #1 sim cost is `Enemies.tick`'s per-tick buffer growth**
+  (0.28–0.31 ms/frame, ~5× the previous range): freshly allocated
+  `ResizeArray`s per tick, grown through the doubling ladder on every
+  arrival/expiration burst. Reuse cleared buffers (clear-and-keep-capacity)
+  or a pooled scratch; this is game code in `Shared`, not the framework, and
+  it is the single biggest sim-side win available.
+- **The renderer still owns the frame.** Draw is 56.1 % (D) / 58.5 % (E) of
+  busy; the sim is 22.2 % / 39.2 %. The `InstanceScratch` growth is the top
+  allocation source and the GC driver. The MonoGame draw path carries the
+  same native component (`CPU_TIME` under the instanced volume pass and the
+  pipeline) that the raylib path does not; Raylib's draw cost is the tower
+  groups (TowersView 22.2 % of busy, 2.4× the B session — the maxed
+  late-game build).
+- **The frame pace is environmental, not architectural.** D holds 60 Hz at
+  97.3 % — the cleanest capture yet; E paces at ~30 Hz with the collector
+  hitch pattern in the tail (known finding). Nothing in the trace points at
+  the sim or the adaptive graph for a missed frame.
 
 Watch items, in order:
 
-1. **InstanceScratch growth** (0.9–1.7 zeroCreate samples/frame, 88–89 % of
-   allocations) — pool or pre-size the per-group arrays; it drives the GC
-   rate.
-2. **Native draw path in MonoGame** (CPU_TIME 67 % of draw in A) — validate
-   on GPU hardware; the 1–2 s wave-cadence stalls are the same unknown.
-3. **Raylib 30 Hz pacing** — confirm vsync/target-fps behavior on real
-   hardware; the CPU is 4.4 % busy, so nothing in the sim explains it.
-4. **HUD strings** — raylib `Path.Combine` (AssetsService.resolvePath) 222
-   samples + `PrintFormatToString` 74; MonoGame `PrintFormatToStringThen` 84.
-   View-side micro-optimization, not an adaptive issue.
-5. **Homing join `CreateEntry` / per-key reads** — still the largest adaptive
-   line (0.3 % of busy) and the one that scales with projectile volume
-   (24.7/frame in the telemetry session).
+1. **`Enemies.tick` per-tick buffer growth** (0.28–0.31 ms/frame at waves
+   36+, ~5× the 20–35 range; ~100 % of its samples in `List<int>.AddWithResize`)
+   — reuse/pool the per-tick `ResizeArray`s. Game code, not adaptive; the
+   biggest sim-side item.
+2. **InstanceScratch growth** (94–92 % of allocations, 0.38–0.52 zeroCreate
+   samples/frame) — pool or pre-size the per-group arrays; it drives the GC
+   rate (MonoDX12 hit 1.24 GCs/s in D).
+3. **Raylib TowersView** (22.2 % of busy, up from 13.5 %) — the late-game
+   tower count plus the per-group doubling; same InstanceScratch fix, plus
+   confirm on real GPU hardware.
+4. **Native draw path in MonoGame** (instanced volume 16.4 % native,
+   pipeline 6.4 %) — validate on GPU hardware; the 1–2 s wave-cadence stalls
+   of session A did not reproduce.
+5. **Raylib 30 Hz pacing** — confirm vsync/target-fps behavior on real
+   hardware; the CPU is 6.6 % busy, so nothing in the sim explains it.
+6. **Homing join per-key reads** — still the largest adaptive line
+   (`JoinMapNode` 2.0 % of busy in E), and the one that scales with
+   projectile volume; `CreateEntry` itself is now ~0.
+7. **HUD strings** — raylib `Path.Combine` (AssetsService.resolvePath) 364
+   samples + `PrintFormatToString` 129; MonoDX12
+   `PrintFormatToStringThen` 17. View-side micro-optimization, not an
+   adaptive issue.
 
 ## 5. Reproduction
 
@@ -204,8 +249,11 @@ dotnet trace collect --format SpeedScope --profile gc-verbose -- Defli3D/MonoDX1
 Session shape that reproduces the findings: start at wave 1 and play into
 the end-game waves (20–35), keep the game fully warm (towers maxed, enemies
 active) for the traced window, and trace for 4–9 minutes (or until game
-over). The tables above are the reference; per-session variance follows the
-wave mix.
+over). Sessions D and E extend this to the late game (waves 36+, up to 4×
+speed per the capture session): the per-frame costs of section 3 are the
+waves-36+ reference, and the `Enemies.tick` growth (watch item 1) is the
+difference to expect. The tables above are the reference; per-session
+variance follows the wave mix.
 
 ### 5.2 Telemetry (the recompute counters)
 
@@ -247,11 +295,12 @@ dotnet run --project tools/gcprobe -- <trace.nettrace>
 
 Expected output that matches the tables:
 
-- MonoGame backends: vsync cadence k=1 ≈ 81–91 % (60 Hz), busy ≈ 9–13 % of
-  wall, Mibo.Adaptive ≈ 0.07 ms/frame, GC ≈ 0.9–1.1/s with max STW
-  ≈ 1.4–1.5 ms.
-- Raylib: cadence k=1 ≈ 32 % / k=2 ≈ 49 % (~30 Hz pacing), busy ≈ 4.4 %,
-  Mibo.Adaptive ≈ 0.09 ms/frame, GC ≈ 0.44/s with max STW < 0.8 ms.
+- MonoGame backends: vsync cadence k=1 ≈ 81–97 % (60 Hz), busy ≈ 9–15 % of
+  wall, Mibo.Adaptive ≈ 0.07 ms/frame (0.11 in the waves-36+ Raylib session),
+  GC ≈ 0.9–1.2/s with max STW ≈ 1.0–1.5 ms.
+- Raylib: cadence k=1 ≈ 32–63 % / k=2 ≈ 33–49 % (~30 Hz pacing), busy ≈
+  4.4–6.6 %, Mibo.Adaptive ≈ 0.09–0.11 ms/frame, GC ≈ 0.44–0.60/s with max
+  STW < 0.8 ms.
 
 All tools are backend- and namespace-agnostic (filters pass through argv).
 The vsync cadence of `probe-structure.fsx` is the frame-count source of
@@ -261,7 +310,9 @@ counts (section 1).
 ## 6. Project status
 
 Sim core, backends (Raylib, MonoDX12/MonoDX11/MonoVK/MonoGL), the Content
-pipeline and the model dataset are in place. Three capture sessions were
-analyzed for this assessment: MonoDX12 (two sessions) and Raylib (one
-session), each captured per section 5. The remaining backends and the test
-suite are next.
+pipeline and the model dataset are in place. Five capture sessions were
+analyzed for this assessment: MonoDX12 (three sessions) and Raylib (two
+sessions), each captured per section 5. Sessions D and E validate the
+current commit (presenter views, frame-carried clock, zero-copy model
+parts) at waves 36+; the `Enemies.tick` buffer-growth item (watch item 1)
+is the follow-up. The remaining backends and the test suite are next.
