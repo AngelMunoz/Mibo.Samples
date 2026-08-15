@@ -15,7 +15,7 @@
 
 # The kenney_tower_defense_kit GLBs all reference one shared external texture
 # (Models/Textures/colormap.png, relative URI). ModelProcessor auto-discovers
-# it, but because the .glb sources live outside this project the discovered
+# it, but because the .fbx sources live outside this project the discovered
 # texture escapes MGCB's output root and is never copied to the app, causing a
 # ContentLoadException for colormap_0.xnb at runtime. Build the texture
 # explicitly so it lands inside the output dir under the same content name the
@@ -81,7 +81,7 @@
 /processor:EffectProcessor
 /build:Aura.fx;Aura
 
-#begin ../../../assets/kenney_tower_defense_kit/Models/detail-crystal-large.glb
+#begin ../../../assets/kenney_tower_defense_kit/Models/detail-crystal-large.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -95,11 +95,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/detail-crystal-large.glb;kenney_tower_defense_kit/Models/detail-crystal-large
-#begin ../../../assets/kenney_tower_defense_kit/Models/detail-crystal.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/detail-crystal-large.fbx;kenney_tower_defense_kit/Models/detail-crystal-large
+#begin ../../../assets/kenney_tower_defense_kit/Models/detail-crystal.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -113,11 +113,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/detail-crystal.glb;kenney_tower_defense_kit/Models/detail-crystal
-#begin ../../../assets/kenney_tower_defense_kit/Models/detail-dirt-large.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/detail-crystal.fbx;kenney_tower_defense_kit/Models/detail-crystal
+#begin ../../../assets/kenney_tower_defense_kit/Models/detail-dirt-large.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -131,11 +131,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/detail-dirt-large.glb;kenney_tower_defense_kit/Models/detail-dirt-large
-#begin ../../../assets/kenney_tower_defense_kit/Models/detail-dirt.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/detail-dirt-large.fbx;kenney_tower_defense_kit/Models/detail-dirt-large
+#begin ../../../assets/kenney_tower_defense_kit/Models/detail-dirt.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -149,11 +149,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/detail-dirt.glb;kenney_tower_defense_kit/Models/detail-dirt
-#begin ../../../assets/kenney_tower_defense_kit/Models/detail-rocks-large.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/detail-dirt.fbx;kenney_tower_defense_kit/Models/detail-dirt
+#begin ../../../assets/kenney_tower_defense_kit/Models/detail-rocks-large.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -167,11 +167,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/detail-rocks-large.glb;kenney_tower_defense_kit/Models/detail-rocks-large
-#begin ../../../assets/kenney_tower_defense_kit/Models/detail-rocks.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/detail-rocks-large.fbx;kenney_tower_defense_kit/Models/detail-rocks-large
+#begin ../../../assets/kenney_tower_defense_kit/Models/detail-rocks.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -185,11 +185,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/detail-rocks.glb;kenney_tower_defense_kit/Models/detail-rocks
-#begin ../../../assets/kenney_tower_defense_kit/Models/detail-tree-large.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/detail-rocks.fbx;kenney_tower_defense_kit/Models/detail-rocks
+#begin ../../../assets/kenney_tower_defense_kit/Models/detail-tree-large.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -203,11 +203,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/detail-tree-large.glb;kenney_tower_defense_kit/Models/detail-tree-large
-#begin ../../../assets/kenney_tower_defense_kit/Models/detail-tree.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/detail-tree-large.fbx;kenney_tower_defense_kit/Models/detail-tree-large
+#begin ../../../assets/kenney_tower_defense_kit/Models/detail-tree.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -221,11 +221,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/detail-tree.glb;kenney_tower_defense_kit/Models/detail-tree
-#begin ../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-a-weapon.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/detail-tree.fbx;kenney_tower_defense_kit/Models/detail-tree
+#begin ../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-a-weapon.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -239,11 +239,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-a-weapon.glb;kenney_tower_defense_kit/Models/enemy-ufo-a-weapon
-#begin ../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-a.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-a-weapon.fbx;kenney_tower_defense_kit/Models/enemy-ufo-a-weapon
+#begin ../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-a.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -257,11 +257,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-a.glb;kenney_tower_defense_kit/Models/enemy-ufo-a
-#begin ../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-b-weapon.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-a.fbx;kenney_tower_defense_kit/Models/enemy-ufo-a
+#begin ../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-b-weapon.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -275,11 +275,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-b-weapon.glb;kenney_tower_defense_kit/Models/enemy-ufo-b-weapon
-#begin ../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-b.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-b-weapon.fbx;kenney_tower_defense_kit/Models/enemy-ufo-b-weapon
+#begin ../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-b.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -293,11 +293,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-b.glb;kenney_tower_defense_kit/Models/enemy-ufo-b
-#begin ../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-beam-burst.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-b.fbx;kenney_tower_defense_kit/Models/enemy-ufo-b
+#begin ../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-beam-burst.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -311,11 +311,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-beam-burst.glb;kenney_tower_defense_kit/Models/enemy-ufo-beam-burst
-#begin ../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-beam.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-beam-burst.fbx;kenney_tower_defense_kit/Models/enemy-ufo-beam-burst
+#begin ../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-beam.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -329,11 +329,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-beam.glb;kenney_tower_defense_kit/Models/enemy-ufo-beam
-#begin ../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-c-weapon.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-beam.fbx;kenney_tower_defense_kit/Models/enemy-ufo-beam
+#begin ../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-c-weapon.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -347,11 +347,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-c-weapon.glb;kenney_tower_defense_kit/Models/enemy-ufo-c-weapon
-#begin ../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-c.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-c-weapon.fbx;kenney_tower_defense_kit/Models/enemy-ufo-c-weapon
+#begin ../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-c.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -365,11 +365,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-c.glb;kenney_tower_defense_kit/Models/enemy-ufo-c
-#begin ../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-d-weapon.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-c.fbx;kenney_tower_defense_kit/Models/enemy-ufo-c
+#begin ../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-d-weapon.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -383,11 +383,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-d-weapon.glb;kenney_tower_defense_kit/Models/enemy-ufo-d-weapon
-#begin ../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-d.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-d-weapon.fbx;kenney_tower_defense_kit/Models/enemy-ufo-d-weapon
+#begin ../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-d.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -401,11 +401,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-d.glb;kenney_tower_defense_kit/Models/enemy-ufo-d
-#begin ../../../assets/kenney_tower_defense_kit/Models/selection-a.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/enemy-ufo-d.fbx;kenney_tower_defense_kit/Models/enemy-ufo-d
+#begin ../../../assets/kenney_tower_defense_kit/Models/selection-a.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -419,11 +419,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/selection-a.glb;kenney_tower_defense_kit/Models/selection-a
-#begin ../../../assets/kenney_tower_defense_kit/Models/selection-b.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/selection-a.fbx;kenney_tower_defense_kit/Models/selection-a
+#begin ../../../assets/kenney_tower_defense_kit/Models/selection-b.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -437,11 +437,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/selection-b.glb;kenney_tower_defense_kit/Models/selection-b
-#begin ../../../assets/kenney_tower_defense_kit/Models/spawn-round.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/selection-b.fbx;kenney_tower_defense_kit/Models/selection-b
+#begin ../../../assets/kenney_tower_defense_kit/Models/spawn-round.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -455,11 +455,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/spawn-round.glb;kenney_tower_defense_kit/Models/spawn-round
-#begin ../../../assets/kenney_tower_defense_kit/Models/spawn-square.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/spawn-round.fbx;kenney_tower_defense_kit/Models/spawn-round
+#begin ../../../assets/kenney_tower_defense_kit/Models/spawn-square.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -473,11 +473,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/spawn-square.glb;kenney_tower_defense_kit/Models/spawn-square
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-bump.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/spawn-square.fbx;kenney_tower_defense_kit/Models/spawn-square
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-bump.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -491,11 +491,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-bump.glb;kenney_tower_defense_kit/Models/tile-bump
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-corner-inner.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-bump.fbx;kenney_tower_defense_kit/Models/tile-bump
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-corner-inner.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -509,11 +509,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-corner-inner.glb;kenney_tower_defense_kit/Models/tile-corner-inner
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-corner-large.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-corner-inner.fbx;kenney_tower_defense_kit/Models/tile-corner-inner
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-corner-large.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -527,11 +527,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-corner-large.glb;kenney_tower_defense_kit/Models/tile-corner-large
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-corner-outer.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-corner-large.fbx;kenney_tower_defense_kit/Models/tile-corner-large
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-corner-outer.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -545,11 +545,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-corner-outer.glb;kenney_tower_defense_kit/Models/tile-corner-outer
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-corner-round.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-corner-outer.fbx;kenney_tower_defense_kit/Models/tile-corner-outer
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-corner-round.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -563,11 +563,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-corner-round.glb;kenney_tower_defense_kit/Models/tile-corner-round
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-corner-square.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-corner-round.fbx;kenney_tower_defense_kit/Models/tile-corner-round
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-corner-square.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -581,11 +581,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-corner-square.glb;kenney_tower_defense_kit/Models/tile-corner-square
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-crossing.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-corner-square.fbx;kenney_tower_defense_kit/Models/tile-corner-square
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-crossing.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -599,11 +599,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-crossing.glb;kenney_tower_defense_kit/Models/tile-crossing
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-crystal.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-crossing.fbx;kenney_tower_defense_kit/Models/tile-crossing
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-crystal.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -617,11 +617,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-crystal.glb;kenney_tower_defense_kit/Models/tile-crystal
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-dirt.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-crystal.fbx;kenney_tower_defense_kit/Models/tile-crystal
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-dirt.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -635,11 +635,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-dirt.glb;kenney_tower_defense_kit/Models/tile-dirt
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-end-round.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-dirt.fbx;kenney_tower_defense_kit/Models/tile-dirt
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-end-round.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -653,11 +653,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-end-round.glb;kenney_tower_defense_kit/Models/tile-end-round
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-end.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-end-round.fbx;kenney_tower_defense_kit/Models/tile-end-round
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-end.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -671,11 +671,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-end.glb;kenney_tower_defense_kit/Models/tile-end
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-hill.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-end.fbx;kenney_tower_defense_kit/Models/tile-end
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-hill.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -689,11 +689,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-hill.glb;kenney_tower_defense_kit/Models/tile-hill
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-river-bridge.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-hill.fbx;kenney_tower_defense_kit/Models/tile-hill
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-river-bridge.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -707,11 +707,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-river-bridge.glb;kenney_tower_defense_kit/Models/tile-river-bridge
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-river-corner.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-river-bridge.fbx;kenney_tower_defense_kit/Models/tile-river-bridge
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-river-corner.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -725,11 +725,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-river-corner.glb;kenney_tower_defense_kit/Models/tile-river-corner
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-river-slope-large.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-river-corner.fbx;kenney_tower_defense_kit/Models/tile-river-corner
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-river-slope-large.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -743,11 +743,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-river-slope-large.glb;kenney_tower_defense_kit/Models/tile-river-slope-large
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-river-slope.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-river-slope-large.fbx;kenney_tower_defense_kit/Models/tile-river-slope-large
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-river-slope.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -761,11 +761,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-river-slope.glb;kenney_tower_defense_kit/Models/tile-river-slope
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-river-straight.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-river-slope.fbx;kenney_tower_defense_kit/Models/tile-river-slope
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-river-straight.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -779,11 +779,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-river-straight.glb;kenney_tower_defense_kit/Models/tile-river-straight
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-river-transition.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-river-straight.fbx;kenney_tower_defense_kit/Models/tile-river-straight
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-river-transition.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -797,11 +797,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-river-transition.glb;kenney_tower_defense_kit/Models/tile-river-transition
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-river-waterfall.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-river-transition.fbx;kenney_tower_defense_kit/Models/tile-river-transition
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-river-waterfall.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -815,11 +815,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-river-waterfall.glb;kenney_tower_defense_kit/Models/tile-river-waterfall
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-rock.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-river-waterfall.fbx;kenney_tower_defense_kit/Models/tile-river-waterfall
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-rock.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -833,11 +833,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-rock.glb;kenney_tower_defense_kit/Models/tile-rock
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-slope.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-rock.fbx;kenney_tower_defense_kit/Models/tile-rock
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-slope.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -851,11 +851,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-slope.glb;kenney_tower_defense_kit/Models/tile-slope
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-spawn-end-round.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-slope.fbx;kenney_tower_defense_kit/Models/tile-slope
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-spawn-end-round.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -869,11 +869,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-spawn-end-round.glb;kenney_tower_defense_kit/Models/tile-spawn-end-round
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-spawn-end.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-spawn-end-round.fbx;kenney_tower_defense_kit/Models/tile-spawn-end-round
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-spawn-end.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -887,11 +887,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-spawn-end.glb;kenney_tower_defense_kit/Models/tile-spawn-end
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-spawn-round.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-spawn-end.fbx;kenney_tower_defense_kit/Models/tile-spawn-end
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-spawn-round.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -905,11 +905,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-spawn-round.glb;kenney_tower_defense_kit/Models/tile-spawn-round
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-spawn.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-spawn-round.fbx;kenney_tower_defense_kit/Models/tile-spawn-round
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-spawn.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -923,11 +923,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-spawn.glb;kenney_tower_defense_kit/Models/tile-spawn
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-split.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-spawn.fbx;kenney_tower_defense_kit/Models/tile-spawn
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-split.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -941,11 +941,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-split.glb;kenney_tower_defense_kit/Models/tile-split
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-straight-slope-large.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-split.fbx;kenney_tower_defense_kit/Models/tile-split
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-straight-slope-large.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -959,11 +959,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-straight-slope-large.glb;kenney_tower_defense_kit/Models/tile-straight-slope-large
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-straight-slope.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-straight-slope-large.fbx;kenney_tower_defense_kit/Models/tile-straight-slope-large
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-straight-slope.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -977,11 +977,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-straight-slope.glb;kenney_tower_defense_kit/Models/tile-straight-slope
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-straight.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-straight-slope.fbx;kenney_tower_defense_kit/Models/tile-straight-slope
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-straight.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -995,11 +995,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-straight.glb;kenney_tower_defense_kit/Models/tile-straight
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-transition.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-straight.fbx;kenney_tower_defense_kit/Models/tile-straight
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-transition.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1013,11 +1013,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-transition.glb;kenney_tower_defense_kit/Models/tile-transition
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-tree-double.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-transition.fbx;kenney_tower_defense_kit/Models/tile-transition
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-tree-double.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1031,11 +1031,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-tree-double.glb;kenney_tower_defense_kit/Models/tile-tree-double
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-tree-quad.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-tree-double.fbx;kenney_tower_defense_kit/Models/tile-tree-double
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-tree-quad.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1049,11 +1049,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-tree-quad.glb;kenney_tower_defense_kit/Models/tile-tree-quad
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-tree.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-tree-quad.fbx;kenney_tower_defense_kit/Models/tile-tree-quad
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-tree.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1067,11 +1067,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-tree.glb;kenney_tower_defense_kit/Models/tile-tree
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-wide-corner.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-tree.fbx;kenney_tower_defense_kit/Models/tile-tree
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-wide-corner.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1085,11 +1085,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-wide-corner.glb;kenney_tower_defense_kit/Models/tile-wide-corner
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-wide-split.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-wide-corner.fbx;kenney_tower_defense_kit/Models/tile-wide-corner
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-wide-split.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1103,11 +1103,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-wide-split.glb;kenney_tower_defense_kit/Models/tile-wide-split
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-wide-straight.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-wide-split.fbx;kenney_tower_defense_kit/Models/tile-wide-split
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-wide-straight.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1121,11 +1121,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-wide-straight.glb;kenney_tower_defense_kit/Models/tile-wide-straight
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile-wide-transition.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-wide-straight.fbx;kenney_tower_defense_kit/Models/tile-wide-straight
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile-wide-transition.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1139,11 +1139,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile-wide-transition.glb;kenney_tower_defense_kit/Models/tile-wide-transition
-#begin ../../../assets/kenney_tower_defense_kit/Models/tile.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile-wide-transition.fbx;kenney_tower_defense_kit/Models/tile-wide-transition
+#begin ../../../assets/kenney_tower_defense_kit/Models/tile.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1157,11 +1157,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tile.glb;kenney_tower_defense_kit/Models/tile
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-base.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tile.fbx;kenney_tower_defense_kit/Models/tile
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-base.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1175,11 +1175,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-base.glb;kenney_tower_defense_kit/Models/tower-round-base
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-bottom-a.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-base.fbx;kenney_tower_defense_kit/Models/tower-round-base
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-bottom-a.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1193,11 +1193,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-bottom-a.glb;kenney_tower_defense_kit/Models/tower-round-bottom-a
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-bottom-b.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-bottom-a.fbx;kenney_tower_defense_kit/Models/tower-round-bottom-a
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-bottom-b.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1211,11 +1211,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-bottom-b.glb;kenney_tower_defense_kit/Models/tower-round-bottom-b
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-bottom-c.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-bottom-b.fbx;kenney_tower_defense_kit/Models/tower-round-bottom-b
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-bottom-c.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1229,11 +1229,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-bottom-c.glb;kenney_tower_defense_kit/Models/tower-round-bottom-c
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-build-a.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-bottom-c.fbx;kenney_tower_defense_kit/Models/tower-round-bottom-c
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-build-a.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1247,11 +1247,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-build-a.glb;kenney_tower_defense_kit/Models/tower-round-build-a
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-build-b.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-build-a.fbx;kenney_tower_defense_kit/Models/tower-round-build-a
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-build-b.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1265,11 +1265,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-build-b.glb;kenney_tower_defense_kit/Models/tower-round-build-b
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-build-c.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-build-b.fbx;kenney_tower_defense_kit/Models/tower-round-build-b
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-build-c.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1283,11 +1283,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-build-c.glb;kenney_tower_defense_kit/Models/tower-round-build-c
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-build-d.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-build-c.fbx;kenney_tower_defense_kit/Models/tower-round-build-c
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-build-d.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1301,11 +1301,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-build-d.glb;kenney_tower_defense_kit/Models/tower-round-build-d
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-build-e.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-build-d.fbx;kenney_tower_defense_kit/Models/tower-round-build-d
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-build-e.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1319,11 +1319,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-build-e.glb;kenney_tower_defense_kit/Models/tower-round-build-e
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-build-f.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-build-e.fbx;kenney_tower_defense_kit/Models/tower-round-build-e
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-build-f.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1337,11 +1337,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-build-f.glb;kenney_tower_defense_kit/Models/tower-round-build-f
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-crystals.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-build-f.fbx;kenney_tower_defense_kit/Models/tower-round-build-f
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-crystals.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1355,11 +1355,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-crystals.glb;kenney_tower_defense_kit/Models/tower-round-crystals
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-middle-a.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-crystals.fbx;kenney_tower_defense_kit/Models/tower-round-crystals
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-middle-a.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1373,11 +1373,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-middle-a.glb;kenney_tower_defense_kit/Models/tower-round-middle-a
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-middle-b.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-middle-a.fbx;kenney_tower_defense_kit/Models/tower-round-middle-a
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-middle-b.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1391,11 +1391,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-middle-b.glb;kenney_tower_defense_kit/Models/tower-round-middle-b
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-middle-c.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-middle-b.fbx;kenney_tower_defense_kit/Models/tower-round-middle-b
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-middle-c.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1409,11 +1409,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-middle-c.glb;kenney_tower_defense_kit/Models/tower-round-middle-c
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-roof-a.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-middle-c.fbx;kenney_tower_defense_kit/Models/tower-round-middle-c
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-roof-a.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1427,11 +1427,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-roof-a.glb;kenney_tower_defense_kit/Models/tower-round-roof-a
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-roof-b.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-roof-a.fbx;kenney_tower_defense_kit/Models/tower-round-roof-a
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-roof-b.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1445,11 +1445,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-roof-b.glb;kenney_tower_defense_kit/Models/tower-round-roof-b
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-roof-c.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-roof-b.fbx;kenney_tower_defense_kit/Models/tower-round-roof-b
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-roof-c.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1463,11 +1463,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-roof-c.glb;kenney_tower_defense_kit/Models/tower-round-roof-c
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-top-a.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-roof-c.fbx;kenney_tower_defense_kit/Models/tower-round-roof-c
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-top-a.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1481,11 +1481,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-top-a.glb;kenney_tower_defense_kit/Models/tower-round-top-a
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-top-b.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-top-a.fbx;kenney_tower_defense_kit/Models/tower-round-top-a
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-top-b.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1499,11 +1499,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-top-b.glb;kenney_tower_defense_kit/Models/tower-round-top-b
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-top-c.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-top-b.fbx;kenney_tower_defense_kit/Models/tower-round-top-b
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-round-top-c.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1517,11 +1517,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-top-c.glb;kenney_tower_defense_kit/Models/tower-round-top-c
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-bottom-a.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-round-top-c.fbx;kenney_tower_defense_kit/Models/tower-round-top-c
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-bottom-a.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1535,11 +1535,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-bottom-a.glb;kenney_tower_defense_kit/Models/tower-square-bottom-a
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-bottom-b.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-bottom-a.fbx;kenney_tower_defense_kit/Models/tower-square-bottom-a
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-bottom-b.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1553,11 +1553,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-bottom-b.glb;kenney_tower_defense_kit/Models/tower-square-bottom-b
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-bottom-c.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-bottom-b.fbx;kenney_tower_defense_kit/Models/tower-square-bottom-b
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-bottom-c.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1571,11 +1571,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-bottom-c.glb;kenney_tower_defense_kit/Models/tower-square-bottom-c
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-build-a.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-bottom-c.fbx;kenney_tower_defense_kit/Models/tower-square-bottom-c
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-build-a.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1589,11 +1589,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-build-a.glb;kenney_tower_defense_kit/Models/tower-square-build-a
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-build-b.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-build-a.fbx;kenney_tower_defense_kit/Models/tower-square-build-a
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-build-b.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1607,11 +1607,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-build-b.glb;kenney_tower_defense_kit/Models/tower-square-build-b
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-build-c.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-build-b.fbx;kenney_tower_defense_kit/Models/tower-square-build-b
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-build-c.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1625,11 +1625,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-build-c.glb;kenney_tower_defense_kit/Models/tower-square-build-c
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-build-d.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-build-c.fbx;kenney_tower_defense_kit/Models/tower-square-build-c
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-build-d.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1643,11 +1643,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-build-d.glb;kenney_tower_defense_kit/Models/tower-square-build-d
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-build-e.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-build-d.fbx;kenney_tower_defense_kit/Models/tower-square-build-d
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-build-e.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1661,11 +1661,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-build-e.glb;kenney_tower_defense_kit/Models/tower-square-build-e
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-build-f.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-build-e.fbx;kenney_tower_defense_kit/Models/tower-square-build-e
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-build-f.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1679,11 +1679,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-build-f.glb;kenney_tower_defense_kit/Models/tower-square-build-f
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-middle-a.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-build-f.fbx;kenney_tower_defense_kit/Models/tower-square-build-f
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-middle-a.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1697,11 +1697,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-middle-a.glb;kenney_tower_defense_kit/Models/tower-square-middle-a
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-middle-b.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-middle-a.fbx;kenney_tower_defense_kit/Models/tower-square-middle-a
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-middle-b.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1715,11 +1715,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-middle-b.glb;kenney_tower_defense_kit/Models/tower-square-middle-b
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-middle-c.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-middle-b.fbx;kenney_tower_defense_kit/Models/tower-square-middle-b
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-middle-c.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1733,11 +1733,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-middle-c.glb;kenney_tower_defense_kit/Models/tower-square-middle-c
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-roof-a.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-middle-c.fbx;kenney_tower_defense_kit/Models/tower-square-middle-c
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-roof-a.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1751,11 +1751,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-roof-a.glb;kenney_tower_defense_kit/Models/tower-square-roof-a
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-roof-b.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-roof-a.fbx;kenney_tower_defense_kit/Models/tower-square-roof-a
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-roof-b.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1769,11 +1769,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-roof-b.glb;kenney_tower_defense_kit/Models/tower-square-roof-b
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-roof-c.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-roof-b.fbx;kenney_tower_defense_kit/Models/tower-square-roof-b
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-roof-c.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1787,11 +1787,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-roof-c.glb;kenney_tower_defense_kit/Models/tower-square-roof-c
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-top-a.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-roof-c.fbx;kenney_tower_defense_kit/Models/tower-square-roof-c
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-top-a.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1805,11 +1805,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-top-a.glb;kenney_tower_defense_kit/Models/tower-square-top-a
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-top-b.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-top-a.fbx;kenney_tower_defense_kit/Models/tower-square-top-a
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-top-b.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1823,11 +1823,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-top-b.glb;kenney_tower_defense_kit/Models/tower-square-top-b
-#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-top-c.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-top-b.fbx;kenney_tower_defense_kit/Models/tower-square-top-b
+#begin ../../../assets/kenney_tower_defense_kit/Models/tower-square-top-c.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1841,11 +1841,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-top-c.glb;kenney_tower_defense_kit/Models/tower-square-top-c
-#begin ../../../assets/kenney_tower_defense_kit/Models/weapon-ammo-arrow.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/tower-square-top-c.fbx;kenney_tower_defense_kit/Models/tower-square-top-c
+#begin ../../../assets/kenney_tower_defense_kit/Models/weapon-ammo-arrow.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1859,11 +1859,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/weapon-ammo-arrow.glb;kenney_tower_defense_kit/Models/weapon-ammo-arrow
-#begin ../../../assets/kenney_tower_defense_kit/Models/weapon-ammo-boulder.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/weapon-ammo-arrow.fbx;kenney_tower_defense_kit/Models/weapon-ammo-arrow
+#begin ../../../assets/kenney_tower_defense_kit/Models/weapon-ammo-boulder.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1877,11 +1877,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/weapon-ammo-boulder.glb;kenney_tower_defense_kit/Models/weapon-ammo-boulder
-#begin ../../../assets/kenney_tower_defense_kit/Models/weapon-ammo-bullet.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/weapon-ammo-boulder.fbx;kenney_tower_defense_kit/Models/weapon-ammo-boulder
+#begin ../../../assets/kenney_tower_defense_kit/Models/weapon-ammo-bullet.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1895,11 +1895,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/weapon-ammo-bullet.glb;kenney_tower_defense_kit/Models/weapon-ammo-bullet
-#begin ../../../assets/kenney_tower_defense_kit/Models/weapon-ammo-cannonball.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/weapon-ammo-bullet.fbx;kenney_tower_defense_kit/Models/weapon-ammo-bullet
+#begin ../../../assets/kenney_tower_defense_kit/Models/weapon-ammo-cannonball.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1913,11 +1913,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/weapon-ammo-cannonball.glb;kenney_tower_defense_kit/Models/weapon-ammo-cannonball
-#begin ../../../assets/kenney_tower_defense_kit/Models/weapon-ballista.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/weapon-ammo-cannonball.fbx;kenney_tower_defense_kit/Models/weapon-ammo-cannonball
+#begin ../../../assets/kenney_tower_defense_kit/Models/weapon-ballista.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1931,11 +1931,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/weapon-ballista.glb;kenney_tower_defense_kit/Models/weapon-ballista
-#begin ../../../assets/kenney_tower_defense_kit/Models/weapon-cannon.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/weapon-ballista.fbx;kenney_tower_defense_kit/Models/weapon-ballista
+#begin ../../../assets/kenney_tower_defense_kit/Models/weapon-cannon.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1949,11 +1949,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/weapon-cannon.glb;kenney_tower_defense_kit/Models/weapon-cannon
-#begin ../../../assets/kenney_tower_defense_kit/Models/weapon-catapult.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/weapon-cannon.fbx;kenney_tower_defense_kit/Models/weapon-cannon
+#begin ../../../assets/kenney_tower_defense_kit/Models/weapon-catapult.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1967,11 +1967,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/weapon-catapult.glb;kenney_tower_defense_kit/Models/weapon-catapult
-#begin ../../../assets/kenney_tower_defense_kit/Models/weapon-turret.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/weapon-catapult.fbx;kenney_tower_defense_kit/Models/weapon-catapult
+#begin ../../../assets/kenney_tower_defense_kit/Models/weapon-turret.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -1985,11 +1985,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/weapon-turret.glb;kenney_tower_defense_kit/Models/weapon-turret
-#begin ../../../assets/kenney_tower_defense_kit/Models/wood-structure-high-part.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/weapon-turret.fbx;kenney_tower_defense_kit/Models/weapon-turret
+#begin ../../../assets/kenney_tower_defense_kit/Models/wood-structure-high-part.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2003,11 +2003,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/wood-structure-high-part.glb;kenney_tower_defense_kit/Models/wood-structure-high-part
-#begin ../../../assets/kenney_tower_defense_kit/Models/wood-structure-high.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/wood-structure-high-part.fbx;kenney_tower_defense_kit/Models/wood-structure-high-part
+#begin ../../../assets/kenney_tower_defense_kit/Models/wood-structure-high.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2021,11 +2021,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/wood-structure-high.glb;kenney_tower_defense_kit/Models/wood-structure-high
-#begin ../../../assets/kenney_tower_defense_kit/Models/wood-structure-part.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/wood-structure-high.fbx;kenney_tower_defense_kit/Models/wood-structure-high
+#begin ../../../assets/kenney_tower_defense_kit/Models/wood-structure-part.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2039,11 +2039,11 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/wood-structure-part.glb;kenney_tower_defense_kit/Models/wood-structure-part
-#begin ../../../assets/kenney_tower_defense_kit/Models/wood-structure.glb
+/build:../../../assets/kenney_tower_defense_kit/Models/wood-structure-part.fbx;kenney_tower_defense_kit/Models/wood-structure-part
+#begin ../../../assets/kenney_tower_defense_kit/Models/wood-structure.fbx
 /importer:FbxImporter
 /processor:ModelProcessor
 /processorParam:ColorKeyColor=0,0,0,0
@@ -2057,10 +2057,10 @@
 /processorParam:RotationX=0
 /processorParam:RotationY=0
 /processorParam:RotationZ=0
-/processorParam:Scale=1
+/processorParam:Scale=0.01
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
-/build:../../../assets/kenney_tower_defense_kit/Models/wood-structure.glb;kenney_tower_defense_kit/Models/wood-structure
+/build:../../../assets/kenney_tower_defense_kit/Models/wood-structure.fbx;kenney_tower_defense_kit/Models/wood-structure
 
 # The HUD font (shared Monogram spritefont — same one the raylib client
 # renders with its default font; here it is built into XNB).
