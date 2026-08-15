@@ -67,6 +67,10 @@ module Frame =
     /// The camera — a backend-neutral orbit-camera snapshot at force
     /// time; the frontend builds its native camera at the edge.
     Camera: CameraState
+    /// The host's GameTime at the last update — the draw side's clock
+    /// (hover bob, idle spins) rides the sim's time, not a
+    /// backend-specific one.
+    Time: GameTime
   }
 
   /// Forcing the frame: resolve every output projection once, pack the
@@ -107,4 +111,5 @@ module Frame =
         Map = state.Map
         Diag = state.Diag
         Camera = state.Camera.State
+        Time = state.LastTime
       }

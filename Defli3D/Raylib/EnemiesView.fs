@@ -10,6 +10,7 @@ open Mibo.Elmish.Graphics3D
 open Raylib_cs
 open FSharp.NativeInterop
 open Defli3D.State
+open Defli3D.State.Frame
 open Defli3D.State.Systems
 
 #nowarn "9"
@@ -17,12 +18,13 @@ open Defli3D.State.Systems
 // ─────────────────────────────────────────────────────────────
 // EnemiesView — enemy hulls from the frame's Alive/Defs snapshots
 // (transient views read as plain dictionaries — no graph access at
-// draw). One .instanced draw per hull model (shared InstanceScratch);
-// health bars are a single billboardBatch above the enemies; bosses get
-// a fresnel body aura (a unit sphere scaled around the hull, drawn with
-// the aura shader through DrawImmediate so the view owns the blend +
-// depth-write — the beginEffect scope runs draws inline with the pass's
-// default state).
+// draw; the sim clock rides the frame as frame.Time). One .instanced
+// draw per hull model (the view's own InstanceGroups); health bars
+// are a single billboardBatch above the enemies; bosses get a
+// fresnel body aura (a unit sphere scaled around the hull, drawn
+// with the aura shader through DrawImmediate so the view owns the
+// blend + depth-write — the beginEffect scope runs draws inline with
+// the pass's default state).
 //
 // Motion is VIEW-edge presentation on top of the sim's XZ positions:
 //   * hover bob — deterministic: sin(time · 2.2 + id-based phase),
@@ -30,8 +32,6 @@ open Defli3D.State.Systems
 //   * slow spin — the hull rotates lazily around +Y (time + phase).
 //   * boss — def.Scale (1.6) scales the hull ON TOP of the shared
 //     EnemyLayout.enemyScale.
-// Time comes from Raylib.GetTime() (the view has no GameTime — the
-// renderer draws after the sim, so the same value is stable per frame).
 // ─────────────────────────────────────────────────────────────
 
 module EnemiesView =
@@ -44,7 +44,7 @@ module EnemiesView =
   // DrawMesh binds the MATERIAL's shader (rmodels.c — BeginShaderMode is
   // overridden for the draw), so the material must carry the aura shader.
 
-  let private auraVs =
+  let auraVs =
     "
 #version 330
 in vec3 vertexPosition;
@@ -65,7 +65,7 @@ void main() {
 }
 "
 
-  let private auraFs =
+  let auraFs =
     "
 #version 330
 in vec3 vWorldPos;
@@ -92,7 +92,7 @@ void main() {
   /// Shader uniform locations + the material DrawMesh needs (its shader
   /// must be the aura shader — DrawMesh binds material.shader).
   [<Struct>]
-  type private AuraShader = {
+  type AuraShader = {
     Shader: Shader
     ViewProj: int
     MatModel: int
@@ -104,18 +104,14 @@ void main() {
     Material: Material
   }
 
-  let mutable private auraShader: AuraShader voption = ValueNone
-
-  /// Per-frame boss body centers (X, hull-center Y, Z), filled during the
-  /// hull pass and consumed by the aura DrawImmediate after the hulls draw.
-  let private bossCenters = ResizeArray<Vector3>()
-
   /// Aura tuning (matches auraFs uniform names).
-  let private auraTint = Vector3(1.0f, 0.25f, 0.25f)
-  let private auraPower = 2.5f
-  let private auraIntensity = 0.6f
+  let auraTint = Vector3(1.0f, 0.25f, 0.25f)
 
-  let inline private setShaderFloat (shader: Shader) (loc: int) (v: float32) =
+  let auraPower = 2.5f
+
+  let auraIntensity = 0.6f
+
+  let inline setShaderFloat (shader: Shader) (loc: int) (v: float32) =
     let mutable value = v
     use p = fixed &value
 
@@ -126,7 +122,7 @@ void main() {
       ShaderUniformDataType.Float
     )
 
-  let inline private setShaderVec3 (shader: Shader) (loc: int) (v: Vector3) =
+  let inline setShaderVec3 (shader: Shader) (loc: int) (v: Vector3) =
     let mutable value = v
     use p = fixed &value
 
@@ -137,23 +133,40 @@ void main() {
       ShaderUniformDataType.Vec3
     )
 
-  /// Loads the aura shader + the material DrawMesh needs, and caches the
-  /// uniform locations. Idempotent. raylib calls need an open window, so
-  /// this is lazy on the first frame a boss is alive. The material's
-  /// shader is the aura shader (DrawMesh binds material.shader); the
-  /// tuning uniforms are set per-frame while the shader is current
-  /// (uniform uploads hit the CURRENT program, so they cannot be set at
-  /// load time).
-  let private ensureAura() : AuraShader =
+  /// Deterministic per-enemy phase (id-based) — no RNG at draw time.
+  let inline phaseOf(eid: int<EnemyId>) : float32 =
+    float32(int(eid % 7<EnemyId>)) * 0.9f
+
+/// The enemies presenter: hulls, boss body auras and health bars.
+/// Owns its scratch (instance groups, bar quads, the lazy aura
+/// shader + material, the 1×1 white texture) — constructed once in
+/// Program.fs, no module-level mutable state.
+[<Sealed>]
+type EnemiesView() =
+
+  let groups = InstanceGroups()
+
+  // ── Boss body aura (fresnel shell via DrawImmediate) ──
+  // Loaded lazily on the first frame a boss is alive. raylib calls
+  // need an open window. The material's shader is the aura shader
+  // (DrawMesh binds material.shader); the tuning uniforms are set
+  // per-frame while the shader is current (uniform uploads hit the
+  // CURRENT program, so they cannot be set at load time).
+  let mutable auraShader: EnemiesView.AuraShader voption = ValueNone
+
+  /// Loads the aura shader + the material DrawMesh needs, and caches
+  /// the uniform locations. Idempotent.
+  let ensureAura() : EnemiesView.AuraShader =
     match auraShader with
     | ValueSome s -> s
     | ValueNone ->
-      let shader = Raylib.LoadShaderFromMemory(auraVs, auraFs)
+      let shader =
+        Raylib.LoadShaderFromMemory(EnemiesView.auraVs, EnemiesView.auraFs)
 
       let mutable material = Raylib.LoadMaterialDefault()
       material.Shader <- shader
 
-      let s = {
+      let s: EnemiesView.AuraShader = {
         Shader = shader
         ViewProj = Raylib.GetShaderLocation(shader, "viewProj")
         MatModel = Raylib.GetShaderLocation(shader, "matModel")
@@ -168,22 +181,27 @@ void main() {
       auraShader <- ValueSome s
       s
 
-  /// Grow-only scratch for the health-bar billboard batch (two quads
-  /// per enemy: black backing + red fill). Preallocated, reused every
-  /// frame — zero per-frame allocation.
-  [<Literal>]
-  let private barCapacity = 256
+  /// Per-frame boss body centers (X, hull-center Y, Z), filled during
+  /// the hull pass and consumed by the aura DrawImmediate after the
+  /// hulls draw.
+  let bossCenters = ResizeArray<Vector3>()
 
-  let private barTextures = Array.zeroCreate<Texture2D> barCapacity
-  let private barPositions = Array.zeroCreate<Vector3> barCapacity
-  let private barSizes = Array.zeroCreate<Vector2> barCapacity
-  let private barColors = Array.zeroCreate<Raylib_cs.Color> barCapacity
+  // Grow-only scratch for the health-bar billboard batch (two quads
+  // per enemy: black backing + red fill). Reused every frame; grows
+  // only when a frame needs more room.
+  let mutable barTextures = Array.empty<Texture2D>
+
+  let mutable barPositions = Array.empty<Vector3>
+
+  let mutable barSizes = Array.empty<Vector2>
+
+  let mutable barColors = Array.empty<Raylib_cs.Color>
 
   /// The 1×1 white texture the billboard batch tints — generated
   /// lazily on the first draw (Raylib calls need an open window).
-  let mutable private whiteTex: Texture2D voption = ValueNone
+  let mutable whiteTex: Texture2D voption = ValueNone
 
-  let private whiteTexture() : Texture2D =
+  let whiteTexture() : Texture2D =
     match whiteTex with
     | ValueSome t -> t
     | ValueNone ->
@@ -195,31 +213,39 @@ void main() {
       whiteTex <- ValueSome tex
       tex
 
-  /// Deterministic per-enemy phase (id-based) — no RNG at draw time.
-  let inline private phaseOf(eid: int<EnemyId>) : float32 =
-    float32(int(eid % 7<EnemyId>)) * 0.9f
-
-  /// Hulls go through the shared InstanceScratch (grouped by model
-  /// name): reset → fill → draw per frame, zero allocation once warm.
-  let view
-    (ctx: GameContext)
-    (alive: IReadOnlyDictionary<int<EnemyId>, EnemyView>)
-    (defs: IReadOnlyDictionary<int<EnemyId>, EnemyDef>)
-    (buffer: RenderBuffer3D)
-    =
-    let time = float32(Raylib.GetTime())
-    InstanceScratch.reset()
+  /// Hulls, boss body auras and health bars from the frame's
+  /// Alive/Defs snapshots.
+  member _.View(ctx: GameContext, frame: RenderFrame, buffer: RenderBuffer3D) =
+    let time = float32 frame.Time.TotalTime.TotalSeconds
+    groups.Clear()
     bossCenters.Clear()
 
     let tex = whiteTexture()
+
+    // Count damaged enemies first (the bar scratch needs a size).
     let mutable barCount = 0
 
-    for KeyValueV(eid, v) in alive do
-      match defs |> ReadOnlyDict.tryGetValue eid with
-      | ValueNone -> ()
-      | ValueSome def ->
+    for KeyValueV(_, v) in frame.Alive do
+      if v.Hp < v.MaxHp then
+        barCount <- barCount + 1
+
+    if barCount > 0 then
+      let needed = barCount * 2
+
+      if barPositions.Length < needed then
+        barTextures <- Array.zeroCreate needed
+        barPositions <- Array.zeroCreate needed
+        barSizes <- Array.zeroCreate needed
+        barColors <- Array.zeroCreate needed
+
+    let mutable barSlot = 0
+
+    for KeyValueV(eid, v) in frame.Alive do
+      frame.Defs
+      |> ReadOnlyDict.tryGetValue eid
+      |> ValueOption.iter(fun def ->
         let isBoss = def.Archetype = EnemyArchetype.Boss
-        let phase = phaseOf eid
+        let phase = EnemiesView.phaseOf eid
 
         // Hover bob + slow spin around the sim's XZ position. The
         // resting height is the shared EnemyLayout.hoverY (tile top
@@ -237,9 +263,10 @@ void main() {
         let spinM = Raymath.MatrixRotateY(spin)
         let transM = Raymath.MatrixTranslate(pos.X, pos.Y, pos.Z)
 
-        InstanceScratch.add
-          def.HullModel.Name
-          (Raymath.MatrixMultiply(Raymath.MatrixMultiply(scaleM, spinM), transM))
+        groups.Add(
+          def.HullModel.Name,
+          Raymath.MatrixMultiply(Raymath.MatrixMultiply(scaleM, spinM), transM)
+        )
 
         // Boss body aura: record the hull's vertical center (bobbed). The
         // fresnel shell draws after the hulls (DrawImmediate) so the hull
@@ -253,25 +280,23 @@ void main() {
         // scaled hull.
         if v.Hp < v.MaxHp then
           let frac = float32 v.Hp / float32 v.MaxHp
-          let barY = y + 0.35f + 0.55f * scale
+          let yBar = y + 0.35f + 0.55f * scale
           let barW = 0.9f * scale
           let barH = 0.09f * scale
 
-          if barCount + 1 < barCapacity then
-            barTextures[barCount] <- tex
-            barPositions[barCount] <- Vector3(v.Pos.X, barY, v.Pos.Y)
-            barSizes[barCount] <- Vector2(barW, barH)
-            barColors[barCount] <- Raylib_cs.Color(0uy, 0uy, 0uy, 200uy)
-            barCount <- barCount + 1
+          barTextures[barSlot] <- tex
+          barPositions[barSlot] <- Vector3(v.Pos.X, yBar, v.Pos.Y)
+          barSizes[barSlot] <- Vector2(barW, barH)
+          barColors[barSlot] <- Raylib_cs.Color(0uy, 0uy, 0uy, 200uy)
+          barSlot <- barSlot + 1
 
-          if barCount + 1 < barCapacity then
-            barTextures[barCount] <- tex
-            barPositions[barCount] <- Vector3(v.Pos.X, barY, v.Pos.Y)
-            barSizes[barCount] <- Vector2(barW * frac, barH)
-            barColors[barCount] <- Raylib_cs.Color(230uy, 40uy, 40uy, 230uy)
-            barCount <- barCount + 1
+          barTextures[barSlot] <- tex
+          barPositions[barSlot] <- Vector3(v.Pos.X, yBar, v.Pos.Y)
+          barSizes[barSlot] <- Vector2(barW * frac, barH)
+          barColors[barSlot] <- Raylib_cs.Color(230uy, 40uy, 40uy, 230uy)
+          barSlot <- barSlot + 1)
 
-    InstanceScratch.draw buffer
+    groups.Draw buffer
 
     // Boss body auras: one DrawImmediate over every boss's fresnel shell.
     // DrawImmediate runs outside BeginMode3D (which disabled depth test),
@@ -287,7 +312,8 @@ void main() {
           let vp = Raymath.MatrixMultiply(scene.View, scene.Projection)
 
           Raylib.SetShaderValueMatrix(shader, aura.ViewProj, vp)
-          setShaderVec3 shader aura.CameraPos scene.Camera.Position
+
+          EnemiesView.setShaderVec3 shader aura.CameraPos scene.Camera.Position
 
           Rlgl.EnableDepthTest()
           Rlgl.DisableDepthMask()
@@ -296,9 +322,17 @@ void main() {
 
           // Tuning constants — uniform uploads hit the CURRENT program,
           // so these must be set while the aura shader is bound.
-          setShaderVec3 shader aura.AuraColor auraTint
-          setShaderFloat shader aura.AuraPower auraPower
-          setShaderFloat shader aura.AuraIntensity auraIntensity
+          EnemiesView.setShaderVec3 shader aura.AuraColor EnemiesView.auraTint
+
+          EnemiesView.setShaderFloat
+            shader
+            aura.AuraPower
+            EnemiesView.auraPower
+
+          EnemiesView.setShaderFloat
+            shader
+            aura.AuraIntensity
+            EnemiesView.auraIntensity
 
           let r = BossAura.VisualRadius
 
@@ -334,6 +368,6 @@ void main() {
           barPositions,
           barSizes,
           barColors,
-          barCount
+          barCount * 2
         )
         .drop()

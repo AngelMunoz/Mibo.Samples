@@ -446,6 +446,9 @@ module Application =
     (gameTime: GameTime)
     : unit =
     let state = getState()
+    // The draw side's clock — recorded even while paused so the frame
+    // always forces a fresh time (hover bob, idle spins).
+    state.LastTime <- gameTime
     Telemetry.framesTotal <- Telemetry.framesTotal + 1
 
     if not(AVal.getValue state.Paused) then

@@ -17,11 +17,10 @@ open Defli3D.State.Systems.Camera
 // ─────────────────────────────────────────────────────────────
 // WorldView — the 3D world pass and the 2D HUD pass, reading ONLY
 // the forced RenderFrame (the draw contract: no graph access at
-// draw time). The world pass opens the camera block, registers the
-// lights (1 ambient + 1 shadow-casting directional), and draws
-// map/towers/enemies/projectiles/vfx plus the hover overlays; the
-// HUD pass (its own noClear Renderer2D, registered after the 3D
-// renderer in Program.fs) owns screen space.
+// draw time; the sim clock rides the frame as frame.Time). The
+// shell supplies the FrameDiag object; the VfxView owns its
+// conversion buffers; the sub-presenters (map, towers, enemies,
+// projectiles, hover overlays) own their scratch.
 //
 // Hover overlays:
 //   * placement preview — the Models.selectionA ring at the hovered
@@ -35,8 +34,8 @@ open Defli3D.State.Systems.Camera
 
 module WorldView =
 
-  /// The placement ring model + its tint per status.
-  let inline private statusColor(status: PlacementStatus) : Mibo.Color =
+  /// The placement ring model's tint per status.
+  let inline statusColor(status: PlacementStatus) : Mibo.Color =
     match status with
     | PlacementStatus.Blocked -> Mibo.Color.Red
     | PlacementStatus.Affordable -> Mibo.Color.Green
@@ -44,81 +43,116 @@ module WorldView =
     | PlacementStatus.Hidden -> Mibo.Color.White
 
   /// The hovered cell's world center (the placement preview ring).
-  let inline private hoverCenter(frame: RenderFrame) : Vector2 =
+  let inline hoverCenter(frame: RenderFrame) : Vector2 =
     match frame.HoverCell with
     | ValueNone -> Vector2.Zero
     | ValueSome struct (hx, hy) ->
       // 1 cell = 1 world unit, grid origin Zero.
       Vector2(float32 hx + 0.5f, float32 hy + 0.5f)
 
+  /// The curated model set — warmed once on the first frame so no
+  /// mid-frame load happens when a tower/enemy/overlay first appears
+  /// (the map bake warms its own models in MapView). Mirrors the
+  /// MonoDX12 warm set, keyed by NAME (the ModelMeshes key).
+  let warmUsedModels() =
+    let names = [|
+      for m in Models.towerRoundParts do
+        m.Name
+      for m in Models.towerSquareParts do
+        m.Name
+      for m in Models.weapons do
+        m.Name
+      for m in Models.ammo do
+        m.Name
+      for m in Models.enemies do
+        m.Name
+      for m in Models.selectionRings do
+        m.Name
+    |]
+
+    ModelMeshes.warm names
+
+  /// Cached level-tag strings — one static allocation, reused every
+  /// frame (no per-frame string building).
+  let levelTags = [| "Lv 1"; "Lv 2"; "Lv 3"; "Lv 4"; "Lv 5"; "Lv 6" |]
+
+  /// The screen-space offset of a tower's Lv tag from its projected
+  /// body top (rough horizontal centering — Defli's fixed-offset
+  /// idiom, no text measuring in the HUD pass).
+  let tagOffset = Vector2(-20f, -26f)
+
+/// The world pass presenter: owns the sub-presenters and the hover
+/// overlays — constructed once in Program.fs, no module-level
+/// mutable state.
+[<Sealed>]
+type WorldView(shell: Shell, vfx: VfxView) =
+
+  let map = MapView()
+  let towers = TowersView()
+  let enemies = EnemiesView()
+  let projectiles = ProjectilesView()
+
+  let mutable warmed = false
+
   /// Placement preview: selection-a ring (1×0.05×1) on the hovered
   /// cell, tinted by the build status. One .mesh draw per sub-mesh
   /// with a tinted unlit material — the raylib instanced path has no
   /// per-instance colors, and this is a single overlay quad.
-  let private placementRing
-    (ctx: GameContext)
-    (frame: RenderFrame)
-    (buffer: RenderBuffer3D)
-    =
+  let placementRing (frame: RenderFrame) (buffer: RenderBuffer3D) =
     match frame.PlacementPreview with
     | PlacementStatus.Hidden -> ()
     | status ->
       let info = Models.selectionA
       let meshes = ModelMeshes.resolve info
-      let c = hoverCenter frame
+      let c = WorldView.hoverCenter frame
       let transform = Raymath.MatrixTranslate(c.X, 0.235f, c.Y)
 
       let material =
-        Material3D.unlit(Mibo.Color.op_Implicit(statusColor status))
+        Material3D.unlit(Mibo.Color.op_Implicit(WorldView.statusColor status))
 
       for mi = 0 to meshes.Length - 1 do
         let struct (mesh, _) = meshes[mi]
         buffer.mesh(mesh, transform, material) |> ignore
 
-  /// selection-b's outer-vertex radius — MEASURED via vertex probe:
-  /// the ring is an octagon whose outer vertices sit at
-  /// √(0.5² + 0.4²) = 0.6403 (the 1.0 AABB's corners are NOT on the
-  /// mesh), so scaling it to the AABB overdraws the radius by 1.28×.
-  /// The range ring divides by this so the ring lands exactly on the
   /// The range marker rides ABOVE the terrain: the highest ground
   /// top under the range circle (raised tiles — hills/rocks — would
   /// otherwise clip through a flat ground-level disc). Samples the
   /// map's per-cell ground pieces (YOffset + model height).
-  let private rangeMarkerY (frame: RenderFrame) (radius: float32) : float32 =
+  let rangeMarkerY
+    (frame: RenderFrame)
+    (hx: int)
+    (hy: int)
+    (radius: float32)
+    : float32 =
     let terrain = MapModel.terrain frame.Map
-    let center = hoverCenter frame
+    let center = Vector2(float32 hx + 0.5f, float32 hy + 0.5f)
     let mutable maxTop = TowerLayout.baseY
+    let span = int(MathF.Ceiling radius)
 
-    frame.HoverCell
-    |> ValueOption.iter(fun struct (hx, hy) ->
-      let span = int(MathF.Ceiling radius)
+    for y in max 0 (hy - span) .. min (terrain.Height - 1) (hy + span) do
+      for x in max 0 (hx - span) .. min (terrain.Width - 1) (hx + span) do
+        let c = Vector2(float32 x + 0.5f, float32 y + 0.5f)
 
-      for y in max 0 (hy - span) .. min (terrain.Height - 1) (hy + span) do
-        for x in max 0 (hx - span) .. min (terrain.Width - 1) (hx + span) do
-          let c = Vector2(float32 x + 0.5f, float32 y + 0.5f)
+        if Vector2.Distance(c, center) <= radius then
+          let struct (ground, _) = MapModel.cellPieces frame.Map x y
+          let top = ground.YOffset + ground.Model.SizeY
 
-          if Vector2.Distance(c, center) <= radius then
-            let struct (ground, _) = MapModel.cellPieces frame.Map x y
-            let top = ground.YOffset + ground.Model.SizeY
-
-            if top > maxTop then
-              maxTop <- top)
+          if top > maxTop then
+            maxTop <- top
 
     maxTop + 0.02f
 
-  /// Range disc: the hovered own tower's effective range as a translucent
-  /// tinted DISC (a thin Cylinder primitive) filling the range area —
-  /// replaces the old flat selection-b octagon ring. Opacity<1 routes it
-  /// through the translucent pass (alpha blend, depth-write off) so it tints
-  /// the area without blocking vision.
-  let private rangeRing
-    (ctx: GameContext)
-    (frame: RenderFrame)
-    (buffer: RenderBuffer3D)
-    =
-    frame.RangeRing
-    |> ValueOption.iter(fun def ->
-      let c = hoverCenter frame
+  /// Range disc: the hovered own tower's effective range as a
+  /// translucent tinted DISC (a thin Cylinder primitive) filling the
+  /// range area. Requires BOTH a range def and a hover cell (the
+  /// MonoDX12 rangeDisc guard — the two clients agree). Opacity<1
+  /// routes it through the translucent pass (alpha blend, depth-write
+  /// off) so it tints the area without blocking vision.
+  let rangeRing (frame: RenderFrame) (buffer: RenderBuffer3D) =
+    match frame.RangeRing, frame.HoverCell with
+    | ValueSome def, ValueSome struct (hx, hy) ->
+      let x = float32 hx + 0.5f
+      let z = float32 hy + 0.5f
       let r = float32 def.Range
 
       // Unit cylinder centered on origin (Y [-0.5,+0.5]); scale to the
@@ -127,88 +161,36 @@ module WorldView =
       let transform =
         Raymath.MatrixMultiply(
           Raymath.MatrixScale(r, 0.04f, r),
-          Raymath.MatrixTranslate(c.X, rangeMarkerY frame r, c.Y)
+          Raymath.MatrixTranslate(x, rangeMarkerY frame hx hy r, z)
         )
 
       let material = {
-        Material3D.unlit(
-          Mibo.Color.op_Implicit(Mibo.Color.rgb 30uy 40uy 255uy)
-        ) with
+        Material3D.unlit(Mibo.Color.op_Implicit(Mibo.Color.rgb 30uy 40uy 255uy)) with
             Opacity = 0.30f
       }
 
-      buffer.mesh(Primitive3D.cylinder, transform, material) |> ignore)
+      buffer.mesh(Primitive3D.cylinder, transform, material) |> ignore
+    | _ -> ()
 
-  /// Cached level-tag strings — one static allocation, reused every
-  /// frame (no per-frame string building).
-  let private levelTags = [| "Lv 1"; "Lv 2"; "Lv 3"; "Lv 4"; "Lv 5"; "Lv 6" |]
-
-  /// The screen-space offset of a tower's Lv tag from its projected
-  /// body top (rough horizontal centering — Defli's fixed-offset
-  /// idiom, no text measuring in the HUD pass).
-  let private tagOffset = Vector2(-20f, -26f)
-
-  /// Per-tower "Lv N" tags: each tower's body top (cell center, tile
-  /// top + scaled stack height — TowerLayout.towerTop) projected
-  /// world→screen through the sim camera pair, drawn in the HUD pass.
-  /// Off-screen towers are skipped by the projection (behind the
-  /// camera or outside the viewport → ValueNone).
-  let private towerLevelTags
-    (ctx: GameContext)
-    (frame: RenderFrame)
-    (buffer: RenderBuffer2D)
-    =
-    let font = Raylib.GetFontDefault()
-
-    for KeyValueV(tid, s) in frame.TowerStatics do
-      let level =
-        frame.TowerLevels
-        |> ReadOnlyDict.tryGetValue tid
-        |> ValueOption.defaultValue 1
-
-      let center = Cells.center s.Cell (Vector2.One)
-      let top = Vector3(center.X, TowerLayout.towerTop s.Def, center.Y)
-
-      match
-        Camera.worldToScreen
-          (float32 ctx.WindowWidth)
-          (float32 ctx.WindowHeight)
-          top
-          frame.Camera
-      with
-      | ValueNone -> ()
-      | ValueSome screen ->
-        buffer
-          .text(
-            font,
-            levelTags[min (max level 1) 6 - 1],
-            screen + tagOffset,
-            14f,
-            layer = Layers.Hud
-          )
-          .drop()
+  // ── The world pass ──────────────────────────────────────────
 
   /// The camera'd world pass (its own renderer — clears to the sky
   /// color). The neutral CameraState is converted at the edge
-  /// (CameraView.toRaylib); everything world-space renders inside the
-  /// camera block; the HUD renderer owns screen space.
-  let worldView
-    (shell: Shell)
-    (vfx: VfxView)
-    (ctx: GameContext)
-    (frame: RenderFrame)
-    (buffer: RenderBuffer3D)
+  /// (CameraView.toRaylib); everything world-space renders inside
+  /// the camera block; the HUD renderer owns screen space.
+  member _.Render
+    (ctx: GameContext, frame: RenderFrame, buffer: RenderBuffer3D)
     =
     Diagnostics.drawn (Diagnostics.tickStart()) shell.Diag
 
-    // The per-frame context for lazy asset loads (the instanced map
-    // context's resolver takes none — Platformer3D's recipe).
+    // The per-frame context for lazy asset loads.
     ModelMeshes.setContext ctx
 
-    let camera =
-      CameraView.toRaylib
-        (float32 ctx.WindowWidth, float32 ctx.WindowHeight)
-        frame.Camera
+    if not warmed then
+      warmed <- true
+      WorldView.warmUsedModels()
+
+    let camera = CameraView.toRaylib frame.Camera
 
     let sky = Raylib_cs.Color(108uy, 148uy, 190uy, 255uy)
 
@@ -235,31 +217,61 @@ module WorldView =
       )
       .drop()
 
-    MapView.view ctx frame buffer
-
-    TowersView.view
-      ctx
-      frame.TowerStatics
-      frame.TowerLevels
-      frame.TowerAim
-      buffer
-
-    EnemiesView.view ctx frame.Alive frame.Defs buffer
-    ProjectilesView.view ctx frame.Projectiles buffer
+    map.View(ctx, frame, buffer)
+    towers.View(ctx, frame, buffer)
+    enemies.View(ctx, frame, buffer)
+    projectiles.View(ctx, frame.Projectiles, buffer)
     vfx.View ctx frame.Vfx buffer
 
-    placementRing ctx frame buffer
-    rangeRing ctx frame buffer
+    placementRing frame buffer
+    rangeRing frame buffer
 
     buffer.endCamera().drop()
 
+  // ── The HUD pass ────────────────────────────────────────────
+
+  /// Per-tower "Lv N" tags: each tower's body top (cell center, tile
+  /// top + scaled stack height — TowerLayout.towerTop) projected
+  /// world→screen through the sim camera pair, drawn in the HUD pass.
+  /// Off-screen towers are skipped by the projection (behind the
+  /// camera or outside the viewport → ValueNone).
+  member private _.TowerLevelTags
+    (ctx: GameContext, frame: RenderFrame, buffer: RenderBuffer2D)
+    =
+    let font = Raylib.GetFontDefault()
+
+    for KeyValueV(tid, s) in frame.TowerStatics do
+      let level =
+        frame.TowerLevels
+        |> ReadOnlyDict.tryGetValue tid
+        |> ValueOption.defaultValue 1
+
+      let center = Cells.center s.Cell (Vector2.One)
+      let top = Vector3(center.X, TowerLayout.towerTop s.Def, center.Y)
+
+      match
+        Camera.worldToScreen
+          (float32 ctx.WindowWidth)
+          (float32 ctx.WindowHeight)
+          top
+          frame.Camera
+      with
+      | ValueNone -> ()
+      | ValueSome screen ->
+        buffer
+          .text(
+            font,
+            WorldView.levelTags[min (max level 1) 6 - 1],
+            screen + WorldView.tagOffset,
+            14f,
+            layer = Layers.Hud
+          )
+          .drop()
+
   /// Screen-space HUD pass (own noClear renderer): reads the frame
   /// only — same text/anchors as Defli's hudView.
-  let hudView
-    (shell: Shell)
-    (ctx: GameContext)
-    (frame: RenderFrame)
-    (buffer: RenderBuffer2D)
+  member this.Hud
+    (ctx: GameContext, frame: RenderFrame, buffer: RenderBuffer2D)
     =
     let font = Raylib.GetFontDefault()
 
@@ -283,7 +295,7 @@ module WorldView =
       )
       .drop()
 
-    towerLevelTags ctx frame buffer
+    this.TowerLevelTags(ctx, frame, buffer)
 
     if frame.GameOver then
       buffer

@@ -1,7 +1,9 @@
 namespace Defli3D.State
 
+open System
 open System.Numerics
 open Mibo.Adaptive
+open Mibo.Elmish
 open Defli3D
 open Defli3D.State.Systems
 
@@ -46,6 +48,12 @@ type State = {
 
   /// Frozen by the host; the sim writes nothing while paused.
   Paused: cval<bool>
+
+  /// The last GameTime the host handed to update — forced into the
+  /// frame so the draw side (hover bob, idle spins) animates on the
+  /// sim's clock instead of a backend-specific one. Written every
+  /// update, paused or not (Defli's LastTime mechanism).
+  mutable LastTime: GameTime
 
   Projections: Projections
 
@@ -132,6 +140,10 @@ module State =
       Vfx = vfx
       Economy = economy
       Camera = camera
+      LastTime = {
+        TotalTime = TimeSpan.Zero
+        ElapsedGameTime = TimeSpan.Zero
+      }
       SelectedTower = selectedTower
       HoverCell = hoverCell
       Paused = paused

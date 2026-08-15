@@ -16,43 +16,35 @@ open Defli3D.State.Systems.Camera
 // ─────────────────────────────────────────────────────────────
 // WorldView — the 3D world pass and the 2D HUD pass, reading ONLY
 // the forced RenderFrame (the draw contract: no graph access at
-// draw time). The shell supplies the FrameDiag object; the VfxView
-// owns its conversion buffers; the sim clock (Time) comes from the
-// observer (Program.fs) for draw-side animation.
+// draw time; the sim clock rides the frame as frame.Time). The
+// shell supplies the FrameDiag object; the VfxView owns its
+// conversion buffers; the sub-presenters (map, towers, enemies,
+// projectiles, hover overlays) own their scratch.
 // ─────────────────────────────────────────────────────────────
 
 module WorldView =
 
-  /// XNA Matrix for the overlay transforms (XNA Vector/Color stay out
-  /// of scope — System.Numerics + Mibo are the opened defaults).
-  type private Matrix = Microsoft.Xna.Framework.Matrix
-
   // ── Frame-level presentation state ──────────────────────────
 
   /// Sky clear color for the world camera block.
-  let private sky = Microsoft.Xna.Framework.Color(46, 58, 72)
+  let sky = Microsoft.Xna.Framework.Color(46, 58, 72)
 
-  let private ambient: AmbientLight3D = {
+  let ambient: AmbientLight3D = {
     Color = Color.White
     Intensity = 0.45f
   }
 
-  let private sun: DirectionalLight3D = {
+  let sun: DirectionalLight3D = {
     Direction = Vector3(0.5f, -0.8f, 0.3f)
     Color = Color.White
     Intensity = 1f
     CastsShadows = true
   }
 
-  /// The hover overlays share the world pass's InstanceScratch (reset
-  /// at the top of worldView; the preview is added last and drawn on
-  /// top via the final InstanceScratch.draw).
-  /// Warm the curated model set once on the first frame so no
-  /// mid-frame Content.Load happens when a tower/enemy/overlay
-  /// first appears (the map bake warms its own models in MapView).
-  let mutable private warmed = false
-
-  let private warmUsedModels() =
+  /// The curated model set — warmed once on the first frame so no
+  /// mid-frame Content.Load happens when a tower/enemy/overlay first
+  /// appears (the map bake warms its own models in MapView).
+  let warmUsedModels() =
     let names = [|
       for m in Models.towerRoundParts do
         m.Path
@@ -75,7 +67,7 @@ module WorldView =
   /// Placement preview tint by build status (per-instance colors —
   /// albedo × rgb, alpha × a; the translucent alpha routes the draw
   /// through the pipeline's sorted translucent pass).
-  let inline private previewTint
+  let inline previewTint
     (status: PlacementStatus)
     : Microsoft.Xna.Framework.Color =
     match status with
@@ -94,22 +86,54 @@ module WorldView =
   /// Range disc tint — translucent pure blue. Opacity<1 (set on the material)
   /// routes the draw through the pipeline's sorted translucent pass so the disc
   /// tints the firing-range area without blocking vision.
-  let private rangeDiscColor = Microsoft.Xna.Framework.Color(30, 40, 255)
+  let rangeDiscColor = Microsoft.Xna.Framework.Color(30, 40, 255)
+
+  /// Cached level-tag strings — one static allocation, reused every
+  /// frame (no per-frame string building).
+  let levelTags = [| "Lv 1"; "Lv 2"; "Lv 3"; "Lv 4"; "Lv 5"; "Lv 6" |]
+
+  /// The screen-space offset of a tower's Lv tag from its projected
+  /// body top (rough horizontal centering — Defli's fixed-offset
+  /// idiom, no text measuring in the HUD pass).
+  let tagOffset = Vector2(-20f, -26f)
+
+/// The world pass presenter: owns the sub-presenters, the hover
+/// overlay groups and the unit primitives — constructed once in
+/// Program.fs, no module-level mutable state.
+[<Sealed>]
+type WorldView(shell: Shell, vfx: VfxView) =
+
+  let map = MapView()
+  let towers = TowersView()
+  let enemies = EnemiesView()
+  let projectiles = ProjectilesView()
+
+  /// The hover overlays' own groups (the preview is added last and
+  /// drawn on top via the final Draw).
+  let overlays = InstanceGroups()
+
+  let mutable warmed = false
 
   /// Unit primitives — the range disc is a thin Cylinder. Built once.
-  let mutable private primitives: Primitive3D.PrimitiveSet voption = ValueNone
+  let mutable primitives: Primitive3D.PrimitiveSet voption = ValueNone
 
-  /// The hover overlays: the placement preview disc (selection-a at
-  /// the hover cell, tinted by build status — through the shared
-  /// InstanceScratch: reset → fill → final draw on top, so the last
-  /// draw emits only the overlays) and the range disc of the hovered
-  /// own tower (a thin translucent Cylinder — rangeDisc — tinting the
-  /// firing-range area without blocking vision).
+  /// Builds the unit primitives (range disc) once — the Cylinder needs a
+  /// GraphicsDevice, so it is lazy on the first frame.
+  let ensurePrimitives(ctx: GameContext) =
+    match primitives with
+    | ValueSome _ -> ()
+    | ValueNone ->
+      primitives <-
+        ValueSome(Primitive3D.create(MonoGameGameContext.getGraphicsDevice ctx))
+
+  /// Stages the hover overlays into the overlay groups: the placement
+  /// preview disc (selection-a at the hover cell, tinted by build
+  /// status) — the final Draw emits only the overlays, on top.
   /// NOTE: no line3D circle here — line primitives are broken on the
   /// MonoGame DX12 runtime (the PSO topology type is never set, line
   /// draws rasterize as garbage). The ring mesh works everywhere.
-  let private hoverOverlays (frame: RenderFrame) (buffer: RenderBuffer3D) =
-    InstanceScratch.reset()
+  let stageHoverOverlays(frame: RenderFrame) =
+    overlays.Clear()
 
     match frame.PlacementPreview with
     | PlacementStatus.Hidden -> ()
@@ -119,27 +143,17 @@ module WorldView =
         let x = float32 hx + 0.5f
         let z = float32 hy + 0.5f
 
-        InstanceScratch.addTinted
-          Models.selectionA.Path
-          (Matrix.CreateTranslation(x, 0.21f, z))
-          (previewTint status))
-
-    ()
-
-  /// Builds the unit primitives (range disc) once — the Cylinder needs a
-  /// GraphicsDevice, so it is lazy on the first frame.
-  let private ensurePrimitives(ctx: GameContext) =
-    match primitives with
-    | ValueSome _ -> ()
-    | ValueNone ->
-      primitives <-
-        ValueSome(Primitive3D.create(MonoGameGameContext.getGraphicsDevice ctx))
+        overlays.AddTinted(
+          Models.selectionA.Path,
+          Microsoft.Xna.Framework.Matrix.CreateTranslation(x, 0.21f, z),
+          WorldView.previewTint status
+        ))
 
   /// The range marker rides ABOVE the terrain: the highest ground
   /// top under the range circle (raised tiles — hills/rocks — would
   /// otherwise clip through a flat ground-level disc). Samples the
   /// map's per-cell ground pieces (YOffset + model height).
-  let private rangeMarkerY
+  let rangeMarkerY
     (frame: RenderFrame)
     (hx: int)
     (hy: int)
@@ -170,7 +184,7 @@ module WorldView =
   /// blend, depth-write off) so it tints the area without blocking vision.
   /// Lifted just above the tallest ground it covers (terrain-aware — no
   /// floor clipping).
-  let private rangeDisc (frame: RenderFrame) (buffer: RenderBuffer3D) =
+  let rangeDisc (frame: RenderFrame) (buffer: RenderBuffer3D) =
     match primitives, frame.RangeRing, frame.HoverCell with
     | ValueSome set, ValueSome def, ValueSome struct (hx, hy) ->
       let x = float32 hx + 0.5f
@@ -179,11 +193,15 @@ module WorldView =
       // Unit cylinder is centered on origin (Y [-0.5,+0.5]); scale to the
       // range radius + a thin height.
       let transform =
-        Matrix.CreateScale(r, 0.04f, r)
-        * Matrix.CreateTranslation(x, rangeMarkerY frame hx hy r, z)
+        Microsoft.Xna.Framework.Matrix.CreateScale(r, 0.04f, r)
+        * Microsoft.Xna.Framework.Matrix.CreateTranslation(
+          x,
+          rangeMarkerY frame hx hy r,
+          z
+        )
 
       let material = {
-        Material3D.unlit(rangeDiscColor) with
+        Material3D.unlit(WorldView.rangeDiscColor) with
             Opacity = 0.30f
       }
 
@@ -193,12 +211,8 @@ module WorldView =
   // ── The world pass ──────────────────────────────────────────
 
   /// The camera'd world pass (its own renderer — clears to sky).
-  let worldView
-    (shell: Shell)
-    (vfx: VfxView)
-    (ctx: GameContext)
-    (frame: RenderFrame)
-    (buffer: RenderBuffer3D)
+  member _.Render
+    (ctx: GameContext, frame: RenderFrame, buffer: RenderBuffer3D)
     =
     Diagnostics.drawn (Diagnostics.tickStart()) shell.Diag
 
@@ -206,55 +220,42 @@ module WorldView =
 
     if not warmed then
       warmed <- true
-      warmUsedModels()
+      WorldView.warmUsedModels()
 
     // Camera block: the edge builds the native camera from the
     // frame's neutral snapshot; everything world-space renders
     // inside; the HUD renderer (separate noClear pass) owns screen
     // space.
-    let camera =
-      CameraView.toMono
-        (float32 ctx.WindowWidth)
-        (float32 ctx.WindowHeight)
-        frame.Camera
+    let camera = CameraView.toMono frame.Camera
 
     buffer
-      .beginCameraWith(Camera3D.render camera |> Camera3D.withClear sky)
-      .setAmbientLight(ambient)
-      .addDirectionalLight(sun)
+      .beginCameraWith(
+        Camera3D.render camera |> Camera3D.withClear WorldView.sky
+      )
+      .setAmbientLight(WorldView.ambient)
+      .addDirectionalLight(WorldView.sun)
       .drop()
 
-    MapView.view ctx frame buffer
-    TowersView.view ctx frame buffer
-    EnemiesView.view ctx frame buffer
-    ProjectilesView.view ctx frame.Projectiles buffer
+    map.View(ctx, frame, buffer)
+    towers.View(ctx, frame, buffer)
+    enemies.View(ctx, frame, buffer)
+    projectiles.View(ctx, frame.Projectiles, buffer)
     vfx.View ctx frame.Vfx buffer
-    hoverOverlays frame buffer
-    InstanceScratch.draw buffer
+    stageHoverOverlays frame
+    overlays.Draw buffer
     ensurePrimitives ctx
     rangeDisc frame buffer
     buffer.endCamera().drop()
 
   // ── The HUD pass ────────────────────────────────────────────
 
-  /// Cached level-tag strings — one static allocation, reused every
-  /// frame (no per-frame string building).
-  let private levelTags = [| "Lv 1"; "Lv 2"; "Lv 3"; "Lv 4"; "Lv 5"; "Lv 6" |]
-
-  /// The screen-space offset of a tower's Lv tag from its projected
-  /// body top (rough horizontal centering — Defli's fixed-offset
-  /// idiom, no text measuring in the HUD pass).
-  let private tagOffset = Vector2(-20f, -26f)
-
   /// Per-tower "Lv N" tags: each tower's body top (cell center, tile
   /// top + scaled stack height — TowerLayout.towerTop) projected
   /// world→screen through the sim camera pair, drawn in the HUD pass.
   /// Off-screen towers are skipped by the projection (behind the
   /// camera or outside the viewport → ValueNone).
-  let private towerLevelTags
-    (ctx: GameContext)
-    (frame: RenderFrame)
-    (buffer: RenderBuffer2D)
+  member private _.TowerLevelTags
+    (ctx: GameContext, frame: RenderFrame, buffer: RenderBuffer2D)
     =
     let assets = GameContext.getService<IAssets> ctx
     let font = assets.Font Paths.Font
@@ -280,8 +281,8 @@ module WorldView =
         buffer
           .text(
             font,
-            levelTags[min (max level 1) 6 - 1],
-            screen + tagOffset,
+            WorldView.levelTags[min (max level 1) 6 - 1],
+            screen + WorldView.tagOffset,
             0.75f,
             layer = Layers.Hud
           )
@@ -289,11 +290,8 @@ module WorldView =
 
   /// Screen-space HUD pass (own renderer, noClear): reads the frame
   /// only. Font scales match Defli's MonoGame client.
-  let hudView
-    (shell: Shell)
-    (ctx: GameContext)
-    (frame: RenderFrame)
-    (buffer: RenderBuffer2D)
+  member this.Hud
+    (ctx: GameContext, frame: RenderFrame, buffer: RenderBuffer2D)
     =
     let assets = GameContext.getService<IAssets> ctx
     let font = assets.Font Paths.Font
@@ -318,7 +316,7 @@ module WorldView =
       )
       .drop()
 
-    towerLevelTags ctx frame buffer
+    this.TowerLevelTags(ctx, frame, buffer)
 
     if frame.GameOver then
       buffer

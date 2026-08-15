@@ -14,22 +14,27 @@ open Defli3D.State.Systems
 // frame's Homing projection snapshot. The ballistic sim integrates
 // the flight: each row carries the shot's current height (Y — the
 // arc's lerp + parabola) and its XZ flight direction (Dir). The
-// view orients the model's +Z forward along Dir (yaw) and scales
-// it by the weapon's ProjectileScale (volley arrows/bullets are
-// small, piercer arrows large).
+// view orients the model's +Z forward along Dir (yaw) and scales it
+// by the weapon's ProjectileScale (volley arrows/bullets are small,
+// piercer arrows large).
 // ─────────────────────────────────────────────────────────────
 
-module ProjectilesView =
+/// The projectiles presenter: owns its instance groups — constructed
+/// once in Program.fs, no module-level mutable state.
+[<Sealed>]
+type ProjectilesView() =
 
-  /// Ammo shells go through the shared InstanceScratch (grouped by
-  /// model name): reset → fill → draw per frame, zero allocation
-  /// once warm.
-  let view
-    (ctx: GameContext)
-    (homing: IReadOnlyDictionary<int<ProjectileId>, HomingView>)
-    (buffer: RenderBuffer3D)
-    =
-    InstanceScratch.reset()
+  let groups = InstanceGroups()
+
+  /// Ammo shells, grouped by model name: one instanced draw per ammo
+  /// model, zero allocation once warm.
+  member _.View
+    (
+      ctx: GameContext,
+      homing: IReadOnlyDictionary<int<ProjectileId>, HomingView>,
+      buffer: RenderBuffer3D
+    ) =
+    groups.Clear()
 
     for KeyValueV(_, v) in homing do
       let yaw =
@@ -38,14 +43,15 @@ module ProjectilesView =
         else
           0f
 
-      InstanceScratch.add
-        v.Model.Name
-        (Raymath.MatrixMultiply(
+      groups.Add(
+        v.Model.Name,
+        Raymath.MatrixMultiply(
           Raymath.MatrixMultiply(
             Raymath.MatrixScale(v.Scale, v.Scale, v.Scale),
             Raymath.MatrixRotateY(yaw)
           ),
           Raymath.MatrixTranslate(v.Pos.X, v.Y, v.Pos.Y)
-        ))
+        )
+      )
 
-    InstanceScratch.draw buffer
+    groups.Draw buffer

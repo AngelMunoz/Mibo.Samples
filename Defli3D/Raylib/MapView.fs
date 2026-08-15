@@ -23,18 +23,11 @@ open Defli3D.State.Systems
 //                  layer concept; this only orders the HUD).
 //   ModelMeshes  — per-model mesh/material cache: every view resolves
 //                  a ModelInfo to its sub-mesh (Mesh * Material3D)[]
-//                  ONCE, then reuses the cached arrays every frame
-//                  (Platformer3D's meshMaterialCache pattern). The
-//                  per-frame GameContext is set once per frame
-//                  (Platformer3D's currentGameContext recipe — the
-//                  InstancedRenderContext resolver takes none).
-//   InstanceScratch — grow-only per-model-name instance-transform
-//                  arrays for the entity views (ModelProbe idiom):
-//                  the views reset → fill → draw per frame; the
-//                  buffer copies transforms into pooled arrays at
-//                  record time, so reusing one scratch per kind per
-//                  frame is safe. NOT a batcher — plain per-kind
-//                  arrays, one .instanced draw per (name × sub-mesh).
+//                  ONCE, then reuses the cached arrays every frame.
+//                  The per-frame GameContext is set once per frame.
+//   InstanceGroups — grow-only per-model-name instance-transform
+//                  arrays, owned by ONE view (fill → draw; no
+//                  cross-view reset protocol).
 // ─────────────────────────────────────────────────────────────
 
 /// The HUD render layer (Defli's Layers module reduced to what the
@@ -46,21 +39,24 @@ module Layers =
 
 /// Per-model (Mesh * Material3D)[] cache, keyed by ModelInfo.Name.
 /// Resolves through IAssets once per model ("assets/{Path}.glb" —
-/// ModelInfo.Path is extensionless), then reuses the arrays.
+/// ModelInfo.Path is extensionless), then reuses the arrays. The
+/// raylib Model exposes every sub-mesh as its own self-contained
+/// Mesh, so there is no shared-buffer slicing and no bone fold —
+/// the cache IS the whole resolution story (contrast the MonoGame
+/// ModelParts path).
 module ModelMeshes =
 
   let private cache = Dictionary<string, struct (Mesh * Material3D)[]>()
 
-  /// The per-frame GameContext used for lazy asset loads (the
-  /// InstancedRenderContext resolver doesn't receive one — Platformer3D's
-  /// currentGameContext recipe). Set at the top of the world pass.
+  /// The per-frame GameContext used for lazy asset loads. Set at
+  /// the top of the world pass.
   let mutable private currentContext: GameContext voption = ValueNone
 
   let setContext(ctx: GameContext) : unit = currentContext <- ValueSome ctx
 
   /// The model's sub-meshes with their authored materials converted
-  /// to Material3D (the Platformer3D resolveMeshesAndMaterial recipe).
-  /// Loaded once per model name and cached for the process lifetime.
+  /// to Material3D. Loaded once per model name and cached for the
+  /// process lifetime.
   let resolve(info: ModelInfo) : struct (Mesh * Material3D)[] =
     match cache |> Dictionary.tryGetValue info.Name with
     | ValueSome cached -> cached
@@ -102,32 +98,36 @@ module ModelMeshes =
     | ValueSome info -> resolve info
     | ValueNone -> Array.empty
 
-  /// Warms the cache for every name (avoids mid-frame Content.Load
-  /// stalls when a model first appears).
+  /// Warms the cache for every name (avoids mid-frame load stalls
+  /// when a model first appears).
   let inline warm(names: string[]) : unit =
     for name in names do
       resolveByName name |> ignore
 
-/// Grow-only per-model-name instance-transform scratch for the
-/// entity views (ModelProbe idiom — one Matrix4x4[] per model kind,
-/// refilled every frame; steady state allocates nothing). NOT a
-/// batcher: the views own the per-frame fill and the draw timing;
-/// this module only owns the arrays. Each view resets → fills →
-/// draws at its own point in the pass (a view's reset clears every
-/// group, so the groups of views that already drew are gone). The
-/// render buffer copies the transforms into pooled arrays at record
-/// time, so refilling one scratch per kind per frame is safe.
-module InstanceScratch =
+/// Grow-only per-model-name instance groups owned by ONE view: fill
+/// with Add, then Draw once. Each view owns its groups, so there is
+/// no cross-view reset protocol to keep in your head (the old shared
+/// InstanceScratch needed reset → fill → draw in exactly that order
+/// per view — a view that forgot the reset re-drew the previous
+/// view's instances). Steady state allocates nothing: the arrays
+/// grow only when a frame needs more room, and the render buffer
+/// copies the transforms into pooled arrays at record time, so the
+/// scratch is safely refilled the next frame.
+/// Draw emits one .instanced draw per sub-mesh per group (raylib
+/// Meshes are self-contained — no offsets, no bone fold). The raylib
+/// instanced path has no per-instance colors; tinted single draws
+/// use .mesh with a Material3D override instead.
+type InstanceGroups() =
 
-  let private transforms = Dictionary<string, Matrix4x4[]>()
-  let private counts = Dictionary<string, int>()
+  let transforms = Dictionary<string, Matrix4x4[]>()
+  let counts = Dictionary<string, int>()
 
   /// Clears every group's count (arrays keep their storage).
-  let reset() : unit = counts.Clear()
+  member _.Clear() : unit = counts.Clear()
 
   /// Appends one instance transform to the name's group (grows the
   /// scratch array on the cold path).
-  let add (name: string) (transform: Matrix4x4) : unit =
+  member _.Add(name: string, transform: Matrix4x4) : unit =
     match counts |> Dictionary.tryGetValue name with
     | ValueSome n ->
       let arr = transforms[name]
@@ -145,9 +145,9 @@ module InstanceScratch =
       transforms[name] <- arr
       counts[name] <- 1
 
-  /// One .instanced draw per (name × sub-mesh): `resolve` maps a name
-  /// to its cached meshes/materials (ModelMeshes).
-  let draw(buffer: RenderBuffer3D) : unit =
+  /// One .instanced draw per (name × sub-mesh): ModelMeshes maps a
+  /// name to its cached meshes/materials.
+  member _.Draw(buffer: RenderBuffer3D) : unit =
     for KeyValueV(name, n) in counts do
       if n > 0 then
         let meshes = ModelMeshes.resolveByName name
@@ -162,11 +162,11 @@ module InstanceScratch =
 // from the frame's MapModel, baked once per map into two CellGrid3Ds
 // (ground layer: terrain ∪ road ∪ markers; decorations layer: the
 // props one step above the tile top) of precomputed (model name ×
-// world matrix) cells and drawn through the Platformer3D
-// InstancedRenderContext recipe: one instanced draw per distinct
-// model. The map is static per State; a restart builds a new
-// MapModel and re-bakes (identical content for the same config —
-// the bake is pure data, no assets).
+// world matrix) cells and drawn through the InstancedRenderContext
+// recipe: one instanced draw per distinct model. The map is static
+// per State; a restart builds a new MapModel and re-bakes
+// (identical content for the same config — the bake is pure data,
+// no assets).
 //
 // The cell CONTENT (which model + rotation + offset) comes from the
 // Shared MapModel.cellPieces — the single source of truth both
@@ -198,17 +198,13 @@ module MapView =
     Bounds: Mibo.Layout3D.BoundingBox
   }
 
-  /// The lazily baked grid for the current map (rebuilt on restart —
-  /// the reference check is `obj.ReferenceEquals` on the MapModel).
-  let mutable private cachedBake: MapBake voption = ValueNone
-
   /// Builds the two 3D grids from the 2D map layers. Pure data — no
   /// assets touched. The 2D (x, y) cell maps to 3D (x, 0, y) with the
   /// world position at the cell CENTER (+0.5). The content selection
   /// (model + rotation + offset) is the Shared MapModel.cellPieces:
   /// every cell gets its ground piece, decorated cells additionally
   /// a sparse cell on the decorations grid one layer above.
-  let private bake(map: MapModel) : MapBake =
+  let bake(map: MapModel) : MapBake =
     let terrain = MapModel.terrain map
     let w = terrain.Width
     let h = terrain.Height
@@ -262,14 +258,33 @@ module MapView =
       }
     }
 
+/// The map presenter: owns the lazily baked grids and the instanced
+/// context — constructed once in Program.fs, no module-level mutable
+/// state.
+[<Sealed>]
+type MapView() =
+
+  /// The lazily baked grid for the current map (rebuilt on restart —
+  /// the reference check is `obj.ReferenceEquals` on the MapModel).
+  let mutable cachedBake: MapView.MapBake voption = ValueNone
+
+  /// The instanced-render context over the baked grid: key = model
+  /// name, transform = the precomputed cell matrix.
+  let instancedCtx =
+    InstancedRenderContext<MapView.CellBake, string>(
+      getKey = (fun bake -> bake.Name),
+      getMeshesAndMaterial = (fun bake -> ModelMeshes.resolveByName bake.Name),
+      getTransform = (fun _ bake -> bake.Matrix)
+    )
+
   /// The bake for the frame's map (re-baked only when the MapModel
   /// reference changes — a restart). Warms the mesh/material cache
   /// for every baked model so the first frame doesn't stall mid-draw.
-  let private ensureBake(frame: RenderFrame) : MapBake =
+  let ensureBake(frame: RenderFrame) : MapView.MapBake =
     match cachedBake with
     | ValueSome bake when obj.ReferenceEquals(bake.Map, frame.Map) -> bake
     | _ ->
-      let bake = bake frame.Map
+      let bake = MapView.bake frame.Map
 
       ModelMeshes.warm(
         Array.append
@@ -288,19 +303,9 @@ module MapView =
       cachedBake <- ValueSome bake
       bake
 
-  /// The instanced-render context over the baked grid (Platformer3D
-  /// recipe): key = model name, transform = the precomputed cell
-  /// matrix.
-  let private instancedCtx =
-    InstancedRenderContext<CellBake, string>(
-      getKey = (fun bake -> bake.Name),
-      getMeshesAndMaterial = (fun bake -> ModelMeshes.resolveByName bake.Name),
-      getTransform = (fun _ bake -> bake.Matrix)
-    )
-
   /// The map pass: ground + decorations, one instanced draw per
   /// distinct baked model per layer.
-  let view (ctx: GameContext) (frame: RenderFrame) (buffer: RenderBuffer3D) =
+  member _.View(ctx: GameContext, frame: RenderFrame, buffer: RenderBuffer3D) =
     let bake = ensureBake frame
     instancedCtx.ResetFrameBuffers()
 

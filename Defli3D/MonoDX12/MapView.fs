@@ -14,11 +14,12 @@ open Defli3D.State.Systems
 // into two CellGrid3Ds (ground layer: terrain ∪ road ∪ markers;
 // decorations layer: the props one step above the tile top) of
 // precomputed (model name × world matrix) cells and drawn through
-// the Platformer3D InstancedRenderContext recipe: one instanced draw
-// per distinct model, absolute-bone transforms folded into the
-// per-cell matrices (ModelCache). The map is static per State; a
-// restart builds a new MapModel and re-bakes (identical content for
-// the same config — the bake is pure data, no assets).
+// the InstancedRenderContext parts overload: one instanced draw per
+// distinct model per layer, zero-copy parts from ModelCache (the
+// context folds each part's own absolute bone and passes the part's
+// real buffer offsets). The map is static per State; a restart
+// builds a new MapModel and re-bakes (identical content for the
+// same config — the bake is pure data, no assets).
 //
 // The cell CONTENT (which model + rotation + offset) comes from the
 // Shared MapModel.cellPieces — the single source of truth both
@@ -56,17 +57,13 @@ module MapView =
     Bounds: BoundingBox
   }
 
-  /// The lazily baked grid for the current map (rebuilt on restart —
-  /// the reference check is `obj.ReferenceEquals` on the MapModel).
-  let mutable private cachedBake: MapBake voption = ValueNone
-
   /// Builds the two 3D grids from the 2D map layers. Pure data — no
   /// assets touched. The 2D (x, y) cell maps to 3D (x, 0, y) with the
   /// world position at the cell CENTER (+0.5). The content selection
   /// (model + rotation + offset) is the Shared MapModel.cellPieces:
   /// every cell gets its ground piece, decorated cells additionally
   /// a sparse cell on the decorations grid one layer above.
-  let private bake(map: MapModel) : MapBake =
+  let bake(map: MapModel) : MapBake =
     let terrain = MapModel.terrain map
     let w = terrain.Width
     let h = terrain.Height
@@ -101,14 +98,13 @@ module MapView =
           Matrix = matrixOf groundPiece
         }
 
-        match decoPiece with
-        | ValueSome piece ->
+        decoPiece
+        |> ValueOption.iter(fun piece ->
           decorations
           |> CellGrid3D.set x 0 y {
             Name = piece.Model.Path
             Matrix = matrixOf piece
-          }
-        | ValueNone -> ()
+          })
 
     {
       Map = map
@@ -120,14 +116,35 @@ module MapView =
       }
     }
 
+/// The map presenter: owns the lazily baked grids and the instanced
+/// context — constructed once in Program.fs, no module-level mutable
+/// state.
+[<Sealed>]
+type MapView() =
+
+  /// The lazily baked grid for the current map (rebuilt on restart —
+  /// the reference check is `obj.ReferenceEquals` on the MapModel).
+  let mutable cachedBake: MapView.MapBake voption = ValueNone
+
+  /// The instanced-render context over the baked grid: key = model
+  /// name, parts = the zero-copy ModelCache parts (the context folds
+  /// each part's own absolute bone and passes its real buffer
+  /// offsets), transform = the precomputed cell matrix.
+  let instancedCtx =
+    InstancedRenderContext<MapView.CellBake, string>(
+      getKey = (fun bake -> bake.Name),
+      getParts = (fun bake -> ModelCache.resolve bake.Name),
+      getTransform = (fun _ bake -> bake.Matrix)
+    )
+
   /// The bake for the frame's map (re-baked only when the MapModel
-  /// reference changes — a restart). Warms the mesh/material cache
-  /// for every baked model so the first frame doesn't stall mid-draw.
-  let private ensureBake(frame: RenderFrame) : MapBake =
+  /// reference changes — a restart). Warms the part cache for every
+  /// baked model so the first frame doesn't stall mid-draw.
+  let ensureBake(frame: RenderFrame) : MapView.MapBake =
     match cachedBake with
     | ValueSome bake when obj.ReferenceEquals(bake.Map, frame.Map) -> bake
     | _ ->
-      let bake = bake frame.Map
+      let bake = MapView.bake frame.Map
 
       ModelCache.warm(
         Array.append
@@ -146,19 +163,9 @@ module MapView =
       cachedBake <- ValueSome bake
       bake
 
-  /// The instanced-render context over the baked grid (Platformer3D
-  /// recipe): key = model name, transform = the precomputed cell
-  /// matrix with the model's absolute bone transform folded in.
-  let private instancedCtx =
-    InstancedRenderContext<CellBake, string>(
-      getKey = (fun bake -> bake.Name),
-      getMeshesAndMaterial = (fun bake -> ModelCache.resolve bake.Name),
-      getTransform = (fun _ bake -> ModelCache.boneOf bake.Name * bake.Matrix)
-    )
-
   /// The map pass: ground + decorations, one instanced draw per
   /// distinct baked model per layer.
-  let view (ctx: GameContext) (frame: RenderFrame) (buffer: RenderBuffer3D) =
+  member _.View(ctx: GameContext, frame: RenderFrame, buffer: RenderBuffer3D) =
     let bake = ensureBake frame
     instancedCtx.ResetFrameBuffers()
 

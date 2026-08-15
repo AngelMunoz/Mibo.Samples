@@ -20,17 +20,22 @@ open Defli3D.State.Systems
 // piercer arrows large).
 // ─────────────────────────────────────────────────────────────
 
-module ProjectilesView =
+/// The projectiles presenter: owns its instance groups — constructed
+/// once in Program.fs, no module-level mutable state.
+[<Sealed>]
+type ProjectilesView() =
 
-  /// Ammo shells go through the shared InstanceScratch (grouped by
-  /// model path): reset → fill → draw per frame, zero allocation
-  /// once warm.
-  let view
-    (ctx: GameContext)
-    (homing: IReadOnlyDictionary<int<ProjectileId>, HomingView>)
-    (buffer: RenderBuffer3D)
-    =
-    InstanceScratch.reset()
+  let groups = InstanceGroups()
+
+  /// Ammo shells, grouped by model path: one instanced draw per ammo
+  /// model, zero allocation once warm.
+  member _.View
+    (
+      ctx: GameContext,
+      homing: IReadOnlyDictionary<int<ProjectileId>, HomingView>,
+      buffer: RenderBuffer3D
+    ) =
+    groups.Clear()
 
     for KeyValueV(_, v) in homing do
       let yaw =
@@ -39,10 +44,11 @@ module ProjectilesView =
         else
           MathF.Atan2(v.Dir.X, v.Dir.Y)
 
-      InstanceScratch.add
-        v.Model.Path
-        (Matrix.CreateScale v.Scale
-         * Matrix.CreateRotationY yaw
-         * Matrix.CreateTranslation(v.Pos.X, v.Y, v.Pos.Y))
+      groups.Add(
+        v.Model.Path,
+        Matrix.CreateScale v.Scale
+        * Matrix.CreateRotationY yaw
+        * Matrix.CreateTranslation(v.Pos.X, v.Y, v.Pos.Y)
+      )
 
-    InstanceScratch.draw buffer
+    groups.Draw buffer

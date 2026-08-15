@@ -9,13 +9,15 @@ open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics3D
 open Raylib_cs
 open Defli3D.State
+open Defli3D.State.Frame
 open Defli3D.State.Systems
 
 // ─────────────────────────────────────────────────────────────
 // TowersView — tower bodies + mounted guns from the frame's
 // TowerStatics/TowerAim snapshots, all instanced (one draw per
-// model, not per tower). Every chassis is COMPLETE from placement
-// (a level-up is power, never height).
+// model, not per tower; the sim clock rides the frame as
+// frame.Time). Every chassis is COMPLETE from placement (a
+// level-up is power, never height).
 //
 // Rotation is driven by the SIM's aim (the TowerAim projection —
 // Runtimes.Aim, the actual tracked target), not a view-side guess:
@@ -33,19 +35,20 @@ open Defli3D.State.Systems
 // sweep.
 // ─────────────────────────────────────────────────────────────
 
-module TowersView =
+/// The towers presenter: owns its instance groups — constructed
+/// once in Program.fs, no module-level mutable state.
+[<Sealed>]
+type TowersView() =
 
-  let view
-    (ctx: GameContext)
-    (statics: IReadOnlyDictionary<int<TowerId>, TowerStatic>)
-    (levels: IReadOnlyDictionary<int<TowerId>, int>)
-    (aim: IReadOnlyDictionary<int<TowerId>, Vector2 voption>)
-    (buffer: RenderBuffer3D)
-    =
-    let time = float32(Raylib.GetTime())
-    InstanceScratch.reset()
+  let groups = InstanceGroups()
 
-    for KeyValueV(tid, s) in statics do
+  /// Tower bodies + guns, one instanced draw per model, zero
+  /// allocation once warm.
+  member _.View(ctx: GameContext, frame: RenderFrame, buffer: RenderBuffer3D) =
+    let time = float32 frame.Time.TotalTime.TotalSeconds
+    groups.Clear()
+
+    for KeyValueV(tid, s) in frame.TowerStatics do
       let def = s.Def
       let center = Cells.center s.Cell (Vector2.One)
       let cx = center.X
@@ -59,7 +62,7 @@ module TowersView =
       // The sim's aim: the actual tracked target position, or an
       // idle sweep when the tower holds no target.
       let yaw =
-        match aim |> ReadOnlyDict.tryGetValue tid with
+        match frame.TowerAim |> ReadOnlyDict.tryGetValue tid with
         | ValueSome(ValueSome target) ->
           let d = target - center
           MathF.Atan2(d.X, d.Y)
@@ -77,8 +80,8 @@ module TowersView =
       // Body — the chassis's complete piece stack
       // (TowerLayout.stackFor, bottom→top, NO roof), one instanced
       // draw per piece, laid on the tile top (TowerLayout.baseY).
-      // Rotating pieces use the rotate-then-place matrix (around the
-      // tower's center axis).
+      // Rotating pieces use the rotate-then-place matrix (around
+      // the tower's center axis).
       let mutable acc = 0f
 
       let pieces = TowerLayout.stackFor def variant
@@ -103,7 +106,7 @@ module TowersView =
               Raymath.MatrixTranslate(cx, pieceY, cy)
             )
 
-        InstanceScratch.add piece.Name matrix
+        groups.Add(piece.Name, matrix)
 
       // The gun (gun-carrying chassis only): mounted at the chassis
       // mount height, yawing with the aim, scaled by GunScale (the
@@ -114,14 +117,15 @@ module TowersView =
         let weaponY = TowerLayout.weaponY def
         let gunScale = scale * def.GunScale
 
-        InstanceScratch.add
-          gun.Name
-          (Raymath.MatrixMultiply(
+        groups.Add(
+          gun.Name,
+          Raymath.MatrixMultiply(
             Raymath.MatrixMultiply(
               Raymath.MatrixScale(gunScale, gunScale, gunScale),
               Raymath.MatrixRotateY(yaw)
             ),
             Raymath.MatrixTranslate(cx, weaponY, cy)
-          )))
+          )
+        ))
 
-    InstanceScratch.draw buffer
+    groups.Draw buffer

@@ -22,9 +22,7 @@ open Defli3D.State.Systems.Camera
 //   * raylib's Camera3D.FovY is in DEGREES; the sim's Camera.FovY
 //     is radians. Raylib derives the aspect and the near/far planes
 //     internally (near 0.01 vs the sim's 0.1 — irrelevant for the
-//     y=0 plane ray hit), so the viewport arguments are accepted
-//     for signature parity with the sim's projectionMatrix but are
-//     not needed to build the camera.
+//     y=0 plane ray hit), so the camera carries no viewport size.
 // ─────────────────────────────────────────────────────────────
 
 module CameraView =
@@ -32,10 +30,7 @@ module CameraView =
   /// The native raylib camera: clamped to the world (a copy — the
   /// sim already clamps every tick), shake applied to the eye via
   /// Camera.eyePosition, looking at the ground-plane target.
-  let inline toRaylib
-    (viewportW: float32, viewportH: float32)
-    (state: CameraState)
-    : Camera3D =
+  let inline toRaylib(state: CameraState) : Camera3D =
     let clamped = Camera.clampToWorld state
 
     Camera3D(

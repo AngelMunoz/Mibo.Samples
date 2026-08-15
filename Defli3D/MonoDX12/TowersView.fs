@@ -14,8 +14,9 @@ open Defli3D.State.Systems
 // ─────────────────────────────────────────────────────────────
 // TowersView — tower bodies + mounted guns from the frame's
 // TowerStatics/TowerAim snapshots, all instanced (one draw per
-// model, not per tower). Every chassis is COMPLETE from placement
-// (a level-up is power, never height).
+// model, not per tower; the sim clock rides the frame as
+// frame.Time). Every chassis is COMPLETE from placement (a
+// level-up is power, never height).
 //
 // Rotation is driven by the SIM's aim (the TowerAim projection —
 // Runtimes.Aim, the actual tracked target), not a view-side guess:
@@ -33,15 +34,19 @@ open Defli3D.State.Systems
 // sweep.
 // ─────────────────────────────────────────────────────────────
 
-module TowersView =
+/// The towers presenter: owns its instance groups — constructed once
+/// in Program.fs, no module-level mutable state.
+[<Sealed>]
+type TowersView() =
 
-  /// Tower bodies + guns through the shared InstanceScratch: reset
-  /// → fill → draw per frame, zero allocation once warm. Visual
-  /// scale + bodies + mounts come from TowerLayout (shared with the
-  /// sim's muzzle math).
-  let view (ctx: GameContext) (frame: RenderFrame) (buffer: RenderBuffer3D) =
-    let time = Time.now()
-    InstanceScratch.reset()
+  let groups = InstanceGroups()
+
+  /// Tower bodies + guns, one instanced draw per model, zero
+  /// allocation once warm. Visual scale + bodies + mounts come from
+  /// TowerLayout (shared with the sim's muzzle math).
+  member _.View(ctx: GameContext, frame: RenderFrame, buffer: RenderBuffer3D) =
+    let time = float32 frame.Time.TotalTime.TotalSeconds
+    groups.Clear()
 
     for KeyValueV(tid, s) in frame.TowerStatics do
       let def = s.Def
@@ -66,8 +71,8 @@ module TowersView =
       // Which pieces rotate: deck towers yaw ONLY the gun deck (the
       // middle piece); keeps yaw whole; everything else is static
       // (its gun rotates instead).
-      let rotates(i: int) : bool =
-        match def.Chassis with
+      let inline rotates (i: int) chasis : bool =
+        match chasis with
         | Chassis.Deck _ -> i = 1
         | Chassis.Keep _ -> true
         | _ -> false
@@ -87,14 +92,14 @@ module TowersView =
         acc <- acc + piece.SizeY
 
         let matrix =
-          if rotates i then
+          if rotates i def.Chassis then
             Matrix.CreateScale scale
             * Matrix.CreateRotationY yaw
             * Matrix.CreateTranslation(x, pieceY, z)
           else
             Matrix.CreateScale scale * Matrix.CreateTranslation(x, pieceY, z)
 
-        InstanceScratch.add piece.Path matrix
+        groups.Add(piece.Path, matrix)
 
       // The gun (gun-carrying chassis only): mounted at the chassis
       // mount height, yawing with the aim, scaled by GunScale (the
@@ -105,10 +110,11 @@ module TowersView =
         let weaponY = TowerLayout.weaponY def
         let gunScale = scale * def.GunScale
 
-        InstanceScratch.add
-          gun.Path
-          (Matrix.CreateScale gunScale
-           * Matrix.CreateRotationY yaw
-           * Matrix.CreateTranslation(x, weaponY, z)))
+        groups.Add(
+          gun.Path,
+          Matrix.CreateScale gunScale
+          * Matrix.CreateRotationY yaw
+          * Matrix.CreateTranslation(x, weaponY, z)
+        ))
 
-    InstanceScratch.draw buffer
+    groups.Draw buffer

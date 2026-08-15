@@ -45,6 +45,7 @@ let main _ =
     |> GameConfig.withTargetFPS 60
 
   let vfx = VfxView()
+  let world = WorldView(shell, vfx)
 
   // The assets are copied to the output directory; resolve them from
   // the exe location so the game runs from any working directory.
@@ -77,9 +78,11 @@ let main _ =
           }
         )
 
-      Renderer3D.create pipeline (WorldView.worldView shell vfx))
+      Renderer3D.create pipeline (fun ctx frame buffer ->
+        world.Render(ctx, frame, buffer)))
     |> AdaptiveProgram.withRenderer(fun () ->
-      Renderer2D.createWith Renderer2DConfig.noClear (WorldView.hudView shell))
+      Renderer2D.createWith Renderer2DConfig.noClear (fun ctx frame buffer ->
+        world.Hud(ctx, frame, buffer)))
 
   let game = new AdaptiveRaylibGame<Frame.RenderFrame>(program)
 

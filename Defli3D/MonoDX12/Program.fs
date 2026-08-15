@@ -31,12 +31,13 @@ let main _ =
 
   let config =
     GameConfig.defaultConfig
-    |> GameConfig.withWidth 1080
+    |> GameConfig.withWidth 1280
     |> GameConfig.withHeight 720
     |> GameConfig.withTitle "Defli3D"
     |> GameConfig.withTargetFPS 60
 
   let vfx = VfxView()
+  let world = WorldView(shell, vfx)
 
   let program =
     // Raw XNA wheel is ±120 per notch: the per-notch zoom base keeps
@@ -46,11 +47,7 @@ let main _ =
       (fun () -> cell.Value)
       (Input.subscriptions (1.1 ** (1.0 / 120.0)) cell shell)
     |> AdaptiveProgram.withObserver(fun () ->
-      // The renderers don't receive GameTime — record the sim clock
-      // for draw-side animation (hover bob, idle spins).
-      AdaptiveProgram.observe(fun struct (_, _, gameTime) ->
-        Time.set gameTime.TotalTime.TotalSeconds
-        Diagnostics.update shell.Diag))
+      AdaptiveProgram.observe(fun _ -> Diagnostics.update shell.Diag))
     |> AdaptiveProgram.withConfig(fun _ -> config)
     |> AdaptiveProgram.withInput
     |> AdaptiveProgram.withRenderer(fun () ->
@@ -60,13 +57,14 @@ let main _ =
           shadowAtlas = {
             ShadowAtlasConfig.defaults with
                 Resolution = 1024 * 4
-                GridSnapSize = 16.0f
           }
         )
 
-      Renderer3D.create pipeline (WorldView.worldView shell vfx))
+      Renderer3D.create pipeline (fun ctx frame buffer ->
+        world.Render(ctx, frame, buffer)))
     |> AdaptiveProgram.withRenderer(fun () ->
-      Renderer2D.createWith Renderer2DConfig.noClear (WorldView.hudView shell))
+      Renderer2D.createWith Renderer2DConfig.noClear (fun ctx frame buffer ->
+        world.Hud(ctx, frame, buffer)))
     |> AdaptiveMonoGameProgram.ofProgram
     |> AdaptiveMonoGameProgram.withConfig(fun (game, _) ->
       game.Content.RootDirectory <- "Content")

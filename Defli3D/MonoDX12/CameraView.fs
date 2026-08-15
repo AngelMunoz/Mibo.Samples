@@ -20,13 +20,8 @@ module CameraView =
   /// clamped to the world, with the deterministic shake applied to
   /// the eye (XZ offset — the look target stays put). The pipeline
   /// derives the aspect from the active viewport at render time, so
-  /// the viewport size only needs to be the same the sim used for
-  /// picking (it is — both are the window size).
-  let inline toMono
-    (viewportW: float32)
-    (viewportH: float32)
-    (state: CameraState)
-    : Camera3D =
+  /// the camera carries no viewport size.
+  let inline toMono(state: CameraState) : Camera3D =
     let clamped = Camera.clampToWorld state
     let eye = Camera.eyePosition clamped
 
