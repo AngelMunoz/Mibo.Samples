@@ -89,35 +89,35 @@ module Balance =
   /// 0.05 there ≈ 10 maxed towers. Read the margin table before
   /// changing it — the saturation (and with it the wave-10/15
   /// multipliers) scales almost linearly with this knob.
-  let HorizonBuild = 0.05f
+  let HorizonBuild = 0.015f
 
   /// The logistic's inflection tier — the designed "hard middle".
   /// 3 = wave 15. Ignored when EarlyHpOverride is set.
-  let TierHalf = 3f
+  let TierHalf = 4f
 
   /// The calibration tier (~wave 30-34): the anchor where the
   /// horizon build's margin reads exactly Alpha.
-  let RefTier = 6f
+  let RefTier = 7f
 
   /// Resistance cap (multiplicative fraction, same logistic shape
   /// as HP). 0.35 = late enemies take 35 % less from every source.
-  let RhoMax = 0.35f
+  let RhoMax = 0.25f
 
   /// Gold per dps×exposure power unit, from the def store
   /// (bulletdeck 0.56, gunpost 0.75, sentry 1.28 — the efficient
   /// end of the range). Converts the demand ratio into the gold a
   /// margin-1 build costs.
-  let GoldPerPower = 0.7f
+  let GoldPerPower = 1f
 
   /// Share of each tier's equipment bill paid by wave CLEARS
   /// (floored at WorldConfig.WaveClearBonus per wave — the stable
   /// sustenance late, when kill rewards shrink with the bill).
-  let ClearShare = 0.35f
+  let ClearShare = 2f
 
   /// Share of each tier's equipment bill paid by KILLS (the per-
   /// kill max 1 gold floor in WaveScale.apply keeps small kills
   /// from feeling pointless).
-  let KillShare = 0.55f
+  let KillShare = 1.2f
 
   /// Speed growth per tier, UNCAPPED by design (see module header).
   let SpeedGrowth = 1.07f

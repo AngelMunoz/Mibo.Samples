@@ -85,11 +85,11 @@ module WorldConfig =
 
   let defaults = {
     Seed = 42
-    StartingGold = 60
+    StartingGold = 80
     StartingLives = 20
     WaveClearBonus = 25
     GridCols = 20
-    GridRows = 12
+    GridRows = 20
     MapVariant = MapVariant.Procedural
   }
 
