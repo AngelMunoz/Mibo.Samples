@@ -1,5 +1,6 @@
 namespace Defli3D.Raylib
 
+open System
 open System.Numerics
 open Mibo
 open Mibo.Elmish
@@ -10,6 +11,7 @@ open Raylib_cs
 open Defli3D
 open Defli3D.State
 open Defli3D.State.Frame
+open Defli3D.State.Systems
 open Defli3D.State.Systems.Camera
 
 // ─────────────────────────────────────────────────────────────
@@ -79,6 +81,32 @@ module WorldView =
   /// √(0.5² + 0.4²) = 0.6403 (the 1.0 AABB's corners are NOT on the
   /// mesh), so scaling it to the AABB overdraws the radius by 1.28×.
   /// The range ring divides by this so the ring lands exactly on the
+  /// The range marker rides ABOVE the terrain: the highest ground
+  /// top under the range circle (raised tiles — hills/rocks — would
+  /// otherwise clip through a flat ground-level disc). Samples the
+  /// map's per-cell ground pieces (YOffset + model height).
+  let private rangeMarkerY (frame: RenderFrame) (radius: float32) : float32 =
+    let terrain = MapModel.terrain frame.Map
+    let center = hoverCenter frame
+    let mutable maxTop = TowerLayout.baseY
+
+    frame.HoverCell
+    |> ValueOption.iter(fun struct (hx, hy) ->
+      let span = int(MathF.Ceiling radius)
+
+      for y in max 0 (hy - span) .. min (terrain.Height - 1) (hy + span) do
+        for x in max 0 (hx - span) .. min (terrain.Width - 1) (hx + span) do
+          let c = Vector2(float32 x + 0.5f, float32 y + 0.5f)
+
+          if Vector2.Distance(c, center) <= radius then
+            let struct (ground, _) = MapModel.cellPieces frame.Map x y
+            let top = ground.YOffset + ground.Model.SizeY
+
+            if top > maxTop then
+              maxTop <- top)
+
+    maxTop + 0.02f
+
   /// Range disc: the hovered own tower's effective range as a translucent
   /// tinted DISC (a thin Cylinder primitive) filling the range area —
   /// replaces the old flat selection-b octagon ring. Opacity<1 routes it
@@ -94,12 +122,13 @@ module WorldView =
       let c = hoverCenter frame
       let r = float32 def.Range
 
-      // Unit cylinder centered on origin (Y [-0.5,+0.5]); scale to the range
-      // radius + a thin height, lift just above the tile top (0.2).
+      // Unit cylinder centered on origin (Y [-0.5,+0.5]); scale to the
+      // range radius + a thin height, lifted just above the tallest
+      // ground the disc covers (terrain-aware — no floor clipping).
       let transform =
         Raymath.MatrixMultiply(
           Raymath.MatrixScale(r, 0.04f, r),
-          Raymath.MatrixTranslate(c.X, 0.22f, c.Y)
+          Raymath.MatrixTranslate(c.X, rangeMarkerY frame r, c.Y)
         )
 
       let material = {
@@ -139,7 +168,7 @@ module WorldView =
         |> ValueOption.defaultValue 1
 
       let center = Cells.center s.Cell (Vector2.One)
-      let top = Vector3(center.X, TowerLayout.towerTop s.Def level, center.Y)
+      let top = Vector3(center.X, TowerLayout.towerTop s.Def, center.Y)
 
       match
         Camera.worldToScreen
@@ -208,7 +237,14 @@ module WorldView =
       .drop()
 
     MapView.view ctx frame buffer
-    TowersView.view ctx frame.TowerStatics frame.TowerLevels frame.Alive buffer
+
+    TowersView.view
+      ctx
+      frame.TowerStatics
+      frame.TowerLevels
+      frame.TowerAim
+      buffer
+
     EnemiesView.view ctx frame.Alive frame.Defs buffer
     ProjectilesView.view ctx frame.Projectiles buffer
     vfx.View ctx frame.Vfx buffer
@@ -231,7 +267,7 @@ module WorldView =
     buffer
       .text(
         font,
-        $"Gold: %d{frame.Gold}   Lives: %d{frame.Lives}   %s{frame.Banner}   Tower: %s{frame.SelectedTower.Name} (1/2/3)",
+        $"Gold: %d{frame.Gold}   Lives: %d{frame.Lives}   %s{frame.Banner}   Tower: %s{frame.SelectedTower.Name} (0-9)",
         Vector2(12f, 10f),
         22f,
         layer = Layers.Hud

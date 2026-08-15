@@ -22,6 +22,7 @@
     <Compile Include="State/Systems/Economy.fs" />
     <Compile Include="State/Systems/Towers.fs" />
     <Compile Include="State/Systems/Projectiles.fs" />
+    <Compile Include="State/Systems/Zones.fs" />
     <Compile Include="State/Systems/Vfx.fs" />
     <Compile Include="State/Systems/Camera.fs" />
     <Compile Include="State/Projections.fs" />

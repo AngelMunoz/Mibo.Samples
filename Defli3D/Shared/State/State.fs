@@ -31,6 +31,7 @@ type State = {
   Waves: Waves.WavesModel
   Towers: Towers.TowersModel
   Projectiles: Projectiles.ProjectilesModel
+  Zones: Zones.ZonesModel
   Vfx: Vfx.VfxModel
   Economy: Economy.EconomyModel
   Camera: Camera.CameraModel
@@ -86,6 +87,7 @@ module State =
     let waves = Waves.Waves.init()
     let towers = Towers.Towers.init()
     let projectiles = Projectiles.Projectiles.init()
+    let zones = Zones.Zones.init()
     let vfx = Vfx.Vfx.init()
     let economy = Economy.Economy.init cfg
 
@@ -94,7 +96,7 @@ module State =
     let camera =
       Camera.Camera.init(Vector2(float32 cfg.GridCols, float32 cfg.GridRows))
 
-    let selectedTower = CVal.create TowerDefs.arrow
+    let selectedTower = CVal.create TowerDefs.sentry
     let hoverCell = CVal.create ValueNone
     let paused = CVal.create false
 
@@ -117,6 +119,7 @@ module State =
       Waves = waves
       Towers = towers
       Projectiles = projectiles
+      Zones = zones
       Vfx = vfx
       Economy = economy
       Camera = camera

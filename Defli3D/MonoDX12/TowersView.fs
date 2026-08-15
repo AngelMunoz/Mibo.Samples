@@ -12,107 +12,103 @@ open Defli3D.State.Frame
 open Defli3D.State.Systems
 
 // ─────────────────────────────────────────────────────────────
-// TowersView — tower bodies and weapons from the frame's
-// TowerStatics/TowerLevels snapshots. The body is the level's
-// pre-cut kit STACK (TowerLayout.stackFor — bottom-a + middles +
-// top-a/b/c, NO roof), composed bottom→top with a running height
-// accumulator so each piece rests on the one below; the weapon
-// mounts flush on the top piece (TowerLayout.weaponY).
+// TowersView — tower bodies + mounted guns from the frame's
+// TowerStatics/TowerAim snapshots, all instanced (one draw per
+// model, not per tower). Every chassis is COMPLETE from placement
+// (a level-up is power, never height).
 //
-// Note on aiming: the frame carries no tower runtime (TowerRuntime
-// with the live Target is sim-internal, not in the RenderFrame), so
-// aiming is approximated at the view edge exactly like the raylib
-// backend: the weapon yaws toward the NEAREST alive enemy within
-// the tower's EFFECTIVE range (effectiveDef incl. upgrades); with
-// no enemy in range it keeps a slow idle spin. Documented choice —
-// the projectile Homing view could drive a muzzle but not the
-// turret.
+// Rotation is driven by the SIM's aim (the TowerAim projection —
+// Runtimes.Aim, the actual tracked target), not a view-side guess:
+//   Deck   — ONLY the gun deck (the middle piece) yaws; the bottom
+//            and the top above it stay put.
+//   Keep   — the whole prebuilt tower yaws (it fires through its
+//            opening).
+//   Bunker / Battery / Emplacement — the body is static; the GUN
+//            model yaws at its mount (pad / bay floor / stack top),
+//            scaled by the def's GunScale (large guns read large).
+// Decks and keeps are self-armed (WeaponModel = None) — their ammo
+// leaves from TowerLayout.muzzleY at the tower's edge.
+//
+// No target → the rotating parts idle with a slow per-tower-phase
+// sweep.
 // ─────────────────────────────────────────────────────────────
 
 module TowersView =
 
-  /// Tower bodies + weapons go through the shared InstanceScratch:
-  /// reset → fill → draw per frame, zero allocation once warm.
-  /// Visual scale + body stack come from TowerLayout (shared with
-  /// the sim's muzzle math).
-  /// Reused scratch: the frame's enemy positions (XZ), refilled once
-  /// per frame so the per-tower aim scan never re-enumerates.
-  let private enemyPositions = ResizeArray<System.Numerics.Vector2>()
-
-  /// Tower bodies and weapons at their cell centers.
+  /// Tower bodies + guns through the shared InstanceScratch: reset
+  /// → fill → draw per frame, zero allocation once warm. Visual
+  /// scale + bodies + mounts come from TowerLayout (shared with the
+  /// sim's muzzle math).
   let view (ctx: GameContext) (frame: RenderFrame) (buffer: RenderBuffer3D) =
     let time = Time.now()
     InstanceScratch.reset()
 
-    // One pass over the alive view fills the aim scratch.
-    enemyPositions.Clear()
-
-    for KeyValueV(_, v) in frame.Alive do
-      enemyPositions.Add v.Pos
-
     for KeyValueV(tid, s) in frame.TowerStatics do
-      let level =
-        frame.TowerLevels
-        |> ReadOnlyDict.tryGetValue tid
-        |> ValueOption.defaultValue 1
-
+      let def = s.Def
       let struct (cx, cy) = s.Cell
       let x = float32 cx + 0.5f
       let z = float32 cy + 0.5f
       let center = System.Numerics.Vector2(x, z)
-      // Per-tower bottom/middle variant (stable across level-ups).
+      // Per-tower detailing variant (battery/bunker — deck and keep
+      // letters come from the def).
       let variant = TowerLayout.variantSeed cx cy
+      let scale = TowerLayout.towerScale
 
-      // Body: the level's stack, pieces bottom→top with a running
-      // UNSCALED height accumulator — each piece rests on the one
-      // below, base at y = 0.2 (the tile top). No rotation (the
-      // pieces are radially symmetric).
+      // The sim's aim: the actual tracked target position, or an
+      // idle sweep when the tower holds no target.
+      let yaw =
+        match frame.TowerAim |> ReadOnlyDict.tryGetValue tid with
+        | ValueSome(ValueSome target) ->
+          let d = target - center
+          MathF.Atan2(d.X, d.Y)
+        | _ -> time * 0.6f + float32(int tid % 5) * 1.2f
+
+      // Which pieces rotate: deck towers yaw ONLY the gun deck (the
+      // middle piece); keeps yaw whole; everything else is static
+      // (its gun rotates instead).
+      let rotates(i: int) : bool =
+        match def.Chassis with
+        | Chassis.Deck _ -> i = 1
+        | Chassis.Keep _ -> true
+        | _ -> false
+
+      // Body: the chassis's complete piece stack
+      // (TowerLayout.stackFor, bottom→top, NO roof), composed with a
+      // running UNSCALED height accumulator — each piece rests on
+      // the one below, base at y = 0.2 (the tile top). Rotating
+      // pieces use the rotate-then-place matrix (around the tower's
+      // center axis).
       let mutable acc = 0f
+      let pieces = TowerLayout.stackFor def variant
 
-      for piece in TowerLayout.stackFor s.Def level variant do
-        let pieceY = TowerLayout.baseY + acc * TowerLayout.towerScale
-
-        InstanceScratch.add
-          piece.Path
-          (Matrix.CreateScale TowerLayout.towerScale
-           * Matrix.CreateTranslation(x, pieceY, z))
-
+      for i = 0 to pieces.Length - 1 do
+        let piece = pieces[i]
+        let pieceY = TowerLayout.baseY + acc * scale
         acc <- acc + piece.SizeY
 
-      // Weapon — yaw toward the nearest in-range enemy (effective
-      // range incl. upgrades), idle slow spin otherwise (see the
-      // module header).
-      let effective = TowerDefs.effectiveDef s.Def level
-      let range = float32 effective.Range
-      let rangeSq = range * range
+        let matrix =
+          if rotates i then
+            Matrix.CreateScale scale
+            * Matrix.CreateRotationY yaw
+            * Matrix.CreateTranslation(x, pieceY, z)
+          else
+            Matrix.CreateScale scale * Matrix.CreateTranslation(x, pieceY, z)
 
-      let mutable best = System.Numerics.Vector2.Zero
-      let mutable bestSq = rangeSq + 1f
+        InstanceScratch.add piece.Path matrix
 
-      for i = 0 to enemyPositions.Count - 1 do
-        let dSq =
-          System.Numerics.Vector2.DistanceSquared(enemyPositions[i], center)
+      // The gun (gun-carrying chassis only): mounted at the chassis
+      // mount height, yawing with the aim, scaled by GunScale (the
+      // large guns read large). Decks/keeps are self-armed — no
+      // model.
+      def.WeaponModel
+      |> ValueOption.iter(fun gun ->
+        let weaponY = TowerLayout.weaponY def
+        let gunScale = scale * def.GunScale
 
-        if dSq <= rangeSq && dSq < bestSq then
-          bestSq <- dSq
-          best <- enemyPositions[i]
-
-      let yaw =
-        if bestSq <= rangeSq then
-          let d = best - center
-          MathF.Atan2(d.X, d.Y)
-        else
-          // Idle: slow sweep, per-tower phase so they don't sync.
-          time * 0.6f + float32(int tid % 5) * 1.2f
-
-      // Weapon: mounted flush on the top piece (TowerLayout.weaponY),
-      // scaled with the body; yaw at its own origin, then placed.
-      let weaponY = TowerLayout.weaponY s.Def level
-
-      InstanceScratch.add
-        s.Def.WeaponModel.Path
-        (Matrix.CreateScale TowerLayout.towerScale
-         * Matrix.CreateRotationY yaw
-         * Matrix.CreateTranslation(x, weaponY, z))
+        InstanceScratch.add
+          gun.Path
+          (Matrix.CreateScale gunScale
+           * Matrix.CreateRotationY yaw
+           * Matrix.CreateTranslation(x, weaponY, z)))
 
     InstanceScratch.draw buffer

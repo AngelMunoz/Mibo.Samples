@@ -17,6 +17,7 @@ let allTests =
     ProjectionTests.tests
     TowersTests.tests
     ProjectilesTests.tests
+    ZonesTests.tests
     DiagnosticsTests.tests
     CameraTests.tests
     ApplicationTests.tests

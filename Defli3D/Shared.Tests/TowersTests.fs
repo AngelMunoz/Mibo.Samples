@@ -17,19 +17,27 @@ let private model() = Towers.init()
 
 /// Test-owned tower def — distinct values catch production mix-ups.
 let private def = {
-  Key = "test_arrow"
-  Name = "Test Arrow"
+  Key = "test_gun"
+  Name = "Test Gun"
+  Chassis = Chassis.Emplacement
   Cost = 30
   Range = 2
   Damage = 5
   FireRate = 4f
   ProjectileSpeed = 3.125f // 200 px/s ÷ 64
-  WeaponModel = Models.weaponTurret
+  Volley = 1
+  Spread = 0f
+  Trajectory = Trajectory.Flat
+  ImpactRadius = 0.25f
+  Piercing = false
+  Rocket = false
+  Zone = ValueNone
+  WeaponModel = ValueSome Models.weaponTurret
+  GunScale = 1f
   ProjectileModel = Models.ammoBullet
+  ProjectileScale = 0.7f
+  MuzzleDust = false
   TargetPolicy = TargetPolicy.First
-  SlowFactor = 1f
-  SlowSeconds = 0f
-  SplashRadius = 0f
   UpgradeCost = 20
   MaxLevel = 5
 }
@@ -61,6 +69,9 @@ let private cellCenter(struct (x, y)) =
 /// No boss aura in scope — an empty suppression map (factor 1 = free).
 let private noSuppression = Dictionary<int<TowerId>, float32>()
 
+/// No measured velocities — stationary targets (prediction = pos).
+let private noVelocities = Dictionary<int<EnemyId>, Vector2>()
+
 let tests =
   testList "Towers" [
     testCase "place writes Statics + Runtimes + CellIndex atomically" (fun () ->
@@ -91,7 +102,9 @@ let tests =
       // Range 2 cells = 2 units; enemy is far away.
       let alive = AMap.constant(fun () -> enemyAt (Vector2(900f, 900f)) 0.5f)
 
-      let events = Towers.tick 0.1f m' alive noSuppression cellSize
+      let events =
+        Towers.tick 0.1f m' alive noVelocities noSuppression cellSize
+
       let m2 = m'
 
       Expect.isEmpty events "no fire"
@@ -112,13 +125,15 @@ let tests =
       let alive =
         AMap.constant(fun () -> enemyAt (cellCenter struct (4, 3)) 0.5f)
 
-      let events = Towers.tick 0.1f m' alive noSuppression cellSize
+      let events =
+        Towers.tick 0.1f m' alive noVelocities noSuppression cellSize
+
       let m2 = m'
 
       match events |> Seq.toArray with
       | [| Fired shot |] ->
         Expect.equal shot.Tower (0<TowerId>) "tower id"
-        Expect.equal shot.Enemy (0<EnemyId>) "enemy id"
+        Expect.equal shot.Enemy (ValueSome(0<EnemyId>)) "enemy id"
         Expect.equal shot.Damage def.Damage "damage"
       | _ -> failtest "expected exactly one Fired"
 
@@ -158,11 +173,15 @@ let tests =
 
       let alive = AMap.constant(fun () -> alive)
 
-      let events = Towers.tick 0.1f m' alive noSuppression cellSize
+      let events =
+        Towers.tick 0.1f m' alive noVelocities noSuppression cellSize
 
       match events |> Seq.toArray with
       | [| Fired shot |] ->
-        Expect.equal shot.Enemy (2<EnemyId>) "first = highest progress"
+        Expect.equal
+          shot.Enemy
+          (ValueSome(2<EnemyId>))
+          "first = highest progress"
       | _ -> failtest "expected exactly one Fired")
 
     // ── Phase 3: targeting policies ──
@@ -193,7 +212,7 @@ let tests =
       alive
 
     /// The enemy id the policy picks from `twoInRange`.
-    let picked(policy: TargetPolicy) : int<EnemyId> =
+    let picked(policy: TargetPolicy) : int<EnemyId> voption =
       let m = model()
 
       Towers.handle (TowerMsg.Place(struct (3, 3), defWith policy)) m
@@ -204,6 +223,7 @@ let tests =
           0.1f
           m'
           (AMap.constant(fun () -> twoInRange))
+          noVelocities
           noSuppression
           cellSize
 
@@ -212,13 +232,19 @@ let tests =
       | _ -> failtest "expected exactly one Fired"
 
     testCase "policy Last: lowest progress wins" (fun () ->
-      Expect.equal (picked TargetPolicy.Last) (1<EnemyId>) "last")
+      Expect.equal (picked TargetPolicy.Last) (ValueSome(1<EnemyId>)) "last")
 
     testCase "policy Strongest: highest max HP wins" (fun () ->
-      Expect.equal (picked TargetPolicy.Strongest) (1<EnemyId>) "strongest")
+      Expect.equal
+        (picked TargetPolicy.Strongest)
+        (ValueSome(1<EnemyId>))
+        "strongest")
 
     testCase "policy Weakest: lowest current HP wins" (fun () ->
-      Expect.equal (picked TargetPolicy.Weakest) (2<EnemyId>) "weakest")
+      Expect.equal
+        (picked TargetPolicy.Weakest)
+        (ValueSome(2<EnemyId>))
+        "weakest")
 
     testCase "policy Closest: nearest enemy wins" (fun () ->
       let alive = Dictionary<int<EnemyId>, EnemyView>()
@@ -254,56 +280,204 @@ let tests =
           0.1f
           m'
           (AMap.constant(fun () -> alive))
+          noVelocities
           noSuppression
           cellSize
 
       match events |> Seq.toArray with
-      | [| Fired shot |] -> Expect.equal shot.Enemy (1<EnemyId>) "closest"
+      | [| Fired shot |] ->
+        Expect.equal shot.Enemy (ValueSome(1<EnemyId>)) "closest"
       | _ -> failtest "expected exactly one Fired")
 
-    testCase "frost def → Fired carries the slow payload" (fun () ->
+    // ── Ballistic rework: prediction / volley / seek / aim ──
+
+    testCase
+      "lead prediction: Aim leads a moving target by vel × flight"
+      (fun () ->
+        let m = model()
+        let cell = struct (3, 3)
+
+        Towers.handle (TowerMsg.Place(cell, def)) m
+        let m' = m
+
+        let enemyPos = cellCenter struct (4, 3) // (4.5, 3.5) — 1 unit east
+        let alive = AMap.constant(fun () -> enemyAt enemyPos 0.5f)
+
+        // The target marches +X at 0.5 units/s (the movement tick's
+        // measured velocity).
+        let velocities = Dictionary<int<EnemyId>, Vector2>()
+        velocities[0<EnemyId>] <- Vector2(0.5f, 0f)
+
+        let events =
+          Towers.tick 0.1f m' alive velocities noSuppression cellSize
+
+        let flight =
+          Vector2.Distance(cellCenter cell, enemyPos) / def.ProjectileSpeed
+
+        let expected = enemyPos + Vector2(0.5f, 0f) * flight
+
+        match events |> Seq.toArray with
+        | [| Fired shot |] ->
+          Expect.equal shot.Aim expected "aim leads the target"
+        | _ -> failtest "expected exactly one Fired")
+
+    testCase "stationary target: Aim equals the target position" (fun () ->
       let m = model()
-      let cell = struct (3, 3)
 
-      Towers.handle (TowerMsg.Place(cell, TowerDefs.frost)) m
-      let m' = m
+      Towers.handle (TowerMsg.Place(struct (3, 3), def)) m
 
-      let alive =
-        AMap.constant(fun () -> enemyAt (cellCenter struct (4, 3)) 0.5f)
+      let enemyPos = cellCenter struct (4, 3)
+      let alive = AMap.constant(fun () -> enemyAt enemyPos 0.5f)
 
-      let events = Towers.tick 0.1f m' alive noSuppression cellSize
+      let events = Towers.tick 0.1f m alive noVelocities noSuppression cellSize
+
+      match events |> Seq.toArray with
+      | [| Fired shot |] -> Expect.equal shot.Aim enemyPos "no lead"
+      | _ -> failtest "expected exactly one Fired")
+
+    testCase
+      "Fired.Muzzle is offset along the firing line, not the center"
+      (fun () ->
+        let m = model()
+
+        Towers.handle (TowerMsg.Place(struct (3, 3), def)) m
+
+        let alive =
+          AMap.constant(fun () -> enemyAt (cellCenter struct (4, 3)) 0.5f)
+
+        let events =
+          Towers.tick 0.1f m alive noVelocities noSuppression cellSize
+
+        // The turret's barrel half-length, scaled: shots leave the gun,
+        // not the tower's middle.
+        let expectedReach =
+          def.WeaponModel.Value.SizeZ
+          * 0.5f
+          * def.GunScale
+          * TowerLayout.towerScale
+
+        match events |> Seq.toArray with
+        | [| Fired shot |] ->
+          let expected = cellCenter struct (3, 3) + Vector2(expectedReach, 0f)
+
+          Expect.isTrue (abs(shot.Muzzle.X - expected.X) < 0.0001f) "muzzle x"
+
+          Expect.isTrue (abs(shot.Muzzle.Y - expected.Y) < 0.0001f) "muzzle y"
+        | _ -> failtest "expected exactly one Fired")
+
+    testCase "seek resolves at level 4+; rockets seek from level 1" (fun () ->
+      let seekAt (d: TowerDef) (level: int) =
+        let m = model()
+
+        Towers.handle (TowerMsg.Place(struct (3, 3), d)) m
+
+        for _ in 2..level do
+          Towers.handle (TowerMsg.Upgrade(0<TowerId>)) m
+
+        let events =
+          Towers.tick
+            0.1f
+            m
+            (AMap.constant(fun () -> enemyAt (cellCenter struct (4, 3)) 0.5f))
+            noVelocities
+            noSuppression
+            cellSize
+
+        match events |> Seq.toArray with
+        | [| Fired shot |] -> shot.Seek
+        | _ -> failtest "expected exactly one Fired"
+
+      Expect.isFalse (seekAt def 1) "level 1 is dumbfire"
+      Expect.isFalse (seekAt def 3) "level 3 is dumbfire"
+      Expect.isTrue (seekAt def 4) "level 4 unlocks seek"
+      Expect.isTrue (seekAt { def with Rocket = true } 1) "rockets always seek")
+
+    testCase "volley def → Fired carries the volley payload" (fun () ->
+      let m = model()
+      let d = { def with Volley = 4; Spread = 0.6f }
+
+      Towers.handle (TowerMsg.Place(struct (3, 3), d)) m
+
+      let events =
+        Towers.tick
+          0.1f
+          m
+          (AMap.constant(fun () -> enemyAt (cellCenter struct (4, 3)) 0.5f))
+          noVelocities
+          noSuppression
+          cellSize
 
       match events |> Seq.toArray with
       | [| Fired shot |] ->
-        Expect.equal shot.SlowFactor TowerDefs.frost.SlowFactor "slow factor"
-
-        Expect.equal
-          shot.SlowSeconds
-          TowerDefs.frost.SlowSeconds
-          "slow seconds"
+        Expect.equal shot.Volley 4 "volley count"
+        Expect.equal shot.Spread 0.6f "spread"
       | _ -> failtest "expected exactly one Fired")
 
-    testCase "cannon def → Fired carries the splash + shell payload" (fun () ->
+    testCase "zone weapon (bunker) → Fired carries the zone payload" (fun () ->
       let m = model()
-      let cell = struct (3, 3)
 
-      Towers.handle (TowerMsg.Place(cell, TowerDefs.cannon)) m
-      let m' = m
+      Towers.handle (TowerMsg.Place(struct (3, 3), TowerDefs.bunker)) m
 
-      let alive =
-        AMap.constant(fun () -> enemyAt (cellCenter struct (4, 3)) 0.5f)
-
-      let events = Towers.tick 0.1f m' alive noSuppression cellSize
+      let events =
+        Towers.tick
+          0.1f
+          m
+          (AMap.constant(fun () -> enemyAt (cellCenter struct (4, 3)) 0.5f))
+          noVelocities
+          noSuppression
+          cellSize
 
       match events |> Seq.toArray with
       | [| Fired shot |] ->
-        Expect.equal shot.SplashRadius TowerDefs.cannon.SplashRadius "splash"
+        Expect.equal shot.Zone TowerDefs.bunker.Zone "zone payload"
 
         Expect.equal
           shot.ProjectileModel
-          TowerDefs.cannon.ProjectileModel
+          TowerDefs.bunker.ProjectileModel
           "shell model"
       | _ -> failtest "expected exactly one Fired")
+
+    testCase "piercer def → Fired carries piercing" (fun () ->
+      let m = model()
+
+      Towers.handle (TowerMsg.Place(struct (3, 3), TowerDefs.piercer)) m
+
+      let events =
+        Towers.tick
+          0.1f
+          m
+          (AMap.constant(fun () -> enemyAt (cellCenter struct (4, 3)) 0.5f))
+          noVelocities
+          noSuppression
+          cellSize
+
+      match events |> Seq.toArray with
+      | [| Fired shot |] ->
+        Expect.isTrue shot.Piercing "piercing shot"
+        Expect.isFalse shot.Seek "level 1 piercer is dumbfire"
+      | _ -> failtest "expected exactly one Fired")
+
+    testCase
+      "Runtimes.Aim tracks the acquired target (TowerAim feed)"
+      (fun () ->
+        let m = model()
+
+        Towers.handle (TowerMsg.Place(struct (3, 3), def)) m
+
+        let enemyPos = cellCenter struct (4, 3)
+
+        Towers.tick
+          0.1f
+          m
+          (AMap.constant(fun () -> enemyAt enemyPos 0.5f))
+          noVelocities
+          noSuppression
+          cellSize
+        |> ignore
+
+        match m.Runtimes |> CMap.tryGetValue(0<TowerId>) with
+        | ValueSome r -> Expect.equal r.Aim (ValueSome enemyPos) "aim stored"
+        | ValueNone -> failtest "runtime must exist")
 
     testCase
       "cooldown comes from the EFFECTIVE def (upgraded fire rate)"
@@ -321,7 +495,9 @@ let tests =
         let alive =
           AMap.constant(fun () -> enemyAt (cellCenter struct (4, 3)) 0.5f)
 
-        let events = Towers.tick 0.1f m2 alive noSuppression cellSize
+        let events =
+          Towers.tick 0.1f m2 alive noVelocities noSuppression cellSize
+
         let m3 = m2
 
         Expect.equal (Seq.length events) 1 "fired"
@@ -349,7 +525,9 @@ let tests =
         let alive =
           AMap.constant(fun () -> enemyAt (cellCenter struct (4, 3)) 0.5f)
 
-        let events = Towers.tick 0.1f m' alive suppression cellSize
+        let events =
+          Towers.tick 0.1f m' alive noVelocities suppression cellSize
+
         let m2 = m'
 
         Expect.equal (Seq.length events) 1 "fired"
@@ -408,19 +586,24 @@ let tests =
         AMap.constant(fun () -> enemyAt (cellCenter struct (4, 3)) 0.5f)
 
       // Fire (cooldown = 0.25 at FireRate 4).
-      let events = Towers.tick 0.1f m' alive noSuppression cellSize
+      let events =
+        Towers.tick 0.1f m' alive noVelocities noSuppression cellSize
+
       let m2 = m'
 
       Expect.equal (Seq.length events) 1 "fired once"
 
       // 0.1 s later: still cooling down (0.25 - 0.1 = 0.15).
-      let events2 = Towers.tick 0.1f m2 alive noSuppression cellSize
+      let events2 =
+        Towers.tick 0.1f m2 alive noVelocities noSuppression cellSize
+
       let m3 = m2
 
       Expect.isEmpty events2 "not ready yet"
 
       // 0.2 s more: 0.15 - 0.2 ≤ 0 → fires again.
-      let events3 = Towers.tick 0.2f m3 alive noSuppression cellSize
+      let events3 =
+        Towers.tick 0.2f m3 alive noVelocities noSuppression cellSize
 
       Expect.equal (Seq.length events3) 1 "fired again")
   ]

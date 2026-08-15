@@ -10,6 +10,7 @@ open Mibo.Elmish.Graphics3D
 open Defli3D
 open Defli3D.State
 open Defli3D.State.Frame
+open Defli3D.State.Systems
 open Defli3D.State.Systems.Camera
 
 // ─────────────────────────────────────────────────────────────
@@ -136,10 +137,41 @@ module WorldView =
       primitives <-
         ValueSome(Primitive3D.create(MonoGameGameContext.getGraphicsDevice ctx))
 
+  /// The range marker rides ABOVE the terrain: the highest ground
+  /// top under the range circle (raised tiles — hills/rocks — would
+  /// otherwise clip through a flat ground-level disc). Samples the
+  /// map's per-cell ground pieces (YOffset + model height).
+  let private rangeMarkerY
+    (frame: RenderFrame)
+    (hx: int)
+    (hy: int)
+    (radius: float32)
+    : float32 =
+    let terrain = MapModel.terrain frame.Map
+    let center = System.Numerics.Vector2(float32 hx + 0.5f, float32 hy + 0.5f)
+
+    let mutable maxTop = TowerLayout.baseY
+    let span = int(MathF.Ceiling radius)
+
+    for y in max 0 (hy - span) .. min (terrain.Height - 1) (hy + span) do
+      for x in max 0 (hx - span) .. min (terrain.Width - 1) (hx + span) do
+        let c = System.Numerics.Vector2(float32 x + 0.5f, float32 y + 0.5f)
+
+        if System.Numerics.Vector2.Distance(c, center) <= radius then
+          let struct (ground, _) = MapModel.cellPieces frame.Map x y
+          let top = ground.YOffset + ground.Model.SizeY
+
+          if top > maxTop then
+            maxTop <- top
+
+    maxTop + 0.02f
+
   /// The hovered tower's firing range as a translucent tinted DISC (a thin
   /// Cylinder) filling the range area — replaces the old flat selection-b
   /// octagon ring. Opacity<1 routes it through the translucent pass (alpha
   /// blend, depth-write off) so it tints the area without blocking vision.
+  /// Lifted just above the tallest ground it covers (terrain-aware — no
+  /// floor clipping).
   let private rangeDisc (frame: RenderFrame) (buffer: RenderBuffer3D) =
     match primitives, frame.RangeRing, frame.HoverCell with
     | ValueSome set, ValueSome def, ValueSome struct (hx, hy) ->
@@ -147,9 +179,10 @@ module WorldView =
       let z = float32 hy + 0.5f
       let r = float32 def.Range
       // Unit cylinder is centered on origin (Y [-0.5,+0.5]); scale to the
-      // range radius + a thin height, lift just above the tile top (0.2).
+      // range radius + a thin height.
       let transform =
-        Matrix.CreateScale(r, 0.04f, r) * Matrix.CreateTranslation(x, 0.22f, z)
+        Matrix.CreateScale(r, 0.04f, r)
+        * Matrix.CreateTranslation(x, rangeMarkerY frame hx hy r, z)
 
       let material = {
         Material3D.unlit(rangeDiscColor) with
@@ -235,7 +268,7 @@ module WorldView =
         |> ValueOption.defaultValue 1
 
       let center = Cells.center s.Cell (Vector2.One)
-      let top = Vector3(center.X, TowerLayout.towerTop s.Def level, center.Y)
+      let top = Vector3(center.X, TowerLayout.towerTop s.Def, center.Y)
 
       match
         Camera.worldToScreen
@@ -270,7 +303,7 @@ module WorldView =
     buffer
       .text(
         font,
-        $"Gold: %d{frame.Gold}   Lives: %d{frame.Lives}   %s{frame.Banner}   Tower: %s{frame.SelectedTower.Name} (1/2/3)",
+        $"Gold: %d{frame.Gold}   Lives: %d{frame.Lives}   %s{frame.Banner}   Tower: %s{frame.SelectedTower.Name} (1-0)",
         Vector2(12f, 10f),
         1.5f,
         layer = Layers.Hud

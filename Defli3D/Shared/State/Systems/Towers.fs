@@ -64,7 +64,7 @@ module Towers =
     : amap<int<TowerId>, TowerDef> =
     AMap.joinOn m.Statics m.Levels (fun tid _ -> tid) (fun _ staticV levelV ->
       AVal.map2
-        (fun s level ->
+        (fun (s: TowerStatic) (level: int voption) ->
           Telemetry.effectiveDef <- Telemetry.effectiveDef + 1
 
           ValueSome(
@@ -90,7 +90,11 @@ module Towers =
         model.Statics |> CMap.addOrUpdate tid { Def = def; Cell = cell }
 
         model.Runtimes
-        |> CMap.addOrUpdate tid { Cooldown = 0f; Target = ValueNone }
+        |> CMap.addOrUpdate tid {
+          Cooldown = 0f
+          Target = ValueNone
+          Aim = ValueNone
+        }
 
         model.CellIndex |> CMap.addOrUpdate cell tid)
     | Upgrade tid ->
@@ -99,15 +103,19 @@ module Towers =
 
       model.Levels |> CMap.addOrUpdate tid (level + 1)
 
-  /// Hot path: cooldown decay + target acquisition + fire.
-  /// `alive` is a transient read of Enemies.Alive and `suppression`
-  /// one of the state's boss-aura projection (both direct values from
-  /// the sim update — hot path, no closures); `cellSize` is the grid's
-  /// uniform cell size (Vector2(1, 1) — 1 cell = 1 world unit).
+  /// Hot path: cooldown decay + target acquisition + the lead-
+  /// prediction firing solution. `alive` is a transient read of
+  /// Enemies.Alive, `velocities` one of Enemies.Velocities (plain
+  /// rows measured by the movement tick — the prediction input), and
+  /// `suppression` one of the state's boss-aura projection (all
+  /// direct values from the sim update — hot path, no closures);
+  /// `cellSize` is the grid's uniform cell size (Vector2(1, 1) —
+  /// 1 cell = 1 world unit).
   let tick
     (dt: float32)
     (model: TowersModel)
     (alive: amap<int<EnemyId>, EnemyView>)
+    (velocities: IReadOnlyDictionary<int<EnemyId>, Vector2>)
     (suppression: IReadOnlyDictionary<int<TowerId>, float32>)
     (cellSize: Vector2)
     : TowerEvent seq =
@@ -116,6 +124,9 @@ module Towers =
     // ONE transient read of the composed projection per frame — the
     // effective def (Statics × Levels) drives range/damage/rate/policy.
     let effective = model.EffectiveDef |> AMap.getValue
+    // One transient alive view for the whole loop (targeting + the
+    // held target's live aim position).
+    let aliveView = alive |> AMap.getValue
 
     for KeyValueV(tid, s) in model.Statics |> AMap.getValue do
       let def =
@@ -150,7 +161,7 @@ module Towers =
         let mutable best: struct (int<EnemyId> * EnemyView * float32) voption =
           ValueNone
 
-        for KeyValueV(eid, v) in alive |> AMap.getValue do
+        for KeyValueV(eid, v) in aliveView do
           let d = Vector2.Distance(center, v.Pos)
 
           if d <= rangeWorld then
@@ -169,49 +180,102 @@ module Towers =
               best <- ValueSome struct (eid, v, d)
 
         match best with
-        | ValueSome struct (eid, _, _) ->
+        | ValueSome struct (eid, v, _) ->
           if isNull events then
             events <- ResizeArray()
 
-          // The muzzle height needs the tower's LEVEL (the body stack
-          // grows with it). The def here is the EFFECTIVE one —
-          // effectiveDef preserves Key/WeaponModel, which is all
-          // TowerLayout reads.
+          // Seek resolves from the effective context: rockets always
+          // chase; everything else is dumbfire until level 4.
           let level =
             model.Levels |> CMap.tryGetValue tid |> ValueOption.defaultValue 1
+
+          let seek = def.Rocket || level >= 4
+
+          // Lead prediction: aim where the target WILL be — its
+          // velocity × the shot's flight time (distance / projectile
+          // speed, one iteration). Dumbfire shots never correct after
+          // this; a target that changes speed or direction genuinely
+          // dodges.
+          let flight =
+            Vector2.Distance(center, v.Pos) / max 0.001f def.ProjectileSpeed
+
+          let vel =
+            velocities
+            |> ReadOnlyDict.tryGetValue eid
+            |> ValueOption.defaultValue Vector2.Zero
+
+          let aim = v.Pos + vel * flight
+
+          // The muzzle's world XZ: offset from the tower center
+          // along the firing line (the gun's barrel end / the deck's
+          // embrasure) — shots and muzzle VFX leave the barrel, not
+          // the tower's middle.
+          let line = aim - center
+          let lineLen = line.Length()
+
+          let aimDir =
+            if lineLen > 0.0001f then line / lineLen else Vector2.UnitX
+
+          let muzzle =
+            center
+            + aimDir * (TowerLayout.muzzleReach def * TowerLayout.towerScale)
 
           events.Add(
             Fired {
               Tower = tid
-              Enemy = eid
+              Enemy = ValueSome eid
+              Aim = aim
+              Muzzle = muzzle
               Damage = def.Damage
-              SlowFactor = def.SlowFactor
-              SlowSeconds = def.SlowSeconds
-              SplashRadius = def.SplashRadius
+              ImpactRadius = def.ImpactRadius
+              Piercing = def.Piercing
+              Seek = seek
+              Volley = def.Volley
+              Spread = def.Spread
+              Trajectory = def.Trajectory
+              Zone = def.Zone
               ProjectileModel = def.ProjectileModel
-              Height = TowerLayout.muzzleY def level
+              ProjectileScale = def.ProjectileScale
+              Height = TowerLayout.muzzleY s.Def
+              MuzzleDust = def.MuzzleDust
             }
           )
 
           // Cooldown from the EFFECTIVE def (Statics × Levels): the
           // +10 %/level fire-rate upgrade must actually apply. The
           // boss-aura suppression factor multiplies the rate (0.5 =
-          // half speed → double cooldown).
+          // half speed → double cooldown). Aim carries the target's
+          // live position — the TowerAim projection feeds the
+          // rotating chassis.
           model.Runtimes
           |> CMap.addOrUpdate tid {
             Cooldown = 1f / max 0.1f (def.FireRate * suppress)
             Target = ValueSome eid
+            Aim = ValueSome v.Pos
           }
         | ValueNone ->
           model.Runtimes
-          |> CMap.addOrUpdate tid { Cooldown = 0f; Target = ValueNone }
+          |> CMap.addOrUpdate tid {
+            Cooldown = 0f
+            Target = ValueNone
+            Aim = ValueNone
+          }
       else
         let target = targetA |> AVal.getValue
+
+        // Aim tracks the held target's live position while the
+        // cooldown runs (rotating chassis keep pointing at it).
+        let aim =
+          target
+          |> ValueOption.bind(fun eid ->
+            aliveView |> ReadOnlyDict.tryGetValue eid)
+          |> ValueOption.map(_.Pos)
 
         model.Runtimes
         |> CMap.addOrUpdate tid {
           Cooldown = cooldown'
           Target = target
+          Aim = aim
         }
 
     if isNull events then Array.empty else events

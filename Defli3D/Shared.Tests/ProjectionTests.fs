@@ -112,7 +112,7 @@ let tests =
         let towers = Towers.Towers.init()
         let projectiles = Projectiles.Projectiles.init()
         let hover = CVal.create(ValueSome(struct (1, 1))) // buildable grass
-        let selected = CVal.create TowerDefs.frost
+        let selected = CVal.create TowerDefs.arrowDeck // cost 70
 
         let projections =
           Projections(
@@ -125,27 +125,72 @@ let tests =
             selected
           )
 
-        // Gold 100 ≥ frost 80 → affordable.
+        // Gold 100 ≥ arrow deck 70 → affordable.
         Expect.equal
           (AVal.getValue projections.PlacementPreview)
           PlacementStatus.Affordable
           "affordable at 100"
 
-        // 60: enough for the arrow (50), NOT for the frost (80) — the
-        // preview must reflect the SELECTED tower, not the cheapest.
+        // 60: enough for the sentry (40), NOT for the arrow deck
+        // (70) — the preview must reflect the SELECTED tower, not
+        // the cheapest.
         economy.Gold |> CVal.set 60
 
         Expect.equal
           (AVal.getValue projections.PlacementPreview)
           PlacementStatus.TooExpensive
-          "frost too expensive at 60"
+          "arrow deck too expensive at 60"
 
-        selected |> CVal.set TowerDefs.arrow
+        selected |> CVal.set TowerDefs.sentry
 
         Expect.equal
           (AVal.getValue projections.PlacementPreview)
           PlacementStatus.Affordable
-          "arrow affordable at 60")
+          "sentry affordable at 60")
+
+    testCase "TowerAim: per tower, the runtime's aim position" (fun () ->
+      let enemies = Enemies.init()
+      let towers = Towers.Towers.init()
+
+      Towers.Towers.handle
+        (Towers.TowerMsg.Place(struct (2, 3), TowerDefs.sentry))
+        towers
+
+      // No target yet → no aim.
+      let projections =
+        Projections(
+          enemies,
+          towers,
+          Projectiles.Projectiles.init(),
+          Economy.Economy.init cfg,
+          MapModel.buildableGrid map,
+          CVal.create ValueNone,
+          CVal.create TowerDefs.sentry
+        )
+
+      Expect.equal
+        (projections.TowerAim
+         |> AMap.getValue
+         |> ReadOnlyDict.tryGetValue(0<TowerId>))
+        (ValueSome ValueNone)
+        "idle tower has no aim"
+
+      // A held target's position lands in the projection.
+      let aim = Vector2(4.5f, 3.5f)
+
+      towers.Runtimes
+      |> CMap.addOrUpdate (0<TowerId>) {
+        Cooldown = 0.2f
+        Target = ValueSome(0<EnemyId>)
+        Aim = ValueSome aim
+      }
+
+      Expect.equal
+        (projections.TowerAim
+         |> AMap.getValue
+         |> ReadOnlyDict.tryGetValue(0<TowerId>))
+        (ValueSome(ValueSome aim))
+        "aim tracks the runtime")
 
     testCase "game over aval follows lives" (fun () ->
       let e = Economy.init cfg
@@ -164,7 +209,7 @@ let tests =
 
       // Tower at cell (2,3) — center (2.5, 3.5) in world units.
       Towers.Towers.handle
-        (Towers.TowerMsg.Place(struct (2, 3), TowerDefs.arrow))
+        (Towers.TowerMsg.Place(struct (2, 3), TowerDefs.sentry))
         towers
 
       let t' = towers
@@ -177,7 +222,7 @@ let tests =
           Economy.Economy.init cfg,
           MapModel.buildableGrid map,
           CVal.create ValueNone,
-          CVal.create TowerDefs.arrow
+          CVal.create TowerDefs.sentry
         )
 
       let factorOf(tid: int<TowerId>) =

@@ -162,65 +162,81 @@ module Application =
     for ev in events do
       match ev with
       | Projectiles.Impact impact ->
-        if impact.SplashRadius > 0f then
-          // Splash: the blast fans out from the DETONATION POINT to
-          // every enemy within radius (flat full damage, no falloff).
-          // The damage is applied to ALL targets first, then the
-          // events are handled: the original queued the ApplyDamage
-          // messages and the pump ran them after the fan-out, so the
-          // despawns (Killed) never modified the Positions view being
-          // enumerated here — the direct handler must preserve that
-          // ordering or the enumerator throws mid-loop.
-          let positions = state.Enemies.Positions |> AMap.getValue
-          let events = ResizeArray<Enemies.EnemyEvent>()
+        // Damage batch: a DIRECT hit (pierce pass-through) damages
+        // exactly its enemy; an AREA detonation fans one ApplyDamage
+        // per enemy within ImpactRadius of the point (flat full
+        // damage, no falloff). All ApplyDamage first, then the kills
+        // are handled: despawns (Killed) never modify the Positions
+        // view being enumerated here (the wave-13 ordering).
+        let positions = state.Enemies.Positions |> AMap.getValue
+        let events = ResizeArray<Enemies.EnemyEvent>()
 
-          for KeyValueV(eid, epos) in positions do
-            if Vector2.Distance(epos, impact.Pos) <= impact.SplashRadius then
-              let enemyEvents =
-                Enemies.Enemies.applyDamage eid impact.Damage state.Enemies
+        match impact.Enemy with
+        | ValueSome eid ->
+          events.AddRange(
+            Enemies.Enemies.applyDamage eid impact.Damage state.Enemies
+          )
+        | ValueNone ->
+          if impact.ImpactRadius > 0f then
+            for KeyValueV(eid, epos) in positions do
+              if Vector2.Distance(epos, impact.Pos) <= impact.ImpactRadius then
+                events.AddRange(
+                  Enemies.Enemies.applyDamage eid impact.Damage state.Enemies
+                )
 
-              events.AddRange(enemyEvents)
+        // Kills + zone drop + burst post as one intent: the drain runs
+        // them after this fan-out loop finishes, so despawns never
+        // mutate the Positions view mid-enumeration. Bigger radii (and
+        // zone droppers) read as explosions; the rest as small hits.
+        let bigBurst =
+          impact.ImpactRadius > 0.5f || ValueOption.isSome impact.Zone
 
-          // Kills + explosion post as one intent: the drain runs them after
-          // this fan-out loop finishes, so despawns never mutate the Positions
-          // view mid-enumeration (the wave-13 crash). The batch is fully
-          // built and never touched again, so the thunk captures it
-          // directly — no copy. Order inside the thunk preserves the
-          // original batch order (deaths before the blast).
-          post(fun () ->
-            handleEnemyEvents state events
+        post(fun () ->
+          handleEnemyEvents state events
 
-            Vfx.Vfx.handle
-              (Vfx.Burst(Vfx.VfxKind.Explosion, impact.Pos, impact.Y))
-              state.Vfx)
-        else
-          let enemyEvents =
-            Enemies.Enemies.applyDamage impact.Enemy impact.Damage state.Enemies
-
-          handleEnemyEvents state enemyEvents
-
-          if impact.SlowFactor < 1f then
-            Enemies.Enemies.applySlow
-              {
-                Enemy = impact.Enemy
-                Factor = impact.SlowFactor
-                Seconds = impact.SlowSeconds
-              }
-              state.Enemies
+          impact.Zone
+          |> ValueOption.iter(fun z ->
+            Zones.Zones.handle (Zones.Drop(impact.Pos, z)) state.Zones)
 
           Vfx.Vfx.handle
-            (Vfx.Burst(Vfx.VfxKind.Impact, impact.Pos, impact.Y))
-            state.Vfx
+            (Vfx.Burst(
+              (if bigBurst then
+                 Vfx.VfxKind.Explosion
+               else
+                 Vfx.VfxKind.Impact),
+              impact.Pos,
+              impact.Y
+            ))
+            state.Vfx)
+
+  /// Zone ticks: declarative applications (damage + slow) translated
+  /// into Enemies writes; kills fan out through the enemy handler.
+  let handleZoneApplies (state: State) (applies: Zones.ZoneApply[]) : unit =
+    for z in applies do
+      if z.Damage > 0 then
+        handleEnemyEvents
+          state
+          (Enemies.Enemies.applyDamage z.Enemy z.Damage state.Enemies)
+
+      if z.SlowFactor < 1f then
+        Enemies.Enemies.applySlow
+          {
+            Enemy = z.Enemy
+            Factor = z.SlowFactor
+            Seconds = z.SlowSeconds
+          }
+          state.Enemies
 
   let handleTowerEvents (state: State) (events: Towers.TowerEvent seq) : unit =
     for ev in events do
       match ev with
       | Towers.Fired shot ->
-        // Muzzle pos + the tower's def key from the static row;
-        // projectile speed from the EFFECTIVE def (the upgrade
-        // projection) — the +10 %/level fire-rate/range upgrades must
-        // not be dropped here.
-        let struct (pos, speed, defKey) =
+        // Projectile speed from the EFFECTIVE def (the upgrade
+        // projection) — the +10 %/level upgrades must not be dropped
+        // here. The shot's spawn point is the MUZZLE (Towers offsets
+        // it along the firing line — the barrel end / the deck's
+        // embrasure), so shots visibly leave the gun.
+        let speed =
           state.Towers.Statics
           |> CMap.tryGetValue shot.Tower
           |> ValueOption.map(fun s ->
@@ -230,52 +246,76 @@ module Application =
               |> ReadOnlyDict.tryGetValue shot.Tower
               |> ValueOption.defaultValue s.Def
 
-            struct (Cells.center s.Cell (State.cellSize state),
-                    eff.ProjectileSpeed,
-                    s.Def.Key))
-          |> ValueOption.defaultValue struct (Vector2.Zero, 0f, "")
+            eff.ProjectileSpeed)
+          |> ValueOption.defaultValue 0f
 
-        // Seed the shot's last-known target position from the live
-        // row (fall back to the muzzle): a target that dies
-        // mid-flight still gets detonated on.
-        let lastTargetPos =
-          state.Enemies.Positions
-          |> CMap.tryGetValue shot.Enemy
-          |> ValueOption.defaultValue pos
+        let pos = shot.Muzzle
 
         // The target's hull-center Y at fire time (EnemyLayout.impactY)
-        // — the flight Y-homing drives the shell down/up to it. If
-        // the target's def row is already gone (died earlier this
-        // frame), fall back to a typical ground-hull center (0.35:
-        // walkers hover at 0.2 with ~0.3-tall scaled hulls — mid-hull).
+        // — the flight's destination height. If the target's def row is
+        // already gone (died earlier this frame), fall back to a
+        // typical ground-hull center (0.35).
         let targetY =
-          state.Enemies.Defs
-          |> CMap.tryGetValue shot.Enemy
-          |> ValueOption.map EnemyLayout.impactY
+          shot.Enemy
+          |> ValueOption.bind(fun eid ->
+            state.Enemies.Defs
+            |> CMap.tryGetValue eid
+            |> ValueOption.map EnemyLayout.impactY)
           |> ValueOption.defaultValue 0.35f
 
-        Projectiles.Projectiles.handle
-          (Projectiles.Spawn {
-            Pos = pos
-            Height = shot.Height
-            TargetY = targetY
-            TargetEnemy = shot.Enemy
-            LastTargetPos = lastTargetPos
-            Damage = shot.Damage
-            Speed = speed
-            SlowFactor = shot.SlowFactor
-            SlowSeconds = shot.SlowSeconds
-            SplashRadius = shot.SplashRadius
-            ProjectileModel = shot.ProjectileModel
-          })
-          state.Projectiles
+        // The volley: Volley shots fanned perpendicular to the firing
+        // line (deterministic spread — no RNG). Each spawn flies its
+        // own line to its own aim point with the trajectory's arc.
+        for i = 0 to shot.Volley - 1 do
+          let aim =
+            if shot.Volley > 1 then
+              let line = shot.Aim - pos
+              let len = line.Length()
 
-        // Muzzle VFX per weapon kind: the ballista is a bow, so it
-        // gets a dust puff instead of a fire flash (cannon + turret
-        // keep the flash). The burst spawns at the shot's muzzle
-        // height (the shot carries the sim-computed Y).
+              let perp =
+                if len > 0f then
+                  Vector2(-line.Y, line.X) / len
+                else
+                  Vector2.UnitX
+
+              let off =
+                shot.Spread * ((float32 i / float32(shot.Volley - 1)) - 0.5f)
+
+              shot.Aim + perp * off
+            else
+              shot.Aim
+
+          let d = aim - pos
+          let total = d.Length()
+
+          let dir = if total > 0f then d / total else Vector2.UnitX
+
+          Projectiles.Projectiles.handle
+            (Projectiles.Spawn {
+              Pos = pos
+              Height = shot.Height
+              TargetY = targetY
+              Dir = dir
+              TotalLen = total
+              ArcHeight = Trajectory.arcHeight shot.Trajectory total
+              Seek = shot.Seek
+              Target = shot.Enemy
+              Aim = aim
+              Damage = shot.Damage
+              ImpactRadius = shot.ImpactRadius
+              Piercing = shot.Piercing
+              Zone = shot.Zone
+              Model = shot.ProjectileModel
+              Scale = shot.ProjectileScale
+              Speed = speed
+            })
+            state.Projectiles
+
+        // Muzzle VFX: bow-style weapons puff dust; guns flash. The
+        // burst spawns AT the muzzle (barrel end / embrasure) at the
+        // shot's muzzle height — not the tower's center.
         let muzzleKind =
-          if defKey = "arrow" then
+          if shot.MuzzleDust then
             Vfx.VfxKind.MuzzleDust
           else
             Vfx.VfxKind.Muzzle
@@ -338,7 +378,7 @@ module Application =
         state.Towers.Statics
         |> CMap.tryGetValue tid
         |> ValueOption.map(fun s -> s.Def)
-        |> ValueOption.defaultValue TowerDefs.arrow
+        |> ValueOption.defaultValue TowerDefs.sentry
 
       let capped = level >= def.MaxLevel
       let affordable = AVal.getValue state.Economy.Gold >= def.UpgradeCost
@@ -409,11 +449,13 @@ module Application =
         // filter → count) settles bottom-up on read: the count and
         // filter nodes pull their sources when versions differ
         // (AdaptiveSlop fix #18 — dirty-indicator Version). Reading
-        // the tail alone is fresh; no pre-read needed.
+        // the tail alone is fresh; no pre-read needed. Velocities
+        // are the movement tick's plain rows (lead prediction).
         Towers.Towers.tick
           dt
           state.Towers
           state.Enemies.Alive
+          state.Enemies.Velocities
           (state.Projections.Suppression |> AMap.getValue)
           (State.cellSize state)
 
@@ -421,6 +463,14 @@ module Application =
         Projectiles.Projectiles.tick
           dt
           state.Projectiles
+          (state.Enemies.Positions |> AMap.getValue)
+
+      // Zones tick after the enemies they affect have moved: slow +
+      // DoT applications come back as declarative data.
+      let zoneApplies =
+        Zones.Zones.tick
+          dt
+          state.Zones
           (state.Enemies.Positions |> AMap.getValue)
 
       Vfx.Vfx.tick dt state.Vfx
@@ -444,6 +494,8 @@ module Application =
 
       ctx.Intents.post(fun () ->
         handleProjectileEvents ctx.Intents.post state projectileEvents)
+
+      ctx.Intents.post(fun () -> handleZoneApplies state zoneApplies)
     else
       Telemetry.framesPaused <- Telemetry.framesPaused + 1
 

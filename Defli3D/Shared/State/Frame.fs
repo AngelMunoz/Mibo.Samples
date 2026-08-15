@@ -1,6 +1,7 @@
 namespace Defli3D.State
 
 open System.Collections.Generic
+open System.Numerics
 open Mibo.Adaptive
 open Mibo.Elmish
 open Defli3D
@@ -28,8 +29,13 @@ module Frame =
     /// Tower statics (cells, defs) and levels. Draw-side.
     TowerStatics: IReadOnlyDictionary<int<TowerId>, TowerStatic>
     TowerLevels: IReadOnlyDictionary<int<TowerId>, int>
+    /// The sim's current aim point per tower (TowerAim projection) —
+    /// the rotating chassis views track it (decks, keep-b, guns).
+    TowerAim: IReadOnlyDictionary<int<TowerId>, Vector2 voption>
     /// In-flight projectiles (the Homing projection). Draw-side.
     Projectiles: IReadOnlyDictionary<int<ProjectileId>, HomingView>
+    /// Live ground zones (slow + DoT fields). Draw-side.
+    Zones: IReadOnlyDictionary<int<ZoneId>, ZoneRow>
     /// HUD scalars.
     Gold: int
     Lives: int
@@ -80,7 +86,9 @@ module Frame =
         Defs = state.Enemies.Defs |> AMap.getValue
         TowerStatics = state.Towers.Statics |> AMap.getValue
         TowerLevels = state.Towers.Levels |> AMap.getValue
+        TowerAim = state.Projections.TowerAim |> AMap.getValue
         Projectiles = state.Projections.Homing |> AMap.getValue
+        Zones = state.Zones.Rows |> AMap.getValue
         Gold = state.Economy.Gold |> AVal.getValue
         Lives = state.Economy.Lives |> AVal.getValue
         Banner = state.Waves.Banner |> AVal.getValue

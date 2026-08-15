@@ -8,24 +8,24 @@ open Mibo.Elmish
 open Defli3D.State
 
 // ─────────────────────────────────────────────────────────────
-// Projectiles sub-system — owns in-flight shots. One map is enough
-// (projectiles have no cross-component reads). Its render position
-// is the state-owned Homing projection (Projectiles.Rows ×
-// Enemies.Positions — see Projections.fs).
+// Projectiles sub-system — owns in-flight shots under the BALLISTIC
+// model: fire at a PREDICTED point (Towers' lead solution), fly a
+// straight XZ line along Dir, Y follows the trajectory shape
+// (lerp muzzle→target + ArcHeight·4t(1−t), t = Traveled/TotalLen).
 //
-// The homing feel: the projectile seeks the target's LIVE position
-// row each tick (passed in as a direct transient read of
-// Enemies.Positions — hot path, no closures). A target that despawns
-// mid-flight leaves the shot seeking its LastTargetPos instead: it
-// detonates there rather than vanishing mid-air.
+//   dumbfire (default) — never corrects; detonates at (Aim, TargetY)
+//     whether or not the enemy is still there. Fast or turning
+//     targets genuinely dodge.
+//   seek (level 4+ / rockets) — re-aims Dir at the target's LIVE
+//     position each tick (the positions transient read) and Y-homes
+//     onto the hull; detonates on arrival. A lost target falls back
+//     to the dumbfire leg (aim point).
+//   piercing — flies THROUGH enemies: each new enemy entering the
+//     impact radius takes a direct hit (HitIds prevents re-hits) and
+//     the shot only ends on range/lifetime.
 //
-// The 3D homing: each tick the shot also integrates Y toward the
-// target's hull-center height (TargetY — frozen at fire time from
-// EnemyLayout.impactY) in lockstep with the XZ seek: the same
-// step/dist fraction of the height gap, so the shell arrives AT the
-// hull when the seek arrives — no more detonating at muzzle height
-// in the air beside the target. XZ seek logic unchanged.
-//
+// Every detonation is an AREA hit (ImpactRadius) — Application fans
+// the damage and drops the lasting Zone when the weapon carries one.
 // Positions are logical XZ-plane coordinates in world units.
 // ─────────────────────────────────────────────────────────────
 
@@ -42,12 +42,14 @@ type ProjectilesModel() =
 module Projectiles =
 
   let private lifetime = 2.5f
-  /// World units (Defli's 6 px ÷ 64, rounded).
+  /// World units — proximity fuse for seeking shots and pierce
+  /// pass-throughs.
   let private hitThreshold = 0.1f
 
   let init() = ProjectilesModel()
 
-  /// Cold path: spawn one shot (translated by Application from TowerEvent.Fired).
+  /// Cold path: spawn one shot (translated by Application from
+  /// TowerEvent.Fired — one spawn per volley projectile).
   let handle (msg: ProjectileMsg) (model: ProjectilesModel) : unit =
     match msg with
     | Spawn spawn ->
@@ -58,28 +60,38 @@ module Projectiles =
       |> CMap.addOrUpdate pid {
         Pos = spawn.Pos
         Y = spawn.Height
-        TargetY = spawn.TargetY
-        TargetEnemy = spawn.TargetEnemy
-        LastTargetPos = spawn.LastTargetPos
-        Damage = spawn.Damage
+        Dir = spawn.Dir
         Speed = spawn.Speed
+        Traveled = 0f
+        TotalLen = spawn.TotalLen
+        MuzzleY = spawn.Height
+        TargetY = spawn.TargetY
+        ArcHeight = spawn.ArcHeight
+        Seek = spawn.Seek
+        Target = spawn.Target
+        Aim = spawn.Aim
+        Damage = spawn.Damage
+        ImpactRadius = spawn.ImpactRadius
+        Piercing = spawn.Piercing
+        HitIds = (if spawn.Piercing then ResizeArray() else null)
+        Zone = spawn.Zone
         Lifetime = lifetime
-        SlowFactor = spawn.SlowFactor
-        SlowSeconds = spawn.SlowSeconds
-        SplashRadius = spawn.SplashRadius
-        ProjectileModel = spawn.ProjectileModel
+        Model = spawn.Model
+        Scale = spawn.Scale
       }
 
-  /// Hot path: advance toward the target's live position — XZ seek
-  /// plus Y homing toward the hull center (TargetY) — impact or
-  /// expire. `positions` is a transient read of Enemies.Positions
-  /// (direct value from the sim update). A target that despawns mid-flight
-  /// no longer removes the shot: it flies on to the target's LAST
-  /// RECORDED position and detonates there — no mid-air pop, and a
-  /// splash shell still blasts the pack around the corpse (the impact
-  /// carries the dead id; Application's splash fan-out hits whatever is
-  /// actually near the point). Writes are collected and applied after
-  /// iteration (transient views die on the next write).
+  /// The flight height at progress t (0..1) for the dumbfire leg:
+  /// the muzzle→target lerp plus the arc's parabola.
+  let inline private arcY (row: ProjectileRow) (t: float32) : float32 =
+    row.MuzzleY
+    + (row.TargetY - row.MuzzleY) * t
+    + row.ArcHeight * 4f * t * (1f - t)
+
+  /// Hot path: advance every shot one tick — seek re-aim / dumbfire
+  /// line / pierce pass-throughs — impact or expire. `positions` is a
+  /// transient read of Enemies.Positions (direct value from the sim
+  /// update). Writes are collected and applied after iteration
+  /// (transient views die on the next write).
   let tick
     (dt: float32)
     (model: ProjectilesModel)
@@ -92,6 +104,32 @@ module Projectiles =
 
     let mutable removes: ResizeArray<int<ProjectileId>> = null
 
+    let impact
+      (pid: int<ProjectileId>)
+      (pos: Vector2)
+      (y: float32)
+      (row: ProjectileRow)
+      =
+      if isNull events then
+        events <- ResizeArray()
+
+      events.Add(
+        Impact {
+          Projectile = pid
+          Enemy = ValueNone
+          Pos = pos
+          Y = y
+          Damage = row.Damage
+          ImpactRadius = row.ImpactRadius
+          Zone = row.Zone
+        }
+      )
+
+      if isNull removes then
+        removes <- ResizeArray()
+
+      removes.Add pid
+
     for KeyValueV(pid, row) in model.Rows |> AMap.getValue do
       let lifetime = row.Lifetime - dt
 
@@ -101,46 +139,87 @@ module Projectiles =
 
         removes.Add pid
       else
-        // Live position while the target lives, last recorded after.
-        let struct (targetPos, live) =
-          positions
-          |> ReadOnlyDict.tryGetValue row.TargetEnemy
-          |> ValueOption.map(fun p -> struct (p, true))
-          |> ValueOption.defaultValue struct (row.LastTargetPos, false)
-
-        let d = targetPos - row.Pos
-        let dist = d.Length()
         let step = row.Speed * dt
 
-        if dist <= step + hitThreshold then
-          if isNull events then
-            events <- ResizeArray()
+        // ── Seek leg: chase the live target (falls back to the aim
+        // point once it despawns — the shot still arrives) ──
+        let seekPos =
+          if row.Seek then
+            match row.Target with
+            | ValueSome eid ->
+              positions
+              |> ReadOnlyDict.tryGetValue eid
+              |> ValueOption.defaultValue row.Aim
+            | ValueNone -> row.Aim
+          else
+            row.Aim
 
-          events.Add(
-            Impact {
-              Projectile = pid
-              Enemy = row.TargetEnemy
-              Damage = row.Damage
-              Pos = row.Pos
-              Y = row.Y
-              SlowFactor = row.SlowFactor
-              SlowSeconds = row.SlowSeconds
-              SplashRadius = row.SplashRadius
-            }
-          )
+        let chasing = row.Seek
 
-          if isNull removes then
-            removes <- ResizeArray()
+        let mutable pos' = row.Pos
+        let mutable dir' = row.Dir
+        let mutable traveled' = row.Traveled
+        let mutable total' = row.TotalLen
+        let mutable y' = row.Y
+        let mutable detonated = false
 
-          removes.Add pid
+        if chasing then
+          let d = seekPos - row.Pos
+          let dist = d.Length()
+
+          if dist <= step + hitThreshold then
+            // Arrived ON the target: detonate at its hull.
+            detonated <- true
+            impact pid seekPos row.TargetY row
+          else
+            dir' <- d / dist
+            pos' <- row.Pos + dir' * step
+            traveled' <- row.Traveled + step
+            total' <- row.TotalLen + step
+            // Y-homing: cover the same fraction of the height gap the
+            // XZ chase covers this tick.
+            y' <- row.Y + (row.TargetY - row.Y) * min 1f (step / dist)
         else
-          // Y-homing: cover the same fraction of the height gap the
-          // XZ seek covers this tick, so the shell arrives at the
-          // hull center when the seek arrives. This branch only runs
-          // while dist > step + hitThreshold, so step/dist < 1 — the
-          // min 1f guard is for degenerate cases only.
-          let y' = row.Y + (row.TargetY - row.Y) * min 1f (step / dist)
+          // ── Dumbfire leg: straight line to the aim point ──
+          traveled' <- row.Traveled + step
 
+          if traveled' >= row.TotalLen then
+            detonated <- true
+            impact pid row.Aim row.TargetY row
+          else
+            let t = min 1f (traveled' / row.TotalLen)
+            pos' <- row.Pos + row.Dir * step
+            y' <- arcY row t
+
+        // ── Pierce pass-throughs: direct hits on new enemies near
+        // the flight line (the shot keeps flying) ──
+        if row.Piercing && not detonated && not(isNull row.HitIds) then
+          for KeyValueV(eid, epos) in positions do
+            if
+              Vector2.DistanceSquared(epos, pos')
+              <= row.ImpactRadius * row.ImpactRadius
+              && not(row.HitIds.Contains eid)
+            then
+              row.HitIds.Add eid
+
+              if isNull events then
+                events <- ResizeArray()
+
+              // Direct hit (no area fan) — the piercer's damage list
+              // IS the fan-out.
+              events.Add(
+                Impact {
+                  Projectile = pid
+                  Enemy = ValueSome eid
+                  Pos = epos
+                  Y = y'
+                  Damage = row.Damage
+                  ImpactRadius = 0f
+                  Zone = ValueNone
+                }
+              )
+
+        if not detonated then
           if isNull updates then
             updates <- ResizeArray()
 
@@ -148,11 +227,12 @@ module Projectiles =
             struct (pid,
                     {
                       row with
-                          Pos = row.Pos + (d / dist) * step
+                          Pos = pos'
                           Y = y'
+                          Dir = dir'
+                          Traveled = traveled'
+                          TotalLen = total'
                           Lifetime = lifetime
-                          LastTargetPos =
-                            if live then targetPos else row.LastTargetPos
                     })
 
     if not(isNull updates) then

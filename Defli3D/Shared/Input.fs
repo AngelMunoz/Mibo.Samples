@@ -33,9 +33,8 @@ open Defli3D.State.Systems.Camera
 type GameAction =
   | StartNextWave
   | ToggleDiagnostics
-  | SelectArrow
-  | SelectFrost
-  | SelectCannon
+  /// Select the tower preset at hotbar slot 0-9 (keys 1-9 and 0).
+  | SelectTower of slot: int
   | Restart
   | ResetCamera
   | PanLeft
@@ -53,9 +52,16 @@ module Inputs =
     | KeyCode.Space
     | KeyCode.Enter -> ValueSome GameAction.StartNextWave
     | KeyCode.F3 -> ValueSome GameAction.ToggleDiagnostics
-    | KeyCode.D1 -> ValueSome GameAction.SelectArrow
-    | KeyCode.D2 -> ValueSome GameAction.SelectFrost
-    | KeyCode.D3 -> ValueSome GameAction.SelectCannon
+    | KeyCode.D1 -> ValueSome(GameAction.SelectTower 0)
+    | KeyCode.D2 -> ValueSome(GameAction.SelectTower 1)
+    | KeyCode.D3 -> ValueSome(GameAction.SelectTower 2)
+    | KeyCode.D4 -> ValueSome(GameAction.SelectTower 3)
+    | KeyCode.D5 -> ValueSome(GameAction.SelectTower 4)
+    | KeyCode.D6 -> ValueSome(GameAction.SelectTower 5)
+    | KeyCode.D7 -> ValueSome(GameAction.SelectTower 6)
+    | KeyCode.D8 -> ValueSome(GameAction.SelectTower 7)
+    | KeyCode.D9 -> ValueSome(GameAction.SelectTower 8)
+    | KeyCode.D0 -> ValueSome(GameAction.SelectTower 9)
     | KeyCode.R -> ValueSome GameAction.Restart
     | KeyCode.Home -> ValueSome GameAction.ResetCamera
     | KeyCode.A
@@ -108,12 +114,10 @@ module Input =
           post(fun () -> Application.startNextWave cell.Value)
         | GameAction.ToggleDiagnostics ->
           shell.Diag.Visible <- not shell.Diag.Visible
-        | GameAction.SelectArrow ->
-          post(fun () -> Application.selectTower cell.Value TowerDefs.arrow)
-        | GameAction.SelectFrost ->
-          post(fun () -> Application.selectTower cell.Value TowerDefs.frost)
-        | GameAction.SelectCannon ->
-          post(fun () -> Application.selectTower cell.Value TowerDefs.cannon)
+        | GameAction.SelectTower slot ->
+          if slot >= 0 && slot < TowerDefs.slots.Length then
+            post(fun () ->
+              Application.selectTower cell.Value TowerDefs.slots[slot])
         | GameAction.ResetCamera ->
           post(fun () -> Camera.handle CameraMsg.Reset cell.Value.Camera)
         | GameAction.Restart ->

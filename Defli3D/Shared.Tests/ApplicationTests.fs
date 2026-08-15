@@ -136,7 +136,7 @@ let tests =
 
       Expect.equal
         (goldOf model)
-        (cfg.StartingGold - TowerDefs.arrow.Cost)
+        (cfg.StartingGold - TowerDefs.sentry.Cost)
         "gold spent"
 
       match model.Towers.CellIndex |> CMap.tryGetValue cell with
@@ -179,7 +179,7 @@ let tests =
 
       Expect.equal
         (goldOf model)
-        (cfg.StartingGold - TowerDefs.arrow.Cost)
+        (cfg.StartingGold - TowerDefs.sentry.Cost)
         "gold spent once")
 
     testCase "PlaceTower without enough gold is rejected" (fun () ->
@@ -201,7 +201,7 @@ let tests =
       Expect.equal (goldOf model) 1 "gold untouched")
 
     testCase
-      "tower fires → projectile homes → impact damages the enemy"
+      "tower fires → ballistic shot → impact damages the enemy"
       (fun () ->
         let h = TestData.mkHarness cfg
 
@@ -219,8 +219,10 @@ let tests =
 
         h.StepN(2, TestData.dt)
 
-        // Step until the tower fires (cooldown 0.44 s) and the projectile
-        // reaches the enemy (3.75 units/s, enemy ~2.2 units away).
+        // Step until the tower fires (cooldown 0.4 s) and the shot
+        // reaches the predicted point (7 units/s, enemy ~2.2 units
+        // away). Level 1 is DUMBFIRE — the lead prediction must land
+        // the hit on the walking grunt.
         let fired =
           h.StepUntil(
             (fun m -> m.Projectiles.Rows |> AMap.count |> AVal.getValue > 0),
@@ -246,21 +248,21 @@ let tests =
         // Grunt died (despawned by the sim update): gold includes the reward.
         Expect.equal
           (goldOf model)
-          (cfg.StartingGold - TowerDefs.arrow.Cost
+          (cfg.StartingGold - TowerDefs.sentry.Cost
            + TestData.Fixtures.grunt.GoldReward)
           "kill rewarded")
 
     testCase
-      "cannon splash kills a boss and its pack without corrupting the map (wave-13 crash regression)"
+      "bunker splash + zone kills a boss and its pack without corrupting the map (wave-13 crash regression)"
       (fun () ->
         let h = TestData.mkHarness cfg
 
-        // Cannon next to the path (the road runs along row 4). The
-        // fixture gold (100) cannot afford a cannon (120) — top up.
+        // Bunker next to the path (the road runs along row 4). The
+        // fixture gold (100) cannot afford a bunker (130) — top up.
         h.Post(fun () ->
           Application.applyEconomyMsg h.State (EconomyMsg.EarnGold 200))
 
-        h.Post(fun () -> Application.selectTower h.State TowerDefs.cannon)
+        h.Post(fun () -> Application.selectTower h.State TowerDefs.bunker)
 
         h.Post(fun () ->
           Application.placeTower h.State struct (2, 3) |> ignore)
@@ -325,7 +327,7 @@ let tests =
 
         h.StepN(2, TestData.dt)
 
-        // Upgrade the tower (arrow: UpgradeCost 40).
+        // Upgrade the tower (sentry: UpgradeCost 30).
         h.Post(fun () ->
           Application.upgradeTower h.State struct (2, 3) |> ignore)
 
@@ -336,8 +338,8 @@ let tests =
         Expect.equal
           (goldOf model)
           (cfg.StartingGold
-           - TowerDefs.arrow.Cost
-           - TowerDefs.arrow.UpgradeCost)
+           - TowerDefs.sentry.Cost
+           - TowerDefs.sentry.UpgradeCost)
           "gold spent on upgrade"
 
         match model.Towers.Levels |> CMap.tryGetValue(0<TowerId>) with
@@ -363,7 +365,7 @@ let tests =
         | Some(KeyValueV(_, row)) ->
           Expect.equal
             row.Damage
-            (int(float TowerDefs.arrow.Damage * 1.25))
+            (int(float TowerDefs.sentry.Damage * 1.25))
             "scaled damage"
         | None -> failtest "projectile row must exist")
 
@@ -372,17 +374,14 @@ let tests =
       h.Post(fun () -> Application.placeTower h.State struct (2, 3) |> ignore)
       h.StepN(1, TestData.dt)
 
-      // Top up so the full ladder is affordable. (The original MVU
-      // pump checked all queued upgrades before any SpendGold ran —
-      // four upgrades "fit" in 50 gold. The direct handlers validate
-      // each spend against live gold: the ladder costs 4 × 40.)
+      // Top up so the full ladder is affordable (sentry ladder: 4 × 30).
       h.Post(fun () ->
         Application.applyEconomyMsg h.State (EconomyMsg.EarnGold 110))
 
       h.StepN(1, TestData.dt)
 
       // Upgrade to the cap.
-      for _ in 1 .. TowerDefs.arrow.MaxLevel - 1 do
+      for _ in 1 .. TowerDefs.sentry.MaxLevel - 1 do
         h.Post(fun () ->
           Application.upgradeTower h.State struct (2, 3) |> ignore)
 
@@ -398,47 +397,64 @@ let tests =
       Expect.equal (goldOf h.State) goldBefore "no gold spent at cap"
 
       match h.State.Towers.Levels |> CMap.tryGetValue(0<TowerId>) with
-      | ValueSome lvl -> Expect.equal lvl TowerDefs.arrow.MaxLevel "capped"
+      | ValueSome lvl -> Expect.equal lvl TowerDefs.sentry.MaxLevel "capped"
       | ValueNone -> failtest "level must exist")
 
-    testCase "frost tower through the sim update slows the enemy" (fun () ->
-      let h = TestData.mkHarness cfg
+    testCase
+      "arrow-deck volley leaves a slowing zone on the path (sim update)"
+      (fun () ->
+        let h = TestData.mkHarness cfg
 
-      // Frost fires slower but applies the Slow factor on impact.
-      h.Post(fun () -> Application.selectTower h.State TowerDefs.frost)
-      h.Post(fun () -> Application.placeTower h.State struct (1, 3) |> ignore)
-      h.StepN(2, TestData.dt)
+        // The arrow deck fans a volley; each impact drops a small
+        // slow patch (the ex-frost role, now a zone).
+        h.Post(fun () -> Application.selectTower h.State TowerDefs.arrowDeck)
 
-      h.Post(fun () ->
-        Application.applyEnemyMsg
-          h.State
-          (Enemies.EnemyMsg.Spawn TestData.Fixtures.grunt))
+        h.Post(fun () ->
+          Application.placeTower h.State struct (1, 3) |> ignore)
 
-      // 1 s: first shot lands ~0.7 s in; the slow (2 s) must be live.
-      h.StepN(10, TestData.dt)
+        h.StepN(2, TestData.dt)
 
-      let model = h.State
+        h.Post(fun () ->
+          Application.applyEnemyMsg
+            h.State
+            (Enemies.EnemyMsg.Spawn TestData.Fixtures.grunt))
 
-      match model.Enemies.Motions |> CMap.tryGetValue(0<EnemyId>) with
-      | ValueSome mv ->
-        Expect.equal mv.Slow 0.5f "enemy slowed"
+        // 1 s: first volley lands ~0.4 s in; the zone's slow must be
+        // live (zone life 1.5 s, tick 0.5 s — re-applied while the
+        // grunt walks through it).
+        h.StepN(10, TestData.dt)
 
-        let slowed =
-          model.Enemies.SlowTimers |> Dictionary.tryGetValue(0<EnemyId>)
+        let model = h.State
 
-        Expect.isTrue slowed.IsSome "slow timer running"
-      | ValueNone -> failtest "enemy must exist")
+        // The volley impacted: a zone row exists.
+        Expect.isGreaterThan
+          ((model.Zones.Rows |> AMap.getValue).Count)
+          0
+          "zone dropped"
+
+        match model.Enemies.Motions |> CMap.tryGetValue(0<EnemyId>) with
+        | ValueSome mv ->
+          Expect.equal
+            mv.Slow
+            TowerDefs.arrowDeck.Zone.Value.Slow
+            "enemy slowed"
+
+          let slowed =
+            model.Enemies.SlowTimers |> Dictionary.tryGetValue(0<EnemyId>)
+
+          Expect.isTrue slowed.IsSome "slow timer running"
+        | ValueNone -> failtest "enemy must exist")
 
     // ── Phase 5: cannon splash through the sim update ──
 
-    testCase "cannon splash kills a stacked pack, gold per victim" (fun () ->
+    testCase "bunker splash kills a stacked pack, gold per victim" (fun () ->
       let h = TestData.mkHarness cfg
 
-      // Cannon costs 120 > StartingGold 100 — top up first.
+      // Bunker costs 130 > StartingGold 100 — top up first.
       h.Post(fun () ->
         Application.applyEconomyMsg h.State (EconomyMsg.EarnGold 60))
 
-      h.Post(fun () -> Application.selectTower h.State TowerDefs.cannon)
+      h.Post(fun () -> Application.selectTower h.State TowerDefs.bunker)
       h.Post(fun () -> Application.placeTower h.State struct (1, 3) |> ignore)
       h.StepN(2, TestData.dt)
 
@@ -455,7 +471,7 @@ let tests =
 
       h.StepN(2, TestData.dt)
 
-      // One shell (25 dmg > 10 hp): the blast kills BOTH.
+      // One shell (28 dmg > 10 hp): the blast kills BOTH.
       let cleared =
         h.StepUntil(
           (fun m -> m.Enemies.Alive |> AMap.count |> AVal.getValue = 0),
@@ -467,7 +483,7 @@ let tests =
 
       Expect.equal
         (goldOf h.State)
-        (cfg.StartingGold + 60 - TowerDefs.cannon.Cost
+        (cfg.StartingGold + 60 - TowerDefs.bunker.Cost
          + 2 * TestData.Fixtures.runner.GoldReward)
         "both kills rewarded")
 
@@ -479,7 +495,7 @@ let tests =
         h.Post(fun () ->
           Application.applyEconomyMsg h.State (EconomyMsg.EarnGold 60))
 
-        h.Post(fun () -> Application.selectTower h.State TowerDefs.cannon)
+        h.Post(fun () -> Application.selectTower h.State TowerDefs.bunker)
 
         h.Post(fun () ->
           Application.placeTower h.State struct (1, 3) |> ignore)
@@ -496,7 +512,7 @@ let tests =
             h.State
             (Enemies.EnemyMsg.Spawn TestData.Fixtures.runner))
 
-        // Wait for the cannon's shell to be in flight.
+        // Wait for the bunker's shell to be in flight.
         let fired =
           h.StepUntil(
             (fun m -> (m.Projectiles.Rows |> AMap.getValue).Count > 0),
@@ -504,21 +520,21 @@ let tests =
             120
           )
 
-        Expect.isTrue fired "cannon fired within budget"
+        Expect.isTrue fired "bunker fired within budget"
 
         // Kill the shell's target mid-flight (another tower's kill, say).
-        let target =
-          (h.State.Projectiles.Rows |> AMap.getValue)
-          |> Seq.head
-          |> fun (KeyValueV(_, row)) -> row.TargetEnemy
+        match (h.State.Projectiles.Rows |> AMap.getValue) |> Seq.tryHead with
+        | Some(KeyValueV(_, row)) ->
+          row.Target
+          |> ValueOption.iter(fun target ->
+            h.Post(fun () ->
+              Application.applyEnemyMsg
+                h.State
+                (Enemies.EnemyMsg.ApplyDamage(target, 999))))
+        | None -> failtest "shell must exist"
 
-        h.Post(fun () ->
-          Application.applyEnemyMsg
-            h.State
-            (Enemies.EnemyMsg.ApplyDamage(target, 999)))
-
-        // The shell must NOT vanish: it flies to the corpse's last
-        // position and the blast takes out the stacked survivor.
+        // The shell must NOT vanish: it flies on to the aim point and
+        // the blast takes out the stacked survivor.
         let cleared =
           h.StepUntil(
             (fun m -> m.Enemies.Alive |> AMap.count |> AVal.getValue = 0),
@@ -530,7 +546,7 @@ let tests =
 
         Expect.equal
           (goldOf h.State)
-          (cfg.StartingGold + 60 - TowerDefs.cannon.Cost
+          (cfg.StartingGold + 60 - TowerDefs.bunker.Cost
            + 2 * TestData.Fixtures.runner.GoldReward)
           "manual kill + splash kill both rewarded")
 
@@ -555,9 +571,10 @@ let tests =
         Expect.isTrue bossUp "boss spawned"
 
         // The boss walks the road (row 4, y = 4.5); it enters the
-        // tower's aura radius (2 units of (2.5, 3.5)) after ~2 s. Tower
-        // dps is far too low to kill it first (arrow 22.5 dps vs 480
-        // tier-1 hp).
+        // tower's aura radius (2 units of (2.5, 3.5)) — the boss walks
+        // slowly (0.2 u/s); the budget (20 s) covers the approach.
+        // Tower dps is far too low to kill it first (sentry 20 dps vs
+        // 480 tier-1 hp).
         let suppressed =
           h.StepUntil(
             (fun m ->

@@ -12,11 +12,15 @@ namespace Defli3D.State
 
 module EnemyDefs =
 
+  // Rebalance (ballistics rework): base speeds halved so level 1-3
+  // DUMBFIRE shots (no seek) still connect; wave speed scaling
+  // (+7 %/tier) eventually outruns prediction — misses become a real
+  // mechanic late-game.
   let grunt = {
     Key = "grunt"
     Archetype = EnemyArchetype.Grunt
     Hp = 40
-    Speed = 1.0f
+    Speed = 0.5f
     GoldReward = 3
     HullModel = Models.enemyUfoA
     WeaponModel = ValueNone
@@ -27,7 +31,7 @@ module EnemyDefs =
     Key = "runner"
     Archetype = EnemyArchetype.Runner
     Hp = 20
-    Speed = 1.7f
+    Speed = 0.85f
     GoldReward = 5
     HullModel = Models.enemyUfoB
     WeaponModel = ValueNone
@@ -38,7 +42,7 @@ module EnemyDefs =
     Key = "tank"
     Archetype = EnemyArchetype.Tank
     Hp = 120
-    Speed = 0.55f
+    Speed = 0.28f
     GoldReward = 7
     HullModel = Models.enemyUfoC
     WeaponModel = ValueNone
@@ -51,7 +55,7 @@ module EnemyDefs =
     Key = "flier"
     Archetype = EnemyArchetype.Flier
     Hp = 30
-    Speed = 2.0f
+    Speed = 1.0f
     GoldReward = 10
     HullModel = Models.enemyUfoD
     WeaponModel = ValueNone
@@ -61,13 +65,11 @@ module EnemyDefs =
   /// Boss — every 5th wave's leader (Phase 6). Slow, solid HP pool,
   /// suppresses nearby towers (BossAura), splits into grunts on death.
   /// The grunt hull (ufo-a) rendered at 1.6×.
-  /// 300 base: ~480 on wave 5 (tier 1) — a wall for an early defense,
-  /// not a brick; the ×1.6/tier scaling does the late-game lifting.
   let boss = {
     Key = "boss"
     Archetype = EnemyArchetype.Boss
     Hp = 300
-    Speed = 0.4f
+    Speed = 0.2f
     GoldReward = 50
     HullModel = Models.enemyUfoA
     WeaponModel = ValueNone
@@ -101,69 +103,343 @@ module BossAura =
 
 module TowerDefs =
 
-  let arrow = {
-    Key = "arrow"
-    Name = "Arrow"
-    Cost = 50
+  // ── Shared zone presets (catapult > cannon > none) ──────────
+  // Zones slow AND tick damage; stacking is capped per enemy by
+  // MaxStacks concurrent zones (design: 5).
+  let private zoneCatapult = {
+    Radius = 1.3f
+    Seconds = 4f
+    Slow = 0.6f
+    TickDamage = 4
+    TickInterval = 0.5f
+    MaxStacks = 5
+  }
+
+  let private zoneCannon = {
+    Radius = 0.9f
+    Seconds = 2.5f
+    Slow = 0.8f
+    TickDamage = 3
+    TickInterval = 0.5f
+    MaxStacks = 5
+  }
+
+  let private zoneArrow = {
+    Radius = 0.6f
+    Seconds = 1.5f
+    Slow = 0.85f
+    TickDamage = 0
+    TickInterval = 0.5f
+    MaxStacks = 5
+  }
+
+  let private noZone = ValueNone
+
+  let private zone z = ValueSome z
+
+  // ── The 1-0 preset table (one chassis × weapon bundle per key) ──
+
+  /// 1 — Ballista emplacement: the cheap starter. A real gun on a
+  /// round pad; no structural levels.
+  let sentry = {
+    Key = "sentry"
+    Name = "Sentry"
+    Chassis = Chassis.Emplacement
+    Cost = 40
     Range = 3
-    Damage = 10
-    FireRate = 2.25f
-    ProjectileSpeed = 3.75f
-    WeaponModel = Models.weaponBallista
+    Damage = 8
+    FireRate = 2.5f
+    ProjectileSpeed = 7f
+    Volley = 1
+    Spread = 0f
+    Trajectory = Trajectory.Flat
+    ImpactRadius = 0.25f
+    Piercing = false
+    Rocket = false
+    Zone = noZone
+    WeaponModel = ValueSome Models.weaponBallista
+    GunScale = 1f
     ProjectileModel = Models.ammoArrow
+    ProjectileScale = 0.7f
+    MuzzleDust = true
     TargetPolicy = TargetPolicy.First
-    SlowFactor = 1f
-    SlowSeconds = 0f
-    SplashRadius = 0f
-    UpgradeCost = 40
+    UpgradeCost = 30
     MaxLevel = 5
   }
 
-  /// Frost — low damage, slows the target's movement (Motions.Slow
-  /// factor + expiry timer, consumed by the Enemies movement tick).
-  let frost = {
-    Key = "frost"
-    Name = "Frost"
-    Cost = 80
-    Range = 2
-    Damage = 4
-    FireRate = 1.5f
-    ProjectileSpeed = 3.125f
-    WeaponModel = Models.weaponTurret
-    ProjectileModel = Models.ammoBullet
-    TargetPolicy = TargetPolicy.Weakest
-    SlowFactor = 0.5f
-    SlowSeconds = 2f
-    SplashRadius = 0f
-    UpgradeCost = 60
-    MaxLevel = 5
-  }
-
-  /// Cannon — slow, expensive, area damage: the shell detonates at the
-  /// impact point and every enemy within SplashRadius (1.5 cells) takes
-  /// full damage. The pack counter (and the boss answer, later).
-  let cannon = {
-    Key = "cannon"
-    Name = "Cannon"
-    Cost = 120
+  /// 2 — Turret emplacement: fast bullets, high single-line DPS.
+  let gunpost = {
+    Key = "gunpost"
+    Name = "Gun Post"
+    Chassis = Chassis.Emplacement
+    Cost = 60
     Range = 3
-    Damage = 25
-    FireRate = 0.6f
-    ProjectileSpeed = 2.5f
-    WeaponModel = Models.weaponCannon
+    Damage = 6
+    FireRate = 4f
+    ProjectileSpeed = 8f
+    Volley = 1
+    Spread = 0f
+    Trajectory = Trajectory.Flat
+    ImpactRadius = 0.25f
+    Piercing = false
+    Rocket = false
+    Zone = noZone
+    WeaponModel = ValueSome Models.weaponTurret
+    GunScale = 1f
+    ProjectileModel = Models.ammoBullet
+    ProjectileScale = 0.7f
+    MuzzleDust = false
+    TargetPolicy = TargetPolicy.First
+    UpgradeCost = 45
+    MaxLevel = 5
+  }
+
+  /// 3 — Cannon emplacement: the cannon on a wooden mount; semi-arced
+  /// shells with a medium slow+DoT zone.
+  let cannonPost = {
+    Key = "cannonpost"
+    Name = "Cannon Post"
+    Chassis = Chassis.Emplacement
+    Cost = 90
+    Range = 3
+    Damage = 18
+    FireRate = 0.8f
+    ProjectileSpeed = 5f
+    Volley = 1
+    Spread = 0f
+    Trajectory = Trajectory.SemiArc
+    ImpactRadius = 0.8f
+    Piercing = false
+    Rocket = false
+    Zone = zone zoneCannon
+    WeaponModel = ValueSome Models.weaponCannon
+    GunScale = 1f
     ProjectileModel = Models.ammoCannonball
+    ProjectileScale = 1f
+    MuzzleDust = false
     TargetPolicy = TargetPolicy.Strongest
-    SlowFactor = 1f
-    SlowSeconds = 0f
-    SplashRadius = 1.5f
+    UpgradeCost = 70
+    MaxLevel = 5
+  }
+
+  /// 4 — Catapult emplacement: the catapult on a wooden mount; slow
+  /// parabolic boulders, the biggest lasting zone.
+  let catapultPost = {
+    Key = "catapultpost"
+    Name = "Catapult Post"
+    Chassis = Chassis.Emplacement
+    Cost = 120
+    Range = 4
+    Damage = 30
+    FireRate = 0.4f
+    ProjectileSpeed = 3.5f
+    Volley = 1
+    Spread = 0f
+    Trajectory = Trajectory.Arc
+    ImpactRadius = 1.2f
+    Piercing = false
+    Rocket = false
+    Zone = zone zoneCatapult
+    WeaponModel = ValueSome Models.weaponCatapult
+    GunScale = 1f
+    ProjectileModel = Models.ammoBoulder
+    ProjectileScale = 1f
+    MuzzleDust = false
+    TargetPolicy = TargetPolicy.Last
+    UpgradeCost = 90
+    MaxLevel = 5
+  }
+
+  /// 5 — Arrow deck (round modular, middle-a): a FAN of small arrows
+  /// around the predicted point; each hit leaves a small slow patch.
+  let arrowDeck = {
+    Key = "arrowdeck"
+    Name = "Arrow Deck"
+    Chassis = Chassis.Deck 0
+    Cost = 70
+    Range = 3
+    Damage = 4
+    FireRate = 1.2f
+    ProjectileSpeed = 6f
+    Volley = 4
+    Spread = 0.6f
+    Trajectory = Trajectory.Flat
+    ImpactRadius = 0.35f
+    Piercing = false
+    Rocket = false
+    Zone = zone zoneArrow
+    WeaponModel = ValueNone
+    GunScale = 1f
+    ProjectileModel = Models.ammoArrow
+    ProjectileScale = 0.35f
+    MuzzleDust = true
+    TargetPolicy = TargetPolicy.First
+    UpgradeCost = 55
+    MaxLevel = 5
+  }
+
+  /// 6 — Bullet deck (middle-c): bursts of small bullets, no
+  /// residue — pure DPS from a static four-opening deck.
+  let bulletDeck = {
+    Key = "bulletdeck"
+    Name = "Bullet Deck"
+    Chassis = Chassis.Deck 2
+    Cost = 90
+    Range = 3
+    Damage = 7
+    FireRate = 2.2f
+    ProjectileSpeed = 8f
+    Volley = 3
+    Spread = 0.4f
+    Trajectory = Trajectory.Flat
+    ImpactRadius = 0.3f
+    Piercing = false
+    Rocket = false
+    Zone = noZone
+    WeaponModel = ValueNone
+    GunScale = 1f
+    ProjectileModel = Models.ammoBullet
+    ProjectileScale = 0.35f
+    MuzzleDust = false
+    TargetPolicy = TargetPolicy.First
+    UpgradeCost = 70
+    MaxLevel = 5
+  }
+
+  /// 7 — Cannon bunker (square): the splash wall. Cannon enclosed in
+  /// the bay, bigger impact + zone than the deck variant.
+  let bunker = {
+    Key = "bunker"
+    Name = "Bunker"
+    Chassis = Chassis.Bunker
+    Cost = 130
+    Range = 3
+    Damage = 28
+    FireRate = 0.55f
+    ProjectileSpeed = 5f
+    Volley = 1
+    Spread = 0f
+    Trajectory = Trajectory.SemiArc
+    ImpactRadius = 1.1f
+    Piercing = false
+    Rocket = false
+    Zone = zone zoneCannon
+    WeaponModel = ValueSome Models.weaponCannon
+    GunScale = 1f
+    ProjectileModel = Models.ammoCannonball
+    ProjectileScale = 1f
+    MuzzleDust = false
+    TargetPolicy = TargetPolicy.Strongest
     UpgradeCost = 100
     MaxLevel = 5
   }
 
-  let all = [| arrow; frost; cannon |]
+  /// 8 — Catapult battery (base + open top): slow boulder, full
+  /// parabola, the biggest lasting zone. The crowd-control answer.
+  let catapult = {
+    Key = "catapult"
+    Name = "Catapult"
+    Chassis = Chassis.Battery
+    Cost = 160
+    Range = 4
+    Damage = 40
+    FireRate = 0.3f
+    ProjectileSpeed = 3.5f
+    Volley = 1
+    Spread = 0f
+    Trajectory = Trajectory.Arc
+    ImpactRadius = 1.3f
+    Piercing = false
+    Rocket = false
+    Zone = zone zoneCatapult
+    WeaponModel = ValueSome Models.weaponCatapult
+    GunScale = 1f
+    ProjectileModel = Models.ammoBoulder
+    ProjectileScale = 1f
+    MuzzleDust = false
+    TargetPolicy = TargetPolicy.Last
+    UpgradeCost = 120
+    MaxLevel = 5
+  }
+
+  /// 9 — Piercer battery: the large ballista. A fast large arrow
+  /// that flies THROUGH the lane, damaging every enemy it passes.
+  let piercer = {
+    Key = "piercer"
+    Name = "Piercer"
+    Chassis = Chassis.Battery
+    Cost = 200
+    Range = 5
+    Damage = 35
+    FireRate = 0.5f
+    ProjectileSpeed = 10f
+    Volley = 1
+    Spread = 0f
+    Trajectory = Trajectory.Flat
+    ImpactRadius = 0.4f
+    Piercing = true
+    Rocket = false
+    Zone = noZone
+    WeaponModel = ValueSome Models.weaponBallista
+    GunScale = 1.7f
+    ProjectileModel = Models.ammoArrow
+    ProjectileScale = 1.4f
+    MuzzleDust = true
+    TargetPolicy = TargetPolicy.Strongest
+    UpgradeCost = 150
+    MaxLevel = 5
+  }
+
+  /// 0 — Rocket pad (heavy emplacement): the large turret. Rockets
+  /// ALWAYS seek (ignores the level-4 gate) and explode on arrival.
+  let rocketPad = {
+    Key = "rocketpad"
+    Name = "Rocket Pad"
+    Chassis = Chassis.Emplacement
+    Cost = 180
+    Range = 4
+    Damage = 30
+    FireRate = 0.8f
+    ProjectileSpeed = 6f
+    Volley = 1
+    Spread = 0f
+    Trajectory = Trajectory.Flat
+    ImpactRadius = 1.0f
+    Piercing = false
+    Rocket = true
+    Zone = noZone
+    WeaponModel = ValueSome Models.weaponTurret
+    GunScale = 1.7f
+    ProjectileModel = Models.ammoBullet
+    ProjectileScale = 1.6f
+    MuzzleDust = false
+    TargetPolicy = TargetPolicy.Strongest
+    UpgradeCost = 140
+    MaxLevel = 5
+  }
+
+  /// The 1-0 hotbar order (index 0 = key 1, …, index 9 = key 0):
+  /// the four basic guns on emplacements first (1-4), then the
+  /// decks, the bunker and the heavies.
+  let slots = [|
+    sentry
+    gunpost
+    cannonPost
+    catapultPost
+    arrowDeck
+    bulletDeck
+    bunker
+    catapult
+    piercer
+    rocketPad
+  |]
+
+  let all = slots
 
   /// The upgrade formula (pure): +25 % damage, +10 % fire rate, +0.5
-  /// range per level over the base def. Level 1 = the base def.
+  /// range per level over the base def, and level 4+ unlocks SEEKING
+  /// projectiles (dumbfire until then; rockets always sought). Level
+  /// 1 = the base def.
   let effectiveDef (def: TowerDef) (level: int) : TowerDef =
     if level <= 1 then
       def

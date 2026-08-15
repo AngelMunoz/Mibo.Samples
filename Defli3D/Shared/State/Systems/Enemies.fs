@@ -51,6 +51,10 @@ type EnemiesModel() =
   member val NextId = 0<EnemyId> with get, set
   /// Slow expiry timers (sim-only, plain — not adaptive).
   member val SlowTimers = Dictionary<int<EnemyId>, float32>() with get, set
+  /// Per-enemy velocity (world units/sec, XZ) measured by the
+  /// movement tick ((newPos − oldPos) / dt). Sim-only, plain — read
+  /// directly by Towers.tick for the lead-prediction firing solution.
+  member val Velocities = Dictionary<int<EnemyId>, Vector2>() with get, set
   // Own projections (own maps only) — built in Enemies.init.
   member val Views: amap<int<EnemyId>, EnemyView> =
     Unchecked.defaultof<_> with get, set
@@ -211,8 +215,11 @@ module Enemies =
       model.Positions |> CMap.addOrUpdate eid pos
       model.Defs |> CMap.addOrUpdate eid def)
 
-  /// Removes the enemy's four rows atomically.
+  /// Removes the enemy's four rows atomically (and its sim-only
+  /// velocity row).
   let inline despawn (eid: int<EnemyId>) (model: EnemiesModel) : unit =
+    model.Velocities.Remove eid |> ignore
+
     Transaction.run(fun () ->
       model.Healths |> CMap.remove eid
       model.Motions |> CMap.remove eid
@@ -399,12 +406,17 @@ module Enemies =
             arrivals <- ResizeArray()
 
           arrivals.Add eid
+          model.Velocities.Remove eid |> ignore
 
           if isNull events then
             events <- ResizeArray()
 
           events.Add(ReachedBase eid)
         else
+          // Velocity for the towers' lead prediction: the distance
+          // actually covered this tick over dt.
+          model.Velocities[eid] <- (p - pos) / dt
+
           model.Positions |> CMap.addOrUpdate eid p
 
           model.Motions
