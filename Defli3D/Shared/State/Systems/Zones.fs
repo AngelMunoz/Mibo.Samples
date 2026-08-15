@@ -64,15 +64,21 @@ module Zones =
       }
 
   /// Hot path: expire rows and tick each zone's damage/slow
-  /// application. `positions` is a transient read of
-  /// Enemies.Positions (direct value from the sim update); the
-  /// stack accounting is per-tick (Dictionary reused from a scratch
-  /// pool — steady state allocates nothing).
+  /// application. `enemies` is the Enemies.Alive projection — the
+  /// system does ONE internal AMap.getValue (the Towers.tick shape:
+  /// a cached version-check read after Towers resolved it earlier
+  /// in the same update). Exclusion at the source: a zone only
+  /// contributes to enemies its Affects domain covers, so fliers
+  /// never receive Ground-zone DoT or slow. The stack accounting is
+  /// per-tick (Dictionary reused from a scratch pool — steady state
+  /// allocates nothing).
   let tick
     (dt: float32)
     (model: ZonesModel)
-    (positions: IReadOnlyDictionary<int<EnemyId>, Vector2>)
+    (enemies: amap<int<EnemyId>, EnemyView>)
     : ZoneApply[] =
+    let enemies = enemies |> AMap.getValue
+
     let mutable removes: ResizeArray<int<ZoneId>> = null
     let mutable updates: ResizeArray<struct (int<ZoneId> * ZoneRow)> = null
     // Per-enemy accumulation: (zone contributions, damage sum, best
@@ -91,12 +97,15 @@ module Zones =
         let timer = row.TickTimer - dt
 
         if timer <= 0f then
-          // A damage tick: apply to every enemy inside the radius,
-          // respecting the per-enemy stack cap.
+          // A damage tick: apply to every enemy inside the radius the
+          // zone's domain covers, respecting the per-enemy stack cap.
           let radiusSq = row.Def.Radius * row.Def.Radius
 
-          for KeyValueV(eid, epos) in positions do
-            if Vector2.DistanceSquared(epos, row.Pos) <= radiusSq then
+          for KeyValueV(eid, v) in enemies do
+            if
+              Vector2.DistanceSquared(v.Pos, row.Pos) <= radiusSq
+              && TargetDomain.covers row.Def.Affects v.Archetype
+            then
               let struct (stacks, dmg, slow, slowSecs) =
                 acc
                 |> Dictionary.tryGetValue eid

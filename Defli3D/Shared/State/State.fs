@@ -49,6 +49,12 @@ type State = {
 
   Projections: Projections
 
+  /// The map's difficulty ceiling (Balance.capacityOf) — the
+  /// saturation the wave scale calibrates against. A constant per
+  /// map: recomputed at init, never written after. Carried on the
+  /// state so views/tests read it without recomputing the scan.
+  Capacity: Balance.Capacity
+
   /// Live enemy count — one count node, created at init and forced by
   /// Waves.tick (Defli created a fresh node per frame; one node is
   /// enough and allocates nothing per frame).
@@ -82,9 +88,12 @@ module State =
     Telemetry.reset()
 
     let map = MapModel.create cfg
+    // The map's capacity scan (cold, once): feeds the wave scale's
+    // saturation BEFORE the waves model builds its Scale projection.
+    let capacity = Balance.capacityOf map
     let enemies = Enemies.Enemies.init()
     let spawning = Spawning.Spawning.init cfg.Seed
-    let waves = Waves.Waves.init()
+    let waves = Waves.Waves.init capacity
     let towers = Towers.Towers.init()
     let projectiles = Projectiles.Projectiles.init()
     let zones = Zones.Zones.init()
@@ -127,6 +136,7 @@ module State =
       HoverCell = hoverCell
       Paused = paused
       Projections = projections
+      Capacity = capacity
       AliveCount = enemies.Alive |> AMap.count
       TowerCount = towers.Statics |> AMap.count
       ProjectileCount = projections.Homing |> AMap.count

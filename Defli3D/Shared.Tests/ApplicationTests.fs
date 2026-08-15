@@ -68,18 +68,50 @@ let tests =
       Expect.equal model.Spawning.Queue.Count 0 "queue drained"
 
       // No towers in Phase 1: every wave-1 enemy leaks.
-      let wave1 = Waves.composeWave 1
+      let wave1 = Waves.composeWave model.Capacity.Saturation 1
 
       Expect.equal
         (livesOf model)
         (livesStart - wave1.Count)
         "lives lost to leaks"
 
-      // Gold: starting + wave-clear bonus (no kills yet).
+      // Gold: starting + the clear bonus (wave 1 is tier 0 → the
+      // base floor; no kills yet).
       Expect.equal
         (goldOf model)
+        (cfg.StartingGold + cfg.WaveClearBonus * 1)
+        "gold after clear"
+
+      // Bill-share clear bonus: a wave-9 clear (tier 1) is still at
+      // the base floor (the tier's equipment bill is small); a
+      // wave-19 clear (tier 3) pays above it. The translation is
+      // driven directly — the same handler the tick's WaveCleared
+      // event reaches (clearing real waves headless would starve
+      // the 20 lives).
+      let h2 = TestData.mkHarness cfg
+      h2.State.Waves.WaveNumber.Set 9
+
+      h2.Post(fun () ->
+        Application.handleWaveEvents h2.State [| WaveCleared |])
+
+      h2.StepN(1, TestData.dt)
+
+      Expect.equal
+        (goldOf h2.State)
         (cfg.StartingGold + cfg.WaveClearBonus)
-        "gold after clear")
+        "tier-1 clear at the base floor"
+
+      h2.State.Waves.WaveNumber.Set 19
+
+      h2.Post(fun () ->
+        Application.handleWaveEvents h2.State [| WaveCleared |])
+
+      h2.StepN(1, TestData.dt)
+
+      Expect.isGreaterThanOrEqual
+        (goldOf h2.State)
+        (cfg.StartingGold + cfg.WaveClearBonus * 2)
+        "tier-3 clear pays above the floor")
 
     testCase "game over blocks new waves" (fun () ->
       let h = TestData.mkHarness cfg
@@ -627,10 +659,15 @@ let tests =
             "the split frame must not clear the wave"
 
           // The boss paid its reward (kill) — children pay theirs on
-          // death. Wave 5 is tier 1: the reward is scaled ×1.2.
+          // death. Wave 5 is tier 1: the reward follows the
+          // calibrated curve's demand^Beta multiplier.
+          let reward1 =
+            (Balance.scaleOfWave model.Capacity.Saturation 5).Reward
+
           Expect.equal
             (goldOf model)
-            (cfg.StartingGold + int(float EnemyDefs.boss.GoldReward * 1.2))
+            (cfg.StartingGold
+             + max 1 (int(float EnemyDefs.boss.GoldReward * float reward1)))
             "boss reward paid"
 
           // The wave eventually clears (children + pack leak; lives 20 ≥

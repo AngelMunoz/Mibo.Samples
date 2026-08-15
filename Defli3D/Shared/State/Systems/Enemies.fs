@@ -75,12 +75,15 @@ module Enemies =
   let inline private buildViews
     (m: EnemiesModel)
     : amap<int<EnemyId>, EnemyView> =
-    // The 3-way joinOn composition (Positions × Healths × Motions): each
-    // join builds its per-key subgraph once and swaps the left input in
-    // place — no rebuild on update. Rows are written atomically in
-    // transactions, so post-commit all three always exist; the defensive
-    // zero row only guards transient mid-transaction reads (Alive filters
-    // it out).
+    // The 4-way joinOn composition (Positions × Healths × Motions ×
+    // Defs): each join builds its per-key subgraph once and swaps the
+    // left input in place — no rebuild on update. Rows are written
+    // atomically in transactions, so post-commit all four always exist;
+    // the defensive zero row only guards transient mid-transaction
+    // reads (Alive filters it out). Defs is written once per spawn, so
+    // the fourth input adds no recomputes (rows already recompute on
+    // every Positions write) — it only folds the archetype (the
+    // air/ground bit) into the row.
     let positionsHealths =
       AMap.joinOn
         m.Positions
@@ -89,41 +92,55 @@ module Enemies =
         (fun _ posV healthV ->
           AVal.map2 (fun pos h -> ValueSome(struct (pos, h))) posV healthV)
 
-    AMap.joinOn
-      positionsHealths
-      m.Motions
-      (fun eid _ -> eid)
-      (fun
-           _
-           (structV: aval<struct (Vector2 * Health voption)>)
-           (motionV: aval<Motion voption>) ->
-        AVal.map2
-          (fun
-               (struct (pos, h): struct (Vector2 * Health voption))
-               (mv: Motion voption) ->
-            Telemetry.viewsJoin <- Telemetry.viewsJoin + 1
+    let withMotions =
+      AMap.joinOn
+        positionsHealths
+        m.Motions
+        (fun eid _ -> eid)
+        (fun
+             _
+             (structV: aval<struct (Vector2 * Health voption)>)
+             (motionV: aval<Motion voption>) ->
+          AVal.map2
+            (fun
+                 (struct (pos, h): struct (Vector2 * Health voption))
+                 (mv: Motion voption) ->
+              Telemetry.viewsJoin <- Telemetry.viewsJoin + 1
 
-            match struct (h, mv) with
-            | ValueSome h, ValueSome mv ->
-              ValueSome {
-                Pos = pos
-                Hp = h.Hp
-                MaxHp = h.MaxHp
-                Progress = mv.Progress
-                Slow = mv.Slow
-                PathIndex = mv.PathIndex
-              }
-            | _ ->
-              ValueSome {
-                Pos = pos
-                Hp = 0
-                MaxHp = 0
-                Progress = 0f
-                Slow = 1f
-                PathIndex = 0
-              })
-          structV
-          motionV)
+              match struct (h, mv) with
+              | ValueSome h, ValueSome mv ->
+                ValueSome
+                  struct (pos,
+                          h.Hp,
+                          h.MaxHp,
+                          mv.Progress,
+                          mv.Slow,
+                          mv.PathIndex)
+              | _ -> ValueSome struct (pos, 0, 0, 0f, 1f, 0))
+            structV
+            motionV)
+
+    AMap.joinOn withMotions m.Defs (fun eid _ -> eid) (fun _ structV defV ->
+      AVal.map2
+        (fun
+             struct (pos, hp, maxHp, progress, slow, pathIndex)
+             (def: EnemyDef voption) ->
+          let archetype =
+            match def with
+            | ValueSome d -> d.Archetype
+            | ValueNone -> EnemyArchetype.Grunt
+
+          ValueSome {
+            Pos = pos
+            Hp = hp
+            MaxHp = maxHp
+            Archetype = archetype
+            Progress = progress
+            Slow = slow
+            PathIndex = pathIndex
+          })
+        structV
+        defV)
 
   let inline private buildAlive
     (m: EnemiesModel)
@@ -143,7 +160,7 @@ module Enemies =
     : amap<int<EnemyId>, Vector2> =
     AMap.joinOn m.Positions m.Defs (fun eid _ -> eid) (fun _ posV defV ->
       AVal.map2
-        (fun pos def ->
+        (fun pos (def: EnemyDef voption) ->
           Telemetry.bossPositions <- Telemetry.bossPositions + 1
 
           def
@@ -238,6 +255,11 @@ module Enemies =
 
   /// The one message that emits: applies damage; Killed on a zero
   /// crossing (Application earns gold and despawns from that event).
+  /// The def's Resist (written by the wave tier at spawn) taxes the
+  /// incoming amount multiplicatively first — the single chokepoint
+  /// every damage source passes through (direct hits, area
+  /// detonations, zone ticks). Event-driven: one Defs read per
+  /// application, never inside a tick body.
   let inline applyDamage
     (eid: int<EnemyId>)
     (amount: int)
@@ -245,7 +267,14 @@ module Enemies =
     : EnemyEvent[] =
     match model.Healths |> CMap.tryGetValue eid with
     | ValueSome h when h.Hp > 0 ->
-      let hp = max 0 (h.Hp - amount)
+      let resisted =
+        match model.Defs |> CMap.tryGetValue eid with
+        | ValueSome def when def.Resist > 0f && amount > 0 ->
+          // Floor 1: small zone ticks (3-4) stay alive under the cap.
+          max 1 (int(float amount * (1.0 - float def.Resist)))
+        | _ -> amount
+
+      let hp = max 0 (h.Hp - resisted)
       model.Healths |> CMap.addOrUpdate eid { h with Hp = hp }
 
       if hp = 0 then
@@ -284,11 +313,14 @@ module Enemies =
   // them back together — no closures, no per-frame allocations) ──
 
   /// Stage 1 — resolve the archetype (defs are written once at spawn;
-  /// a miss is a transient row → Grunt).
-  let inline archetypeOf defs eid =
+  /// a miss is a transient row → Grunt). The explicit lambda keeps
+  /// `_.Archetype` field-name inference away — EnemyView grew an
+  /// Archetype field and the placeholder stopped resolving to
+  /// EnemyDef.
+  let inline archetypeOf (defs: cmap<int<EnemyId>, EnemyDef>) eid =
     defs
     |> CMap.tryGetValue eid
-    |> ValueOption.map _.Archetype
+    |> ValueOption.map(fun d -> d.Archetype)
     |> ValueOption.defaultValue Grunt
 
   /// Stage 2 — fliers: interpolate the straight line spawn → base.

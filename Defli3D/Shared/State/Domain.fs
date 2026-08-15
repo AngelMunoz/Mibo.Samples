@@ -107,6 +107,27 @@ type EnemyArchetype =
   /// Walks the road — no custom locomotion.
   | Boss
 
+/// What kinds of enemies a weapon or zone may engage. Ground = road
+/// walkers (cannons and catapults — their arcing shot cannot track
+/// a flying target); Air = fliers only (no current preset — the
+/// flak-shaped future); Any = both (arrows, bullets, rockets).
+[<Struct>]
+type TargetDomain =
+  | Ground
+  | Air
+  | Any
+
+module TargetDomain =
+
+  /// Does this domain cover the archetype? THE one place the
+  /// air/ground eligibility rule lives — targeting and zone
+  /// application both ask here, never inline.
+  let inline covers (domain: TargetDomain) (archetype: EnemyArchetype) : bool =
+    match domain with
+    | Any -> true
+    | Ground -> archetype <> EnemyArchetype.Flier
+    | Air -> archetype = EnemyArchetype.Flier
+
 [<Struct>]
 type EnemyDef = {
   Key: string
@@ -114,6 +135,11 @@ type EnemyDef = {
   Hp: int
   /// World units per second (1 cell = 1 unit; Defli's px/s ÷ 64).
   Speed: float32
+  /// Fraction of incoming damage negated (0.35 = 35 % less). Base
+  /// defs carry 0; the wave tier writes its resistance here at spawn
+  /// (WaveScale.apply), so every damage source — direct hits, area
+  /// detonations, zone ticks — pays the same multiplicative tax.
+  Resist: float32
   GoldReward: int
   /// Hull model from the tower-defense kit (enemy-ufo-*).
   HullModel: ModelInfo
@@ -159,14 +185,17 @@ type WaveDef = {
   ExtraSpawns: struct (EnemyDef * float32)[]
 }
 
-/// Join row of the EnemyViews projection (Positions × Healths × Motions).
-/// Positions are logical XZ-plane coordinates (x → x, y → z at the
-/// render edge).
+/// Join row of the EnemyViews projection (Positions × Healths ×
+/// Motions × Defs). Positions are logical XZ-plane coordinates
+/// (x → x, y → z at the render edge).
 [<Struct>]
 type EnemyView = {
   Pos: Vector2
   Hp: int
   MaxHp: int
+  /// The enemy's archetype — the air/ground bit (TargetDomain.covers)
+  /// for targeting and zone application.
+  Archetype: EnemyArchetype
   Progress: float32
   Slow: float32
   PathIndex: int
@@ -240,10 +269,26 @@ module Trajectory =
     | SemiArc -> min 0.45f (dist * 0.18f)
     | Arc -> min 1.4f (0.35f + dist * 0.25f)
 
+/// When projectiles from this weapon home in on their live target.
+/// Dumbfire shots never correct after the fire-time lead prediction;
+/// seeking shots chase the target every tick instead.
+///   Never        — dumbfire at every level (ballistas, cannons,
+///                   catapults: their ammo is a dumb chunk).
+///   FromLevel n  — seeks once the tower reaches level n (guns: a
+///                   trained crew walks the tracers onto the target).
+///   Always       — seeks from level 1 (rockets).
+[<Struct>]
+type HomingPolicy =
+  | Never
+  | FromLevel of int
+  | Always
+
 /// A lasting ground effect applied at the impact point (catapult and
 /// cannon shells): enemies inside are slowed and ticked damage while
 /// the zone lives. Multiple zones may affect one enemy, stacking up
-/// to MaxStacks sources.
+/// to MaxStacks sources. Affects gates BOTH the DoT and the slow by
+/// air/ground — arrow patches (Affects = Any) catch fliers, cannon
+/// and catapult residue (Ground) does not.
 [<Struct>]
 type ZoneDef = {
   Radius: float32
@@ -256,6 +301,8 @@ type ZoneDef = {
   TickInterval: float32
   /// How many concurrent zones may affect one enemy.
   MaxStacks: int
+  /// Which enemies the zone's effects may touch.
+  Affects: TargetDomain
 }
 
 /// One placeable tower preset (a chassis × weapon bundle). Keys 1-0
@@ -270,10 +317,21 @@ type TowerDef = {
   /// world-space range (Chebyshev ring narrowed by exact distance).
   Range: int
   Damage: int
-  /// Shots per second (bigger guns fire slower).
+  /// Shots per second (bigger guns fire slower — the reload pause IS
+  /// the weapon's identity).
   FireRate: float32
+  /// Fire-rate growth per level above 1 (0.1 = +10 %/level). Guns
+  /// scale steeply (0.7) so they start as slow muskets and end as
+  /// today's rapid fire; loaders stay near-flat — a veteran crew
+  /// reloads a bit faster, never machine-gun fast.
+  RatePerLevel: float32
   /// World units per second.
   ProjectileSpeed: float32
+  /// Projectile speed multiplies by the wave's speed factor — bullets
+  /// keep pace with late-game mobs (their lead prediction stays
+  /// exact; only turns still dodge). Loaders stay dumb chunks and eat
+  /// the full miss knob instead.
+  ProjectileSpeedScales: bool
   /// Projectiles per shot: > 1 fans a volley around the aim point.
   Volley: int
   /// Volley spread radius (world units) around the aim point.
@@ -284,9 +342,9 @@ type TowerDef = {
   /// Piercing shot flies THROUGH enemies, damaging each it passes
   /// (large ballista).
   Piercing: bool
-  /// Rocket: always seeks its target (ignores the level-4 seek gate)
-  /// and explodes on impact (large turret).
-  Rocket: bool
+  /// Rocket: always seeks its target and explodes on impact (large
+  /// turret).
+  Homing: HomingPolicy
   /// Lasting ground effect applied at the impact point.
   Zone: ZoneDef voption
   /// Gun model mounted by gun-carrying chassis (ValueNone for keeps —
@@ -301,6 +359,9 @@ type TowerDef = {
   ProjectileScale: float32
   /// Bow-style weapons puff dust instead of a muzzle flash.
   MuzzleDust: bool
+  /// What kinds of enemies this weapon may engage (cannons and
+  /// catapults: Ground — walkers only).
+  Targets: TargetDomain
   TargetPolicy: TargetPolicy
   /// Gold cost per upgrade level (flat) and the level cap.
   UpgradeCost: int
@@ -328,16 +389,17 @@ type TowerRuntime = {
 
 // ─────────────────────────────────────────────────────────────
 // Projectiles — ballistic flight model (fire at a PREDICTED point;
-// seek is a level-4+ unlock, rockets always seek)
+// seek follows the def's HomingPolicy: guns from level 4, rockets
+// always, loaders never)
 // ─────────────────────────────────────────────────────────────
 
 /// One in-flight shot (a row in Projectiles.Rows). XZ flies a
 /// straight line along Dir toward Aim; Y follows the trajectory
 /// shape (lerp muzzle→target + ArcHeight·4t(1−t), t = Traveled /
-/// TotalLen). Seeking shots (level 4+ or rockets) re-aim Dir at the
-/// target's live position each tick; dumbfire shots never correct —
-/// they detonate at (Aim, TargetY) whether or not the enemy is
-/// still there, so fast targets genuinely dodge.
+/// TotalLen). Seeking shots (per the firing def's HomingPolicy)
+/// re-aim Dir at the target's live position each tick; dumbfire
+/// shots never correct — they detonate at (Aim, TargetY) whether
+/// or not the enemy is still there, so fast targets genuinely dodge.
 [<Struct>]
 type ProjectileRow = {
   Pos: Vector2
@@ -403,36 +465,28 @@ type ProjectileSpawn = {
   Speed: float32
 }
 
-/// Difficulty scaling per wave tier (every 5 waves the enemies get
-/// harder — Phase 5 difficulty curve data).
+/// Difficulty scaling per wave tier (every 5 waves). The VALUES come
+/// from Balance.scaleOfWave — logistic curves calibrated against the
+/// map's capacity (see State/Balance.fs). This struct is the tier's
+/// multiplier set carried on the wave state.
 [<Struct>]
 type WaveScale = {
   Hp: float32
   Speed: float32
   Reward: float32
+  /// Fraction of incoming damage negated this tier (multiplicative,
+  /// capped well below 1 — the game never becomes unwinnable through
+  /// resistance alone).
+  Resist: float32
 }
 
 module WaveScale =
-
-  /// Tier = the wave's difficulty bracket: waves 1-4 → tier 0,
-  /// waves 5-9 → tier 1, etc. Each tier: +60 % HP, +7 % speed,
-  /// +20 % reward.
-  let ofWave(number: int) : WaveScale =
-    let tier = max 0 (number / 5)
-    let hp = float32(1.6 ** float tier)
-    let speed = float32(1.07 ** float tier)
-    let reward = float32(1.2 ** float tier)
-
-    {
-      Hp = hp
-      Speed = speed
-      Reward = reward
-    }
 
   let inline apply (scale: WaveScale) (def: EnemyDef) : EnemyDef = {
     def with
         Hp = max 1 (int(float def.Hp * float scale.Hp))
         Speed = def.Speed * scale.Speed
+        Resist = scale.Resist
         GoldReward = max 1 (int(float def.GoldReward * float scale.Reward))
   }
 

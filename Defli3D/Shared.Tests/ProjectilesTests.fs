@@ -245,6 +245,7 @@ let tests =
         TickDamage = 4
         TickInterval = 0.5f
         MaxStacks = 5
+        Affects = TargetDomain.Ground
       }
 
       let d = Vector2(0.3f, 0f)

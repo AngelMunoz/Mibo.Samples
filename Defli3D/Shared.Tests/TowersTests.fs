@@ -24,19 +24,22 @@ let private def = {
   Range = 2
   Damage = 5
   FireRate = 4f
+  RatePerLevel = 0.25f // distinct from the presets' 0.1 — pins the curve source
   ProjectileSpeed = 3.125f // 200 px/s ÷ 64
+  ProjectileSpeedScales = false
   Volley = 1
   Spread = 0f
   Trajectory = Trajectory.Flat
   ImpactRadius = 0.25f
   Piercing = false
-  Rocket = false
+  Homing = HomingPolicy.FromLevel 4
   Zone = ValueNone
   WeaponModel = ValueSome Models.weaponTurret
   GunScale = 1f
   ProjectileModel = Models.ammoBullet
   ProjectileScale = 0.7f
   MuzzleDust = false
+  Targets = TargetDomain.Any
   TargetPolicy = TargetPolicy.First
   UpgradeCost = 20
   MaxLevel = 5
@@ -45,20 +48,33 @@ let private def = {
 /// The fixture def with a specific targeting policy.
 let private defWith(policy: TargetPolicy) = { def with TargetPolicy = policy }
 
-/// A single enemy standing at a position (transient Alive-shaped dict).
-let private enemyAt (pos: Vector2) (progress: float32) =
+/// A single enemy of the given archetype at a position (transient
+/// Alive-shaped dict).
+let private enemyOf
+  (archetype: EnemyArchetype)
+  (pos: Vector2)
+  (progress: float32)
+  =
   let d = Dictionary<int<EnemyId>, EnemyView>()
 
   d[0<EnemyId>] <- {
     Pos = pos
     Hp = 100
     MaxHp = 100
+    Archetype = archetype
     Progress = progress
     Slow = 1f
     PathIndex = 1
   }
 
   d
+
+let private enemyAt (pos: Vector2) (progress: float32) =
+  enemyOf EnemyArchetype.Grunt pos progress
+
+/// A single flier — the air-domain target.
+let private flierAt (pos: Vector2) (progress: float32) =
+  enemyOf EnemyArchetype.Flier pos progress
 
 let private cellCenter(struct (x, y)) =
   Vector2(
@@ -160,6 +176,7 @@ let tests =
         Progress = 0.2f
         Slow = 1f
         PathIndex = 1
+        Archetype = EnemyArchetype.Grunt
       }
 
       alive[2<EnemyId>] <- {
@@ -169,6 +186,7 @@ let tests =
         Progress = 0.8f
         Slow = 1f
         PathIndex = 1
+        Archetype = EnemyArchetype.Grunt
       }
 
       let alive = AMap.constant(fun () -> alive)
@@ -198,6 +216,7 @@ let tests =
         Progress = 0.2f
         Slow = 1f
         PathIndex = 1
+        Archetype = EnemyArchetype.Grunt
       }
 
       alive[2<EnemyId>] <- {
@@ -207,6 +226,7 @@ let tests =
         Progress = 0.8f
         Slow = 1f
         PathIndex = 1
+        Archetype = EnemyArchetype.Grunt
       }
 
       alive
@@ -256,6 +276,7 @@ let tests =
         Progress = 0.5f
         Slow = 1f
         PathIndex = 1
+        Archetype = EnemyArchetype.Grunt
       }
 
       alive[2<EnemyId>] <- {
@@ -265,6 +286,7 @@ let tests =
         Progress = 0.5f
         Slow = 1f
         PathIndex = 1
+        Archetype = EnemyArchetype.Grunt
       }
 
       let m = model()
@@ -365,7 +387,7 @@ let tests =
           Expect.isTrue (abs(shot.Muzzle.Y - expected.Y) < 0.0001f) "muzzle y"
         | _ -> failtest "expected exactly one Fired")
 
-    testCase "seek resolves at level 4+; rockets seek from level 1" (fun () ->
+    testCase "seek follows the def's HomingPolicy" (fun () ->
       let seekAt (d: TowerDef) (level: int) =
         let m = model()
 
@@ -387,10 +409,164 @@ let tests =
         | [| Fired shot |] -> shot.Seek
         | _ -> failtest "expected exactly one Fired"
 
+      // FromLevel 4 (guns): dumbfire below, seeking from level 4.
       Expect.isFalse (seekAt def 1) "level 1 is dumbfire"
       Expect.isFalse (seekAt def 3) "level 3 is dumbfire"
-      Expect.isTrue (seekAt def 4) "level 4 unlocks seek"
-      Expect.isTrue (seekAt { def with Rocket = true } 1) "rockets always seek")
+      Expect.isTrue (seekAt def 4) "level 4 seeks"
+      Expect.isTrue (seekAt def 5) "level 5 seeks"
+      // Never (loaders): dumbfire at EVERY level.
+      Expect.isFalse
+        (seekAt { def with Homing = HomingPolicy.Never } 5)
+        "loaders never seek"
+      // Always (rockets): seeking from level 1.
+      Expect.isTrue
+        (seekAt
+          {
+            def with
+                Homing = HomingPolicy.Always
+          }
+          1)
+        "rockets always seek")
+
+    testCase "preset homing policies match the weapon visuals" (fun () ->
+      let loaders = [|
+        TowerDefs.sentry
+        TowerDefs.piercer
+        TowerDefs.arrowDeck
+        TowerDefs.cannonPost
+        TowerDefs.bunker
+        TowerDefs.catapultPost
+        TowerDefs.catapult
+      |]
+
+      for d in loaders do
+        Expect.equal
+          d.Homing
+          HomingPolicy.Never
+          $"{d.Key} (arrow/ball/cannon) never seeks"
+
+      Expect.equal
+        TowerDefs.gunpost.Homing
+        (HomingPolicy.FromLevel 4)
+        "gunpost seeks from level 4"
+
+      Expect.equal
+        TowerDefs.bulletDeck.Homing
+        (HomingPolicy.FromLevel 4)
+        "bulletdeck seeks from level 4"
+
+      Expect.equal
+        TowerDefs.rocketPad.Homing
+        HomingPolicy.Always
+        "rocketpad always seeks")
+
+    testCase "fire-rate curves: guns ramp, loaders stay slow" (fun () ->
+      let rateAt (d: TowerDef) (level: int) =
+        (TowerDefs.effectiveDef d level).FireRate
+
+      // Guns: musket at L1, rapid fire back at L5.
+      Expect.isTrue
+        (abs(rateAt TowerDefs.gunpost 1 - 1f) < 0.0001f)
+        "gunpost L1 = 1/s"
+
+      Expect.isTrue
+        (abs(rateAt TowerDefs.gunpost 5 - 3.8f) < 0.0001f)
+        "gunpost L5 = 3.8/s"
+
+      Expect.isTrue
+        (abs(rateAt TowerDefs.bulletDeck 5 - 2.24f) < 0.0001f)
+        "bulletdeck L5 = 2.24 volleys/s"
+
+      // Loaders: slow at L1, near-flat growth to L5.
+      Expect.isTrue
+        (abs(rateAt TowerDefs.sentry 5 - 1.12f) < 0.0001f)
+        "sentry L5 = 1.12/s"
+
+      Expect.isTrue
+        (abs(rateAt TowerDefs.catapult 1 - 0.3f) < 0.0001f)
+        "catapult L1 = 0.3/s")
+
+    testCase "Ground weapons ignore fliers; Any weapons engage them" (fun () ->
+      let m = model()
+
+      Towers.handle
+        (TowerMsg.Place(
+          struct (3, 3),
+          {
+            def with
+                Targets = TargetDomain.Ground
+          }
+        ))
+        m
+
+      // Only a flier in range: the cannon idles.
+      let events =
+        Towers.tick
+          0.1f
+          m
+          (AMap.constant(fun () -> flierAt (cellCenter struct (4, 3)) 0.5f))
+          noVelocities
+          noSuppression
+          cellSize
+
+      Expect.isEmpty events "no shot at the flier"
+
+      // A walker appears: fires.
+      let events2 =
+        Towers.tick
+          0.1f
+          m
+          (AMap.constant(fun () -> enemyAt (cellCenter struct (4, 3)) 0.5f))
+          noVelocities
+          noSuppression
+          cellSize
+
+      Expect.equal (Seq.length events2) 1 "fires at the walker"
+
+      // The Any-domain def (the local test def) engages the flier.
+      let m2 = model()
+      Towers.handle (TowerMsg.Place(struct (3, 3), def)) m2
+
+      let events3 =
+        Towers.tick
+          0.1f
+          m2
+          (AMap.constant(fun () -> flierAt (cellCenter struct (4, 3)) 0.5f))
+          noVelocities
+          noSuppression
+          cellSize
+
+      Expect.equal (Seq.length events3) 1 "arrow/bullet weapons target fliers")
+
+    testCase "preset Targets follow the trajectory rule (Flat = Any)" (fun () ->
+      for d in TowerDefs.all do
+        let expected =
+          if d.Trajectory = Trajectory.Flat then
+            TargetDomain.Any
+          else
+            TargetDomain.Ground
+
+        Expect.equal d.Targets expected $"%s{d.Key} targets by trajectory"
+
+      // Zone presets: arrow patches catch air; cannon/catapult
+      // residue does not.
+      let affectsOf(d: TowerDef) =
+        d.Zone |> ValueOption.map(fun z -> z.Affects)
+
+      Expect.equal
+        (affectsOf TowerDefs.arrowDeck)
+        (ValueSome TargetDomain.Any)
+        "arrow zone affects Any"
+
+      Expect.equal
+        (affectsOf TowerDefs.bunker)
+        (ValueSome TargetDomain.Ground)
+        "cannon zone Ground"
+
+      Expect.equal
+        (affectsOf TowerDefs.catapult)
+        (ValueSome TargetDomain.Ground)
+        "catapult zone Ground")
 
     testCase "volley def → Fired carries the volley payload" (fun () ->
       let m = model()
@@ -454,7 +630,7 @@ let tests =
       match events |> Seq.toArray with
       | [| Fired shot |] ->
         Expect.isTrue shot.Piercing "piercing shot"
-        Expect.isFalse shot.Seek "level 1 piercer is dumbfire"
+        Expect.isFalse shot.Seek "piercer never seeks (Never policy)"
       | _ -> failtest "expected exactly one Fired")
 
     testCase
@@ -488,7 +664,7 @@ let tests =
         Towers.handle (TowerMsg.Place(cell, def)) m
         let m' = m
 
-        // Level 2: +10 % fire rate → the cooldown must shrink.
+        // Level 2: +RatePerLevel fire rate → the cooldown must shrink.
         Towers.handle (TowerMsg.Upgrade(0<TowerId>)) m'
         let m2 = m'
 
@@ -506,7 +682,7 @@ let tests =
         | ValueSome r ->
           Expect.equal
             r.Cooldown
-            (1f / (def.FireRate * 1.1f))
+            (1f / (def.FireRate * (1f + def.RatePerLevel)))
             "cooldown uses the upgraded fire rate"
         | ValueNone -> failtest "runtime must exist")
 
@@ -558,7 +734,7 @@ let tests =
         | ValueSome e -> Expect.equal e.Damage def.Damage "base damage"
         | ValueNone -> failtest "effective def must exist"
 
-        // Level 2 → +25 % damage, +10 % fire rate, +0.5 range.
+        // Level 2 → +25 % damage, +RatePerLevel fire rate, +0.5 range.
         Towers.handle (TowerMsg.Upgrade tid) m'
         let m2 = m'
 

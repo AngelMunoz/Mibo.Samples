@@ -24,6 +24,10 @@ type WavesModel() =
   member val WaveNumber = CVal.create 0 with get, set
   member val WaveActive = CVal.create false with get, set
   member val Events = ResizeArray<WaveEvent>() with get, set
+  /// The map-calibrated logistic saturation (Balance.capacityOf) —
+  /// closed over by the Scale projection and composeWave; a constant
+  /// per map, never written after init.
+  member val Saturation = 0f with get, set
   /// Difficulty scale derived from WaveNumber (Phase 5: enemies get
   /// harder every 5 waves) — an aval projection over the wave state.
   member val Scale: aval<WaveScale> = Unchecked.defaultof<_> with get, set
@@ -48,9 +52,10 @@ module Waves =
       m.WaveActive
       m.Scale
 
-  let init() : WavesModel =
+  let init(capacity: Balance.Capacity) : WavesModel =
     let m = WavesModel()
-    m.Scale <- AVal.map WaveScale.ofWave m.WaveNumber
+    m.Saturation <- capacity.Saturation
+    m.Scale <- AVal.map (Balance.scaleOfWave capacity.Saturation) m.WaveNumber
     m.Banner <- buildBanner m
     m
 
@@ -59,12 +64,13 @@ module Waves =
   /// tanks from wave 3, fliers from wave 4, boss waves (every 5th)
   /// mix all four archetypes AND lead with a boss (ExtraSpawns — a
   /// table entry would make the boss a dice roll). The difficulty
-  /// scale (WaveScale — every 5 waves) is applied to the defs HERE,
-  /// so the spawned defs carry the tier's stats.
-  let composeWave(number: int) : WaveDef =
+  /// scale (Balance.scaleOfWave — every 5 waves, calibrated against
+  /// the map's saturation) is applied to the defs HERE, so the
+  /// spawned defs carry the tier's stats.
+  let composeWave (sat: float32) (number: int) : WaveDef =
     let count = 5 + number * 2
     let interval = max 0.3f (1.2f - float32 number * 0.05f)
-    let scale = WaveScale.ofWave number
+    let scale = Balance.scaleOfWave sat number
 
     let inline scaleTable(table: struct (EnemyDef * int)[]) = [|
       for struct (def, w) in table -> struct (WaveScale.apply scale def, w)
@@ -124,7 +130,7 @@ module Waves =
       else
         let waveNumber = model.WaveNumber |> AVal.getValue
         let number = waveNumber + 1
-        let wave = composeWave number
+        let wave = composeWave model.Saturation number
 
         Transaction.run(fun () ->
           model.WaveNumber.Set number

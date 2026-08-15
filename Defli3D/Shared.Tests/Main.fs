@@ -10,6 +10,7 @@ let allTests =
     MapTests.tests
     MapTests.proceduralTests
     MapTests.probeTests
+    BalanceTests.tests
     EnemiesTests.tests
     SpawningTests.tests
     WavesTests.tests

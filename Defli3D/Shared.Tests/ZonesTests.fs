@@ -12,16 +12,34 @@ open Defli3D.State.Systems.Zones
 
 let private model() = Zones.init()
 
-/// One enemy at a position (transient Positions-shaped dict).
-let private positionsAt (ids: int<EnemyId>[]) (pos: Vector2[]) =
-  let d = Dictionary<int<EnemyId>, Vector2>()
+/// Enemies of one archetype at positions (transient Alive-shaped
+/// amap — the tick's input).
+let private enemiesAt
+  (ids: int<EnemyId>[])
+  (pos: Vector2[])
+  (archetype: EnemyArchetype)
+  =
+  let d = Dictionary<int<EnemyId>, EnemyView>()
 
   for i = 0 to ids.Length - 1 do
-    d[ids[i]] <- pos[i]
+    d[ids[i]] <- {
+      Pos = pos[i]
+      Hp = 100
+      MaxHp = 100
+      Archetype = archetype
+      Progress = 0.5f
+      Slow = 1f
+      PathIndex = 1
+    }
 
-  d
+  AMap.constant(fun () -> d)
 
-/// A zone def with distinct values (0.5 s ticks, slow 0.5).
+/// Walkers only — the common fixture shape.
+let private walkersAt (ids: int<EnemyId>[]) (pos: Vector2[]) =
+  enemiesAt ids pos EnemyArchetype.Grunt
+
+/// A zone def with distinct values (0.5 s ticks, slow 0.5). Ground
+/// by default — the walker fixtures test the classic behavior.
 let private zoneDef = {
   Radius = 1f
   Seconds = 2f
@@ -29,6 +47,7 @@ let private zoneDef = {
   TickDamage = 3
   TickInterval = 0.5f
   MaxStacks = 5
+  Affects = TargetDomain.Ground
 }
 
 let tests =
@@ -51,7 +70,7 @@ let tests =
       Zones.handle (ZoneMsg.Drop(Vector2.Zero, zoneDef)) m
 
       let eid = 0<EnemyId>
-      let positions = positionsAt [| eid |] [| Vector2(0.5f, 0f) |]
+      let positions = walkersAt [| eid |] [| Vector2(0.5f, 0f) |]
 
       // First tick fires immediately (timer 0).
       let applies = Zones.tick 0.1f m positions
@@ -75,7 +94,7 @@ let tests =
         m
 
       let positions =
-        positionsAt [| 0<EnemyId>; 1<EnemyId> |] [|
+        walkersAt [| 0<EnemyId>; 1<EnemyId> |] [|
           Vector2(0.4f, 0f) // inside 0.5
           Vector2(2f, 0f) // outside
         |]
@@ -111,7 +130,7 @@ let tests =
         let eid = 0<EnemyId>
 
         let applies =
-          Zones.tick 0.1f m (positionsAt [| eid |] [| Vector2.Zero |])
+          Zones.tick 0.1f m (walkersAt [| eid |] [| Vector2.Zero |])
 
         match applies with
         | [| a |] ->
@@ -126,7 +145,7 @@ let tests =
           Zones.handle (ZoneMsg.Drop(Vector2.Zero, zoneDef)) m2
 
         let applies2 =
-          Zones.tick 0.1f m2 (positionsAt [| eid |] [| Vector2.Zero |])
+          Zones.tick 0.1f m2 (walkersAt [| eid |] [| Vector2.Zero |])
 
         match applies2 with
         | [| a |] ->
@@ -139,7 +158,7 @@ let tests =
       Zones.handle (ZoneMsg.Drop(Vector2.Zero, zoneDef)) m
 
       let eid = 0<EnemyId>
-      let positions = positionsAt [| eid |] [| Vector2.Zero |]
+      let positions = walkersAt [| eid |] [| Vector2.Zero |]
 
       // First tick fires; then 0.1 s later the timer has NOT expired
       // (interval 0.5) → no application.
@@ -159,11 +178,46 @@ let tests =
       Zones.handle (ZoneMsg.Drop(Vector2.Zero, zoneDef)) m
 
       let eid = 0<EnemyId>
-      let positions = positionsAt [| eid |] [| Vector2.Zero |]
+      let positions = walkersAt [| eid |] [| Vector2.Zero |]
 
       // 2.5 s total > 2 s life.
       for _ in 1..25 do
         Zones.tick 0.1f m positions |> ignore
 
       Expect.equal ((m.Rows |> AMap.getValue).Count) 0 "expired")
+
+    testCase "Ground zones skip fliers (no DoT, no slow)" (fun () ->
+      let m = model()
+
+      Zones.handle (ZoneMsg.Drop(Vector2.Zero, zoneDef)) m
+
+      let fliers =
+        enemiesAt [| 0<EnemyId> |] [| Vector2.Zero |] EnemyArchetype.Flier
+
+      let applies = Zones.tick 0.1f m fliers
+
+      Expect.isEmpty applies "the flier inside a ground zone is untouched")
+
+    testCase "Any zones tick fliers (arrow patches slow them)" (fun () ->
+      let m = model()
+
+      Zones.handle
+        (ZoneMsg.Drop(
+          Vector2.Zero,
+          {
+            zoneDef with
+                TickDamage = 0
+                Affects = TargetDomain.Any
+          }
+        ))
+        m
+
+      let fliers =
+        enemiesAt [| 0<EnemyId> |] [| Vector2.Zero |] EnemyArchetype.Flier
+
+      match Zones.tick 0.1f m fliers with
+      | [| a |] ->
+        Expect.equal a.Damage 0 "pure-slow zone"
+        Expect.equal a.SlowFactor zoneDef.Slow "the flier is slowed"
+      | _ -> failtest "expected exactly one application")
   ]

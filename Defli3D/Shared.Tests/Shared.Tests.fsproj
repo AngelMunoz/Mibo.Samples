@@ -11,6 +11,7 @@
     <Compile Include="TestData.fs" />
     <Compile Include="DomainTests.fs" />
     <Compile Include="MapTests.fs" />
+    <Compile Include="BalanceTests.fs" />
     <Compile Include="EnemiesTests.fs" />
     <Compile Include="SpawningTests.fs" />
     <Compile Include="WavesTests.fs" />

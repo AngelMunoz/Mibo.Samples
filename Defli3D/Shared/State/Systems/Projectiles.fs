@@ -16,10 +16,11 @@ open Defli3D.State
 //   dumbfire (default) — never corrects; detonates at (Aim, TargetY)
 //     whether or not the enemy is still there. Fast or turning
 //     targets genuinely dodge.
-//   seek (level 4+ / rockets) — re-aims Dir at the target's LIVE
-//     position each tick (the positions transient read) and Y-homes
-//     onto the hull; detonates on arrival. A lost target falls back
-//     to the dumbfire leg (aim point).
+//   seek (per HomingPolicy: guns from level 4, rockets always) —
+//     re-aims Dir at the target's LIVE position each tick (the
+//     positions transient read) and Y-homes onto the hull; detonates
+//     on arrival. A lost target falls back to the dumbfire leg
+//     (aim point).
 //   piercing — flies THROUGH enemies: each new enemy entering the
 //     impact radius takes a direct hit (HitIds prevents re-hits) and
 //     the shot only ends on range/lifetime.

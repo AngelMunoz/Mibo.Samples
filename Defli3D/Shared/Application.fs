@@ -150,9 +150,19 @@ module Application =
 
         handleSpawnEvents state spawnEvents
       | Waves.WaveCleared ->
-        Economy.Economy.handle
-          (Economy.EarnGold state.Config.WaveClearBonus)
-          state.Economy
+        // Clear payout: ClearShare of the tier's equipment bill
+        // (floored at the config base bonus) — one budget with the
+        // kill rewards (see Balance). WaveNumber still holds the
+        // wave that just cleared.
+        let waveNumber = AVal.getValue state.Waves.WaveNumber
+
+        let bonus =
+          Balance.clearBonus
+            state.Config.WaveClearBonus
+            state.Waves.Saturation
+            waveNumber
+
+        Economy.Economy.handle (Economy.EarnGold bonus) state.Economy
 
   let handleProjectileEvents
     (post: (unit -> unit) -> unit)
@@ -233,9 +243,17 @@ module Application =
       | Towers.Fired shot ->
         // Projectile speed from the EFFECTIVE def (the upgrade
         // projection) — the +10 %/level upgrades must not be dropped
-        // here. The shot's spawn point is the MUZZLE (Towers offsets
-        // it along the firing line — the barrel end / the deck's
-        // embrasure), so shots visibly leave the gun.
+        // here. Bullet weapons (ProjectileSpeedScales) multiply by
+        // the wave's speed factor so their lead prediction stays
+        // exact against late-game mobs; loaders keep their raw speed
+        // and eat the miss knob instead. One transient Scale read
+        // per Fired batch (cold — same shape as the boss-split
+        // handler). The shot's spawn point is the MUZZLE (Towers
+        // offsets it along the firing line — the barrel end / the
+        // deck's embrasure), so shots and muzzle VFX visibly leave
+        // the gun.
+        let waveSpeed = (AVal.getValue state.Waves.Scale).Speed
+
         let speed =
           state.Towers.Statics
           |> CMap.tryGetValue shot.Tower
@@ -246,7 +264,10 @@ module Application =
               |> ReadOnlyDict.tryGetValue shot.Tower
               |> ValueOption.defaultValue s.Def
 
-            eff.ProjectileSpeed)
+            if eff.ProjectileSpeedScales then
+              eff.ProjectileSpeed * waveSpeed
+            else
+              eff.ProjectileSpeed)
           |> ValueOption.defaultValue 0f
 
         let pos = shot.Muzzle
@@ -466,12 +487,10 @@ module Application =
           (state.Enemies.Positions |> AMap.getValue)
 
       // Zones tick after the enemies they affect have moved: slow +
-      // DoT applications come back as declarative data.
-      let zoneApplies =
-        Zones.Zones.tick
-          dt
-          state.Zones
-          (state.Enemies.Positions |> AMap.getValue)
+      // DoT applications come back as declarative data. The Alive
+      // projection (not raw Positions): zone effects gate on the
+      // enemy's archetype — Ground zones skip fliers.
+      let zoneApplies = Zones.Zones.tick dt state.Zones state.Enemies.Alive
 
       Vfx.Vfx.tick dt state.Vfx
       Camera.Camera.tick dt state.Camera

@@ -164,7 +164,7 @@ module Towers =
         for KeyValueV(eid, v) in aliveView do
           let d = Vector2.Distance(center, v.Pos)
 
-          if d <= rangeWorld then
+          if d <= rangeWorld && TargetDomain.covers def.Targets v.Archetype then
             let better =
               match best with
               | ValueNone -> true
@@ -184,12 +184,18 @@ module Towers =
           if isNull events then
             events <- ResizeArray()
 
-          // Seek resolves from the effective context: rockets always
-          // chase; everything else is dumbfire until level 4.
+          // Seek resolves from the def's policy × the tower's level:
+          // rockets always chase, guns chase from level 4, loaders
+          // (ballistas/cannons/catapults) NEVER — their ammo is a
+          // dumb chunk that only gets the lead prediction.
           let level =
             model.Levels |> CMap.tryGetValue tid |> ValueOption.defaultValue 1
 
-          let seek = def.Rocket || level >= 4
+          let seek =
+            match def.Homing with
+            | HomingPolicy.Always -> true
+            | HomingPolicy.FromLevel n -> level >= n
+            | HomingPolicy.Never -> false
 
           // Lead prediction: aim where the target WILL be — its
           // velocity × the shot's flight time (distance / projectile

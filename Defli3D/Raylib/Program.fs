@@ -39,8 +39,8 @@ let main _ =
 
   let config =
     GameConfig.defaultConfig
-    |> GameConfig.withWidth 1280
-    |> GameConfig.withHeight 800
+    |> GameConfig.withWidth 1080
+    |> GameConfig.withHeight 720
     |> GameConfig.withTitle "Defli3D"
     |> GameConfig.withTargetFPS 60
 
