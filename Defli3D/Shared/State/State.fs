@@ -52,8 +52,8 @@ type State = {
 
   /// The semantic input state — the InputMapper subscription writes it
   /// (pre-step lane), Application.update consumes its Started/Released
-  /// edges and clears them (ActionState.nextFrame). Input state, not
-  /// gameplay state: the mapper owns the writes, the sim owns the
+  /// edges, and the subscription clears them after update. Input state,
+  /// not gameplay state: the mapper owns the writes, the sim owns the
   /// reads.
   Actions: cval<ActionState<GameAction>>
 

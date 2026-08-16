@@ -215,19 +215,14 @@ module Input =
 
     AMap.ofList [
       SubId.ofString "keyboard",
-      {
-        Id = SubId.ofString "keyboard"
-        Attach =
-          fun post ->
-            input.KeyboardDelta.Subscribe(handleKeyboard post cell shell)
-      }
+      AdaptiveSub.ofObservable
+        (SubId.ofString "keyboard")
+        input.KeyboardDelta
+        (fun posting -> handleKeyboard posting.Post cell shell)
+
       SubId.ofString "mouse",
-      {
-        Id = SubId.ofString "mouse"
-        Attach =
-          fun post ->
-            input.MouseDelta.Subscribe(
-              handleMouse post wheelScale frameCtx cell shell
-            )
-      }
+      AdaptiveSub.ofObservable
+        (SubId.ofString "mouse")
+        input.MouseDelta
+        (fun posting -> handleMouse posting.Post wheelScale frameCtx cell shell)
     ]

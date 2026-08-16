@@ -128,24 +128,19 @@ module Input =
             SubId.ofString "actions", actionsSub frameCtx.Context
 
             SubId.ofString "mouse",
-            {
-              Id = SubId.ofString "mouse"
-              Attach =
-                fun post ->
-                  input.MouseDelta.Subscribe(
-                    handleMouse post wheelScale frameCtx cell shell
-                  )
-            }
+            AdaptiveSub.ofObservable
+              (SubId.ofString "mouse")
+              input.MouseDelta
+              (fun posting ->
+                handleMouse posting.Post wheelScale frameCtx cell shell)
 
             SubId.ofString "diagnostics",
-            {
-              Id = SubId.ofString "diagnostics"
-              Attach =
-                fun _ ->
-                  input.KeyboardDelta.Subscribe(fun d ->
-                    if d.Pressed |> Array.contains KeyCode.F3 then
-                      shell.Diag.Visible <- not shell.Diag.Visible)
-            }
+            AdaptiveSub.ofObservable
+              (SubId.ofString "diagnostics")
+              input.KeyboardDelta
+              (fun _ d ->
+                if d.Pressed |> Array.contains KeyCode.F3 then
+                  shell.Diag.Visible <- not shell.Diag.Visible)
           ]
 
       cached

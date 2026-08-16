@@ -393,9 +393,9 @@ module Application =
   // ActionState from the input deltas and writes the Actions root
   // through the pre-step lane; this consumes it like the old keyboard
   // handler did. One-shots ride the Started edges (single-binding
-  // actions — safe); edges are cleared after consumption
-  // (ActionState.nextFrame), so a step with no new deltas reads an
-  // edge-free state (the Set's equality gate makes the re-write free).
+  // actions — safe); the subscription clears the edges after update,
+  // before the frame force, so a step with no new deltas reads an
+  // edge-free state.
   //
   // PAN is a HELD query, not an edge: the root's Held is rebuilt from
   // hardware truth on every delta, so the direction is recomputed each
@@ -436,10 +436,6 @@ module Application =
     // a swapped-away state.
     if restart && AVal.getValue state.Economy.GameOver then
       cell.Value <- State.init state.Config
-
-    // Clear the consumed edges on the state the actions came from
-    // (after a restart that is the dead root — harmless).
-    state.Actions.Set(ActionState.nextFrame actions)
 
   // ── The adaptive program ─────────────────────────────────────────
 

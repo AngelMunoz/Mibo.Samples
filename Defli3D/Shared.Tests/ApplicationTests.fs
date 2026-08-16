@@ -669,9 +669,9 @@ let tests =
       // it (synonym bindings count once; a stale direction cannot
       // survive — nothing held rewrites it to Zero). The posted root
       // write drains after the step's Update, so the first step that
-      // consumes it is the second's; Held persists (nextFrame clears
-      // only the edges), so with two steps the pan applies exactly
-      // once.
+      // consumes it is the second's; Held persists (the subscription
+      // clears only the edges), so with two steps the pan applies
+      // exactly once.
       h.Post(fun () ->
         h.State.Actions.Set {
           ActionState.empty with
