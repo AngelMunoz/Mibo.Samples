@@ -32,7 +32,7 @@ let tests =
   testList "Spawning" [
     testCase "FillWave builds the queue with spaced delays" (fun () ->
       let m = Spawning.init 42
-      let events = Spawning.handle (SpawnMsg.FillWave gruntWave) m
+      let events = Spawning.fillWave gruntWave m
       let m' = m
       Expect.equal events.Length 0 "no failures"
       Expect.equal m'.Queue.Count gruntWave.Count "queue count"
@@ -49,7 +49,7 @@ let tests =
 
     testCase "tick drains due spawns in order" (fun () ->
       let m = Spawning.init 42
-      let _ = Spawning.handle (SpawnMsg.FillWave gruntWave) m
+      let _ = Spawning.fillWave gruntWave m
       let m' = m
 
       // Before the initial delay: nothing.
@@ -71,7 +71,7 @@ let tests =
     testCase "drain is deterministic per seed" (fun () ->
       let run seed =
         let m = Spawning.init seed
-        let _ = Spawning.handle (SpawnMsg.FillWave mixedWave) m
+        let _ = Spawning.fillWave mixedWave m
         let m' = m
         let mutable spawns = []
 
@@ -99,14 +99,14 @@ let tests =
       let m = Spawning.init 42
 
       let events =
-        Spawning.handle
-          (SpawnMsg.FillWave {
+        Spawning.fillWave
+          {
             Table = [||]
             Count = 3
             Interval = 0.5f
             InitialDelay = 0f
             ExtraSpawns = Array.empty
-          })
+          }
           m
 
       let m' = m
@@ -123,11 +123,11 @@ let tests =
         let m = Spawning.init 42
 
         let events =
-          Spawning.handle
-            (SpawnMsg.FillWave {
+          Spawning.fillWave
+            {
               gruntWave with
                   ExtraSpawns = [| struct (Fixtures.tank, 0.25f) |]
-            })
+            }
             m
 
         let m' = m

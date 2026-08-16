@@ -86,8 +86,7 @@ let tests =
 
       // Drain all lives through the economy (handled synchronously).
       for _ in 1 .. cfg.StartingLives do
-        h.Post(fun () ->
-          Application.applyEconomyMsg h.State (EconomyMsg.LoseLife))
+        h.Post(fun () -> Economy.loseLife h.State.Economy)
 
       h.StepN(2, TestData.dt)
 
@@ -187,9 +186,7 @@ let tests =
 
       // Drain gold below the cost.
       h.Post(fun () ->
-        Application.applyEconomyMsg
-          h.State
-          (EconomyMsg.SpendGold(cfg.StartingGold - 1)))
+        Economy.spendGold (cfg.StartingGold - 1) h.State.Economy)
 
       h.StepN(2, TestData.dt)
 
@@ -212,10 +209,7 @@ let tests =
         h.StepN(2, TestData.dt)
 
         // Spawn one grunt on the path in range of the tower.
-        h.Post(fun () ->
-          Application.applyEnemyMsg
-            h.State
-            (Enemies.EnemyMsg.Spawn TestData.Fixtures.grunt))
+        h.Post(fun () -> TestData.spawnEnemy h.State TestData.Fixtures.grunt)
 
         h.StepN(2, TestData.dt)
 
@@ -257,8 +251,7 @@ let tests =
 
         // Cannon next to the path (the road runs along row 4). The
         // fixture gold (100) cannot afford a cannon (120) — top up.
-        h.Post(fun () ->
-          Application.applyEconomyMsg h.State (EconomyMsg.EarnGold 200))
+        h.Post(fun () -> Economy.earnGold 200 h.State.Economy)
 
         h.Post(fun () -> Application.selectTower h.State TowerDefs.cannon)
 
@@ -275,15 +268,9 @@ let tests =
         // crash). The reactions now run as posted intents drained
         // after the fan-out — the despawns/splits never mutate
         // Positions mid-enumeration.
-        h.Post(fun () ->
-          Application.applyEnemyMsg
-            h.State
-            (Enemies.EnemyMsg.Spawn TestData.Fixtures.boss))
+        h.Post(fun () -> TestData.spawnEnemy h.State TestData.Fixtures.boss)
 
-        h.Post(fun () ->
-          Application.applyEnemyMsg
-            h.State
-            (Enemies.EnemyMsg.Spawn TestData.Fixtures.runner))
+        h.Post(fun () -> TestData.spawnEnemy h.State TestData.Fixtures.runner)
 
         h.StepN(2, TestData.dt)
 
@@ -297,10 +284,7 @@ let tests =
             else
               None)
 
-        h.Post(fun () ->
-          Application.applyEnemyMsg
-            h.State
-            (Enemies.EnemyMsg.ApplyDamage(bossId, 190)))
+        h.Post(fun () -> TestData.damageEnemy h.State bossId 190)
 
         let cleared =
           h.StepUntil(
@@ -345,10 +329,7 @@ let tests =
         | ValueNone -> failtest "level must exist"
 
         // The tower fires with the EFFECTIVE (scaled) damage.
-        h.Post(fun () ->
-          Application.applyEnemyMsg
-            h.State
-            (Enemies.EnemyMsg.Spawn TestData.Fixtures.grunt))
+        h.Post(fun () -> TestData.spawnEnemy h.State TestData.Fixtures.grunt)
 
         let fired =
           h.StepUntil(
@@ -376,8 +357,7 @@ let tests =
       // pump checked all queued upgrades before any SpendGold ran —
       // four upgrades "fit" in 50 gold. The direct handlers validate
       // each spend against live gold: the ladder costs 4 × 40.)
-      h.Post(fun () ->
-        Application.applyEconomyMsg h.State (EconomyMsg.EarnGold 110))
+      h.Post(fun () -> Economy.earnGold 110 h.State.Economy)
 
       h.StepN(1, TestData.dt)
 
@@ -409,10 +389,7 @@ let tests =
       h.Post(fun () -> Application.placeTower h.State struct (1, 3) |> ignore)
       h.StepN(2, TestData.dt)
 
-      h.Post(fun () ->
-        Application.applyEnemyMsg
-          h.State
-          (Enemies.EnemyMsg.Spawn TestData.Fixtures.grunt))
+      h.Post(fun () -> TestData.spawnEnemy h.State TestData.Fixtures.grunt)
 
       // 1 s: first shot lands ~0.5 s in; the slow (2 s) must be live.
       h.StepN(10, TestData.dt)
@@ -435,23 +412,16 @@ let tests =
       let h = TestData.mkHarness cfg
 
       // Cannon costs 120 > StartingGold 100 — top up first.
-      h.Post(fun () ->
-        Application.applyEconomyMsg h.State (EconomyMsg.EarnGold 60))
+      h.Post(fun () -> Economy.earnGold 60 h.State.Economy)
 
       h.Post(fun () -> Application.selectTower h.State TowerDefs.cannon)
       h.Post(fun () -> Application.placeTower h.State struct (1, 3) |> ignore)
       h.StepN(2, TestData.dt)
 
       // Two runners stacked on the same path cell (identical motion).
-      h.Post(fun () ->
-        Application.applyEnemyMsg
-          h.State
-          (Enemies.EnemyMsg.Spawn TestData.Fixtures.runner))
+      h.Post(fun () -> TestData.spawnEnemy h.State TestData.Fixtures.runner)
 
-      h.Post(fun () ->
-        Application.applyEnemyMsg
-          h.State
-          (Enemies.EnemyMsg.Spawn TestData.Fixtures.runner))
+      h.Post(fun () -> TestData.spawnEnemy h.State TestData.Fixtures.runner)
 
       h.StepN(2, TestData.dt)
 
@@ -476,8 +446,7 @@ let tests =
       (fun () ->
         let h = TestData.mkHarness cfg
 
-        h.Post(fun () ->
-          Application.applyEconomyMsg h.State (EconomyMsg.EarnGold 60))
+        h.Post(fun () -> Economy.earnGold 60 h.State.Economy)
 
         h.Post(fun () -> Application.selectTower h.State TowerDefs.cannon)
 
@@ -486,15 +455,9 @@ let tests =
 
         h.StepN(2, TestData.dt)
 
-        h.Post(fun () ->
-          Application.applyEnemyMsg
-            h.State
-            (Enemies.EnemyMsg.Spawn TestData.Fixtures.runner))
+        h.Post(fun () -> TestData.spawnEnemy h.State TestData.Fixtures.runner)
 
-        h.Post(fun () ->
-          Application.applyEnemyMsg
-            h.State
-            (Enemies.EnemyMsg.Spawn TestData.Fixtures.runner))
+        h.Post(fun () -> TestData.spawnEnemy h.State TestData.Fixtures.runner)
 
         // Wait for the cannon's shell to be in flight.
         let fired =
@@ -512,10 +475,7 @@ let tests =
           |> Seq.head
           |> fun (KeyValueV(_, row)) -> row.TargetEnemy
 
-        h.Post(fun () ->
-          Application.applyEnemyMsg
-            h.State
-            (Enemies.EnemyMsg.ApplyDamage(target, 999)))
+        h.Post(fun () -> TestData.damageEnemy h.State target 999)
 
         // The shell must NOT vanish: it flies to the corpse's last
         // position and the blast takes out the stacked survivor.
@@ -587,10 +547,7 @@ let tests =
         | Some bossId ->
           let aliveBefore = aliveOf h.State
 
-          h.Post(fun () ->
-            Application.applyEnemyMsg
-              h.State
-              (Enemies.EnemyMsg.ApplyDamage(bossId, 99999)))
+          h.Post(fun () -> TestData.damageEnemy h.State bossId 99999)
 
           h.StepN(2, TestData.dt)
 

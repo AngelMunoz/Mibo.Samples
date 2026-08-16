@@ -21,9 +21,6 @@ open Defli.State
 // ─────────────────────────────────────────────────────────────
 
 [<Struct>]
-type ProjectileMsg = Spawn of spawn: ProjectileSpawn
-
-[<Struct>]
 type ProjectileEvent = Impact of impact: ProjectileImpact
 
 type ProjectilesModel() =
@@ -37,26 +34,25 @@ module Projectiles =
 
   let init() = ProjectilesModel()
 
-  /// Cold path: spawn one shot (translated by Application from TowerEvent.Fired).
-  let handle (msg: ProjectileMsg) (model: ProjectilesModel) : unit =
-    match msg with
-    | Spawn spawn ->
-      let pid = model.NextId
-      model.NextId <- model.NextId + 1<ProjectileId>
+  /// Cold path: spawn one shot (translated by Application from
+  /// TowerEvent.Fired).
+  let spawn (spawn: ProjectileSpawn) (model: ProjectilesModel) : unit =
+    let pid = model.NextId
+    model.NextId <- model.NextId + 1<ProjectileId>
 
-      model.Rows
-      |> CMap.addOrUpdate pid {
-        Pos = spawn.Pos
-        TargetEnemy = spawn.TargetEnemy
-        LastTargetPos = spawn.LastTargetPos
-        Damage = spawn.Damage
-        Speed = spawn.Speed
-        Lifetime = lifetime
-        SlowFactor = spawn.SlowFactor
-        SlowSeconds = spawn.SlowSeconds
-        SplashRadius = spawn.SplashRadius
-        ProjectileSprite = spawn.ProjectileSprite
-      }
+    model.Rows
+    |> CMap.addOrUpdate pid {
+      Pos = spawn.Pos
+      TargetEnemy = spawn.TargetEnemy
+      LastTargetPos = spawn.LastTargetPos
+      Damage = spawn.Damage
+      Speed = spawn.Speed
+      Lifetime = lifetime
+      SlowFactor = spawn.SlowFactor
+      SlowSeconds = spawn.SlowSeconds
+      SplashRadius = spawn.SplashRadius
+      ProjectileSprite = spawn.ProjectileSprite
+    }
 
   /// Hot path: advance toward the target's live position; impact or
   /// expire. `positions` is a transient read of Enemies.Positions

@@ -56,8 +56,10 @@ module Frame =
     /// The map — static world data (terrain/path/decorations/
     /// waypoints).
     Map: MapModel
-    /// The host's GameTime at the last update — the draw side's clock
-    /// (shader-driven auras pulse with TotalTime).
+    /// The sim's clock root, read at force time — written by
+    /// Application.update every step (paused included), so the draw
+    /// side (shader-driven auras pulse with TotalTime) rides the sim's
+    /// clock, not a backend-specific one.
     Time: GameTime
     /// World-sim diagnostics (the F3 overlay reads the display line).
     Diag: WorldDiag
@@ -68,10 +70,11 @@ module Frame =
 
   /// Forcing the frame: resolve every output projection once, pack the
   /// struct. After this, drawing is plain struct reads — O(1), no
-  /// graph access. `force` follows the state it is handed at force
-  /// time; the count nodes live on the State record (created at init),
-  /// so restarts (cell swap) re-bind cleanly with zero per-step
-  /// allocation.
+  /// graph access. `force` is a pure State → RenderFrame mapping: it
+  /// follows the state it is handed at force time, and the count nodes
+  /// live on the State record (created at init), so restarts (cell
+  /// swap) re-bind cleanly with zero per-step allocation. The clock is
+  /// part of the state (the Clock root) — the force needs nothing else.
   let inline force
     ([<InlineIfLambda>] getState: unit -> State)
     : unit -> RenderFrame =
@@ -100,7 +103,7 @@ module Frame =
         RangeRing = state.Projections.RangeRing |> AVal.getValue
         Vfx = state.Vfx
         Map = state.Map
-        Time = state.LastTime
+        Time = state.Clock |> AVal.getValue
         Diag = state.Diag
         Camera = state.Camera.State
       }

@@ -24,17 +24,6 @@ open Defli
 // ─────────────────────────────────────────────────────────────
 
 [<Struct>]
-type EnemyMsg =
-  | Spawn of def: EnemyDef
-  /// Spawn mid-path at an explicit position/progress (Phase 6 split
-  /// children appear at the corpse — Spawn would teleport them to the
-  /// path origin).
-  | SpawnAt of spawnAt: struct (EnemyDef * Vector2 * float32 * int)
-  | ApplyDamage of applyDamage: struct (int<EnemyId> * int)
-  | ApplySlow of slow: SlowApply
-  | Despawn of enemy: int<EnemyId>
-
-[<Struct>]
 type EnemyEvent =
   | Killed of killed: struct (int<EnemyId> * int)
   | ReachedBase of enemy: int<EnemyId>
@@ -94,8 +83,6 @@ module Enemies =
           (fun
                (struct (pos, h): struct (Vector2 * Health voption))
                (mv: Motion voption) ->
-            Telemetry.viewsJoin <- Telemetry.viewsJoin + 1
-
             match struct (h, mv) with
             | ValueSome h, ValueSome mv ->
               ValueSome {
@@ -121,10 +108,7 @@ module Enemies =
   let inline private buildAlive
     (m: EnemiesModel)
     : amap<int<EnemyId>, EnemyView> =
-    m.Views
-    |> AMap.filter(fun _ v ->
-      Telemetry.aliveFilter <- Telemetry.aliveFilter + 1
-      v.Hp > 0)
+    m.Views |> AMap.filter(fun _ v -> v.Hp > 0)
 
   /// Boss positions: a same-key AMap.joinOn into Defs (the Views-join
   /// shape), kept only when the archetype is Boss — the join's
@@ -137,8 +121,6 @@ module Enemies =
     AMap.joinOn m.Positions m.Defs (fun eid _ -> eid) (fun _ posV defV ->
       AVal.map2
         (fun pos def ->
-          Telemetry.bossPositions <- Telemetry.bossPositions + 1
-
           def
           |> ValueOption.bind(fun d ->
             if d.Archetype = EnemyArchetype.Boss then
@@ -156,8 +138,8 @@ module Enemies =
     m
 
   // ── Cold-path mutations (unit — these never emit) ──
-  // Application calls these directly: in-place mutations with no return
-  // to discard. The host-facing union dispatch (handle) delegates here.
+  // In-place mutations with no return to discard; Application calls
+  // these directly. applyDamage is the one that emits (kills).
 
   /// Spawn at the path origin (the wave director's entry point).
   let inline spawn
@@ -245,28 +227,6 @@ module Enemies =
       else
         Array.empty
     | _ -> Array.empty
-
-  /// Host-facing dispatch over the union (tests, debug hosts) —
-  /// delegates to the mutations above; returns what was emitted.
-  let handle
-    (msg: EnemyMsg)
-    (model: EnemiesModel)
-    (path: Vector2[])
-    : EnemyEvent[] =
-    match msg with
-    | Spawn def ->
-      spawn def model path
-      Array.empty
-    | SpawnAt(def, pos, progress, pathIndex) ->
-      spawnAt def pos progress pathIndex model
-      Array.empty
-    | ApplyDamage(eid, amount) -> applyDamage eid amount model
-    | ApplySlow slow ->
-      applySlow slow model
-      Array.empty
-    | Despawn eid ->
-      despawn eid model
-      Array.empty
 
   // ── Hot path (movement / "physics" phase) — direct values, no closures ──
 

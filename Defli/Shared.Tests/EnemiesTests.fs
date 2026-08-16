@@ -24,7 +24,7 @@ let tests =
     testCase "spawn adds rows to all maps + projections" (fun () ->
       let m = model()
 
-      let _ = Enemies.handle (EnemyMsg.Spawn Fixtures.grunt) m map.Path
+      let _ = Enemies.spawn Fixtures.grunt m map.Path
       let m' = m
 
       Expect.equal ((m'.Healths |> AMap.getValue).Count) 1 "healths"
@@ -42,7 +42,7 @@ let tests =
     testCase "spawn is atomic across maps" (fun () ->
       let m = model()
 
-      let _ = Enemies.handle (EnemyMsg.Spawn Fixtures.tank) m map.Path
+      let _ = Enemies.spawn Fixtures.tank m map.Path
       let m' = m
 
       // All four rows share the same key.
@@ -58,11 +58,7 @@ let tests =
         let m = model()
         let pos = Vector2(100f, 200f)
 
-        let _ =
-          Enemies.handle
-            (EnemyMsg.SpawnAt(Fixtures.grunt, pos, 0.5f, 2))
-            m
-            map.Path
+        let _ = Enemies.spawnAt Fixtures.grunt pos 0.5f 2 m
 
         let m' = m
         let eid = 0<EnemyId>
@@ -83,12 +79,12 @@ let tests =
     testCase "damage reduces HP; death emits Killed with reward" (fun () ->
       let m = model()
 
-      let _ = Enemies.handle (EnemyMsg.Spawn Fixtures.grunt) m map.Path
+      let _ = Enemies.spawn Fixtures.grunt m map.Path
       let m' = m
 
       let eid = 0<EnemyId>
 
-      let events = Enemies.handle (EnemyMsg.ApplyDamage(eid, 10)) m' map.Path
+      let events = Enemies.applyDamage eid 10 m'
       let m2 = m'
 
       Expect.equal events.Length 0 "not dead yet"
@@ -98,7 +94,7 @@ let tests =
         Expect.equal h.Hp (Fixtures.grunt.Hp - 10) "hp after 10 damage"
       | ValueNone -> failtest "enemy must exist"
 
-      let events = Enemies.handle (EnemyMsg.ApplyDamage(eid, 100)) m2 map.Path
+      let events = Enemies.applyDamage eid 100 m2
       let m3 = m2
 
       match events with
@@ -114,10 +110,10 @@ let tests =
     testCase "despawn removes rows everywhere" (fun () ->
       let m = model()
 
-      let _ = Enemies.handle (EnemyMsg.Spawn Fixtures.runner) m map.Path
+      let _ = Enemies.spawn Fixtures.runner m map.Path
       let m' = m
 
-      let _ = Enemies.handle (EnemyMsg.Despawn(0<EnemyId>)) m' map.Path
+      let _ = Enemies.despawn (0<EnemyId>) m'
       let m2 = m'
 
       Expect.equal ((m2.Healths |> AMap.getValue).Count) 0 "healths"
@@ -130,7 +126,7 @@ let tests =
     testCase "movement advances along waypoints" (fun () ->
       let m = model()
 
-      let _ = Enemies.handle (EnemyMsg.Spawn Fixtures.runner) m map.Path
+      let _ = Enemies.spawn Fixtures.runner m map.Path
       let m' = m
 
       let eid = 0<EnemyId>
@@ -147,7 +143,7 @@ let tests =
     testCase "arrival at base emits ReachedBase and removes rows" (fun () ->
       let m = model()
 
-      let _ = Enemies.handle (EnemyMsg.Spawn Fixtures.runner) m map.Path
+      let _ = Enemies.spawn Fixtures.runner m map.Path
       let m' = m
 
       let eid = 0<EnemyId>
@@ -177,20 +173,19 @@ let tests =
     testCase "slow modifies speed and expires" (fun () ->
       let m = model()
 
-      let _ = Enemies.handle (EnemyMsg.Spawn Fixtures.grunt) m map.Path
+      let _ = Enemies.spawn Fixtures.grunt m map.Path
       let m' = m
 
       let eid = 0<EnemyId>
 
       let _ =
-        Enemies.handle
-          (EnemyMsg.ApplySlow {
+        Enemies.applySlow
+          {
             Enemy = eid
             Factor = 0.5f
             Seconds = 1.0f
-          })
+          }
           m'
-          map.Path
 
       let m2 = m'
 
@@ -212,7 +207,7 @@ let tests =
     testCase "flier flies the straight line spawn → base" (fun () ->
       let m = model()
 
-      let _ = Enemies.handle (EnemyMsg.Spawn Fixtures.flier) m map.Path
+      let _ = Enemies.spawn Fixtures.flier m map.Path
       let m' = m
 
       let eid = 0<EnemyId>
@@ -244,7 +239,7 @@ let tests =
     testCase "flier arrives at the base and emits ReachedBase" (fun () ->
       let m = model()
 
-      let _ = Enemies.handle (EnemyMsg.Spawn Fixtures.flier) m map.Path
+      let _ = Enemies.spawn Fixtures.flier m map.Path
       let m' = m
 
       let eid = 0<EnemyId>

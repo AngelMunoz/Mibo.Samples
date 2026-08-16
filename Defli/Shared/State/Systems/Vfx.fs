@@ -71,9 +71,6 @@ type VfxModel() =
   member val Placement = VfxPool 128 with get, set
   member val BaseHit = VfxPool 128 with get, set
 
-[<Struct>]
-type VfxMsg = Burst of kind: VfxKind * pos: Vector2
-
 module Vfx =
 
   let init() = VfxModel()
@@ -99,39 +96,37 @@ module Vfx =
   /// Cold path: spawn a burst into the kind's pool (deterministic
   /// spread — index-based angles, three speed tiers, golden-angle
   /// rotation so overlapping puffs don't read as copies).
-  let handle (msg: VfxMsg) (model: VfxModel) : unit =
-    match msg with
-    | Burst(kind, pos) ->
-      let struct (count, speed, size, _, _, _, _) = paramsOf kind
+  let burst (kind: VfxKind) (pos: Vector2) (model: VfxModel) : unit =
+    let struct (count, speed, size, _, _, _, _) = paramsOf kind
 
-      let pool =
-        match kind with
-        | Impact -> model.Impact
-        | Explosion -> model.Explosion
-        | DeathPoof -> model.DeathPoof
-        | Muzzle -> model.Muzzle
-        | Placement -> model.Placement
-        | BaseHit -> model.BaseHit
+    let pool =
+      match kind with
+      | Impact -> model.Impact
+      | Explosion -> model.Explosion
+      | DeathPoof -> model.DeathPoof
+      | Muzzle -> model.Muzzle
+      | Placement -> model.Placement
+      | BaseHit -> model.BaseHit
 
-      let mutable i = 0
+    let mutable i = 0
 
-      while i < count && pool.Count < pool.Particles.Length do
-        let angle = float32 i / float32 count * 2f * MathF.PI
-        let tier = float32(i % 3 + 1)
-        let dir = Vector2(MathF.Cos angle, MathF.Sin angle)
-        let velocity = dir * (speed * tier)
+    while i < count && pool.Count < pool.Particles.Length do
+      let angle = float32 i / float32 count * 2f * MathF.PI
+      let tier = float32(i % 3 + 1)
+      let dir = Vector2(MathF.Cos angle, MathF.Sin angle)
+      let velocity = dir * (speed * tier)
 
-        pool.Particles[pool.Count] <-
-          {
-            Position = pos
-            Size = Vector2(size, size)
-            Rotation = float32((i * 137) % 360)
-            Color = Color.White
-          }
+      pool.Particles[pool.Count] <-
+        {
+          Position = pos
+          Size = Vector2(size, size)
+          Rotation = float32((i * 137) % 360)
+          Color = Color.White
+        }
 
-        pool.Velocities[pool.Count] <- velocity
-        pool.Count <- pool.Count + 1
-        i <- i + 1
+      pool.Velocities[pool.Count] <- velocity
+      pool.Count <- pool.Count + 1
+      i <- i + 1
 
   let inline private stepPool dt (kind: VfxKind) (pool: VfxPool) =
     let struct (_, _, _, fadeSpeed, growth, rise, damp) = paramsOf kind

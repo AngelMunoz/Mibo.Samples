@@ -13,9 +13,6 @@ open Defli.State
 // ─────────────────────────────────────────────────────────────
 
 [<Struct>]
-type WaveMsg = | StartNextWave
-
-[<Struct>]
 type WaveEvent =
   | WaveStarted of wave: WaveDef
   | WaveCleared
@@ -23,7 +20,6 @@ type WaveEvent =
 type WavesModel() =
   member val WaveNumber = CVal.create 0 with get, set
   member val WaveActive = CVal.create false with get, set
-  member val Events = ResizeArray<WaveEvent>() with get, set
   /// Difficulty scale derived from WaveNumber (Phase 5: enemies get
   /// harder every 5 waves) — an aval projection over the wave state.
   member val Scale: aval<WaveScale> = Unchecked.defaultof<_> with get, set
@@ -36,8 +32,6 @@ module Waves =
     m.WaveNumber
     |> AVal.map3
       (fun active scale number ->
-        Telemetry.banner <- Telemetry.banner + 1
-
         if active then
           if scale.Hp > 1f then
             $"Wave %d{number}  x%.2f{scale.Hp}"
@@ -114,30 +108,27 @@ module Waves =
 
   /// Cold path: start the next wave (no-op while one is active or the
   /// game is over — Application guards game-over).
-  let handle (msg: WaveMsg) (model: WavesModel) : WaveEvent[] =
-    match msg with
-    | StartNextWave ->
-      let waveActive = model.WaveActive |> AVal.getValue
+  let startNextWave(model: WavesModel) : WaveEvent[] =
+    let waveActive = model.WaveActive |> AVal.getValue
 
-      if waveActive then
-        Array.empty
-      else
-        let waveNumber = model.WaveNumber |> AVal.getValue
-        let number = waveNumber + 1
-        let wave = composeWave number
+    if waveActive then
+      Array.empty
+    else
+      let waveNumber = model.WaveNumber |> AVal.getValue
+      let number = waveNumber + 1
+      let wave = composeWave number
 
-        Transaction.run(fun () ->
-          model.WaveNumber.Set number
-          model.WaveActive.Set true)
+      Transaction.run(fun () ->
+        model.WaveNumber.Set number
+        model.WaveActive.Set true)
 
-        [| WaveStarted wave |]
+      [| WaveStarted wave |]
 
   /// Hot path — waves are MANUALLY gated: nothing runs while idle; the
   /// player presses Enter to start the next wave. `aliveCount` and
   /// `queueEmpty` are direct values from the sim update (Enemies.AliveCount
   /// aval + Spawning queue, respectively).
   let tick
-    (dt: float32)
     (model: WavesModel)
     (aliveCount: aval<int>)
     (queueEmpty: bool)

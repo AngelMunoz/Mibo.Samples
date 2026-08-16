@@ -37,11 +37,12 @@ type State = {
   Economy: Economy.EconomyModel
   Camera: Camera.CameraModel
 
-  /// The last GameTime the host handed to update — forced into the
-  /// frame so the draw side (shader-driven auras) animates on the
-  /// sim's clock instead of a backend-specific one. Presentation-only
-  /// state; the sim itself never reads it.
-  mutable LastTime: GameTime
+  /// The sim's clock root — written by Application.update every step
+  /// (paused included) and packed into the frame as Time, so the draw
+  /// side (shader-driven auras) rides the sim's clock instead of a
+  /// backend-specific one. A root rather than a mutable field: the
+  /// frame force stays a pure State → RenderFrame mapping.
+  Clock: cval<GameTime>
 
   /// Tower kind the next placement uses — a CVal because the
   /// PlacementPreview projection joins on it (cold path writes).
@@ -105,6 +106,12 @@ module State =
     let hoverCell = CVal.create ValueNone
     let paused = CVal.create false
 
+    let clock =
+      CVal.create {
+        TotalTime = TimeSpan.Zero
+        ElapsedGameTime = TimeSpan.Zero
+      }
+
     let projections =
       Projections(
         enemies,
@@ -127,10 +134,7 @@ module State =
       Vfx = vfx
       Economy = economy
       Camera = camera
-      LastTime = {
-        TotalTime = TimeSpan.Zero
-        ElapsedGameTime = TimeSpan.Zero
-      }
+      Clock = clock
       SelectedTower = selectedTower
       HoverCell = hoverCell
       Paused = paused

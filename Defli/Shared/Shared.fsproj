@@ -12,7 +12,6 @@
     <Compile Include="State/Tiles.fs" />
     <Compile Include="Diagnostics.fs" />
     <Compile Include="Shell.fs" />
-    <Compile Include="Telemetry.fs" />
     <Compile Include="State/Systems/Map.fs" />
     <Compile Include="State/Systems/Enemies.fs" />
     <Compile Include="State/Systems/Spawning.fs" />

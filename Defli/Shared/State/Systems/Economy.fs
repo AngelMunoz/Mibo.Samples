@@ -10,12 +10,6 @@ open Defli.State
 // and arrivals reach it via Application-translated events.
 // ─────────────────────────────────────────────────────────────
 
-[<Struct>]
-type EconomyMsg =
-  | SpendGold of amount: int
-  | EarnGold of amount: int
-  | LoseLife
-
 type EconomyModel() =
   member val Gold = CVal.create 0 with get, set
   member val Lives = CVal.create 0 with get, set
@@ -29,22 +23,18 @@ module Economy =
     m.Gold.Set cfg.StartingGold
     m.Lives.Set cfg.StartingLives
 
-    m.GameOver <-
-      m.Lives
-      |> AVal.map(fun lives ->
-        Telemetry.gameOver <- Telemetry.gameOver + 1
-        lives <= 0)
+    m.GameOver <- m.Lives |> AVal.map(fun lives -> lives <= 0)
 
     m
 
-  let handle (msg: EconomyMsg) (model: EconomyModel) : unit =
-    match msg with
-    | SpendGold amount ->
-      let gold = model.Gold |> AVal.getValue
-      model.Gold.UpdateTo(max 0 (gold - amount)) |> ignore
-    | EarnGold amount ->
-      let gold = model.Gold |> AVal.getValue
-      model.Gold.UpdateTo(gold + amount) |> ignore
-    | LoseLife ->
-      let lives = model.Lives |> AVal.getValue
-      model.Lives.UpdateTo(max 0 (lives - 1)) |> ignore
+  let inline spendGold (amount: int) (model: EconomyModel) : unit =
+    let gold = model.Gold |> AVal.getValue
+    model.Gold.UpdateTo(max 0 (gold - amount)) |> ignore
+
+  let inline earnGold (amount: int) (model: EconomyModel) : unit =
+    let gold = model.Gold |> AVal.getValue
+    model.Gold.UpdateTo(gold + amount) |> ignore
+
+  let inline loseLife(model: EconomyModel) : unit =
+    let lives = model.Lives |> AVal.getValue
+    model.Lives.UpdateTo(max 0 (lives - 1)) |> ignore

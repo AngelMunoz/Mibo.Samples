@@ -22,13 +22,6 @@ open Defli
 // ─────────────────────────────────────────────────────────────
 
 [<Struct>]
-type TowerMsg =
-  | Place of struct (struct (int * int) * TowerDef)
-  /// Cold path: bump the tower's level (Application validates gold
-  /// and the cap before sending).
-  | Upgrade of tower: int<TowerId>
-
-[<Struct>]
 type TowerEvent = Fired of shot: TowerShot
 
 type TowersModel() =
@@ -62,8 +55,6 @@ module Towers =
     AMap.joinOn m.Statics m.Levels (fun tid _ -> tid) (fun _ staticV levelV ->
       AVal.map2
         (fun s level ->
-          Telemetry.effectiveDef <- Telemetry.effectiveDef + 1
-
           ValueSome(
             TowerDefs.effectiveDef s.Def (level |> ValueOption.defaultValue 1)
           ))
@@ -76,25 +67,30 @@ module Towers =
     m
 
   /// Cold path: place a tower. Application validates (buildable tile,
-  /// occupancy, gold) before sending — this only writes the rows.
-  let handle (msg: TowerMsg) (model: TowersModel) : unit =
-    match msg with
-    | Place(cell, def) ->
-      let tid = model.NextId
-      model.NextId <- model.NextId + 1<TowerId>
+  /// occupancy, gold) before calling — this only writes the rows.
+  let place
+    (cell: struct (int * int))
+    (def: TowerDef)
+    (model: TowersModel)
+    : unit =
+    let tid = model.NextId
+    model.NextId <- model.NextId + 1<TowerId>
 
-      Transaction.run(fun () ->
-        model.Statics |> CMap.addOrUpdate tid { Def = def; Cell = cell }
+    Transaction.run(fun () ->
+      model.Statics |> CMap.addOrUpdate tid { Def = def; Cell = cell }
 
-        model.Runtimes
-        |> CMap.addOrUpdate tid { Cooldown = 0f; Target = ValueNone }
+      model.Runtimes
+      |> CMap.addOrUpdate tid { Cooldown = 0f; Target = ValueNone }
 
-        model.CellIndex |> CMap.addOrUpdate cell tid)
-    | Upgrade tid ->
-      let level =
-        model.Levels |> CMap.tryGetValue tid |> ValueOption.defaultValue 1
+      model.CellIndex |> CMap.addOrUpdate cell tid)
 
-      model.Levels |> CMap.addOrUpdate tid (level + 1)
+  /// Cold path: bump the tower's level (Application validates gold and
+  /// the cap before calling).
+  let upgrade (tid: int<TowerId>) (model: TowersModel) : unit =
+    let level =
+      model.Levels |> CMap.tryGetValue tid |> ValueOption.defaultValue 1
+
+    model.Levels |> CMap.addOrUpdate tid (level + 1)
 
   /// Hot path: cooldown decay + target acquisition + fire.
   /// `alive` is a transient read of Enemies.Alive and `suppression`

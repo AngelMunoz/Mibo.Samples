@@ -55,8 +55,6 @@ type Projections
       (fun _ (rowV: aval<ProjectileRow>) (posV: aval<Vector2 voption>) ->
         AVal.map2
           (fun (row: ProjectileRow) (pos: Vector2 voption) ->
-            Telemetry.homingJoin <- Telemetry.homingJoin + 1
-
             ValueSome {
               Pos = row.Pos
               TargetPos = pos |> ValueOption.defaultValue row.LastTargetPos
@@ -85,9 +83,7 @@ type Projections
       |> AMap.filter(fun _ bossPos ->
         Vector2.Distance(bossPos, center) <= BossAura.Radius)
       |> AMap.count
-      |> AVal.map(fun n ->
-        Telemetry.suppression <- Telemetry.suppression + 1
-        if n > 0 then BossAura.Factor else 1f))
+      |> AVal.map(fun n -> if n > 0 then BossAura.Factor else 1f))
 
   /// #10 RangeRing — hovered own tower → its EFFECTIVE def (the view
   /// draws the range circle). The chain composes derived-on-derived:
@@ -97,9 +93,7 @@ type Projections
     |> AVal.bind(fun cell ->
       match cell with
       | ValueNone -> AVal.constant ValueNone
-      | ValueSome c ->
-        Telemetry.rangeRing <- Telemetry.rangeRing + 1
-        towers.CellIndex |> AMap.tryFind c)
+      | ValueSome c -> towers.CellIndex |> AMap.tryFind c)
     |> AVal.bind(fun tid ->
       match tid with
       | ValueNone -> AVal.constant ValueNone
@@ -128,8 +122,6 @@ type Projections
           |> AMap.tryFind cellKey
           |> AVal.map3
             (fun gold def occupied ->
-              Telemetry.placementPreview <- Telemetry.placementPreview + 1
-
               if ValueOption.isSome occupied then PlacementStatus.Blocked
               elif gold >= def.Cost then PlacementStatus.Affordable
               else PlacementStatus.TooExpensive)

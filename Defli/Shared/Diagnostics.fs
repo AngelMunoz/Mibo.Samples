@@ -6,15 +6,15 @@ open System.Numerics
 open Mibo.Adaptive
 open Defli.State
 // ─────────────────────────────────────────────────────────────
-// Diagnostics overlay — Kimo's Systems/Diagnostics.fs pattern,
+// Diagnostics overlay — windowed rate/cost sampling
 // simplified for the same-thread state: no bridge, no per-state
 // regions. Two windowed lines, refreshed at the window boundary
 // only (formatting every frame would allocate on the hot path).
 //
-//   FrameDiag — main-MVU frame rates (UpdateHz/Fps/FrameMs/WorstMs).
+//   FrameDiag — host-loop frame rates (UpdateHz/Fps/FrameMs/WorstMs).
 //               Rates are WINDOWED COUNTS (events per measured
 //               wall-clock window), never an EMA of 1/interval.
-//   WorldDiag — sim-side cost sampled inside RoomTick: TickHz
+//   WorldDiag — sim-side cost sampled inside the update tick: TickHz
 //               (windowed), SimMs (EMA of the tick body cost),
 //               live entity/queue counts.
 //
@@ -45,14 +45,14 @@ type FrameDiag() =
 type WorldDiag() =
   /// Ticks per second over the last window.
   member val TickHz: float32 = 0f with get, set
-  /// EMA of the wall-clock cost of one RoomTick body.
+  /// EMA of the wall-clock cost of one update tick body.
   member val SimMs: float32 = 0f with get, set
   member val TickCount: int64 = 0L with get, set
   member val AliveEnemies: int = 0 with get, set
   member val QueueCount: int = 0 with get, set
   /// Preformatted overlay line, refreshed per window.
   member val Display: string = "" with get, set
-  // Bookkeeping (sampled inside RoomTick only).
+  // Bookkeeping (sampled inside the update tick only).
   member val WindowStartStamp: int64 = 0L with get, set
   member val WindowTicks: int = 0 with get, set
 
@@ -60,10 +60,10 @@ module Diagnostics =
 
   let private windowSeconds = 0.5
 
-  /// Wall-clock timestamp at the start of a RoomTick body.
+  /// Wall-clock timestamp at the start of the update tick body.
   let inline tickStart() : int64 = Stopwatch.GetTimestamp()
 
-  /// Counts one update-loop Tick (rate computed at window refresh).
+  /// Counts one update-loop tick (rate computed at window refresh).
   let inline update(diag: FrameDiag) =
     diag.WindowUpdates <- diag.WindowUpdates + 1L
 
@@ -102,7 +102,7 @@ module Diagnostics =
       diag.Display <-
         $"Update: {diag.UpdateHz:F0} Hz | Draw: {diag.Fps:F0} FPS | {diag.FrameMs:F1} ms | worst {diag.WorstMs:F1} ms"
 
-  /// Folds one RoomTick into the world diagnostics: windowed tick rate,
+  /// Folds one update tick into the world diagnostics: windowed tick rate,
   /// sim cost EMA, live counts. t0 is the tickStart() stamp; alive/queue
   /// are the direct values already computed by the sim update this tick.
   let tickEnd (t0: int64) (diag: WorldDiag) (alive: aval<int>) (queue: int) =

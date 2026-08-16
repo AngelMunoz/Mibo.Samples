@@ -24,8 +24,8 @@ let private positionsAt(pos: Vector2) =
   d
 
 let private spawnAt (m: ProjectilesModel) (pos: Vector2) =
-  Projectiles.handle
-    (ProjectileMsg.Spawn {
+  Projectiles.spawn
+    {
       Pos = pos
       TargetEnemy = target
       LastTargetPos = pos
@@ -35,7 +35,7 @@ let private spawnAt (m: ProjectilesModel) (pos: Vector2) =
       SlowSeconds = 0f
       SplashRadius = 0f
       ProjectileSprite = "rocket_small"
-    })
+    }
     m
 
   m
@@ -45,8 +45,8 @@ let tests =
     testCase "spawn adds a row" (fun () ->
       let m = model()
 
-      Projectiles.handle
-        (ProjectileMsg.Spawn {
+      Projectiles.spawn
+        {
           Pos = Vector2.Zero
           TargetEnemy = target
           LastTargetPos = Vector2.Zero
@@ -56,7 +56,7 @@ let tests =
           SlowSeconds = 0f
           SplashRadius = 0f
           ProjectileSprite = "rocket_small"
-        })
+        }
         m
 
       Expect.equal ((m.Rows |> AMap.getValue).Count) 1 "one row"
@@ -96,8 +96,8 @@ let tests =
       // Frost-style shot: slowFactor 0.5 for 2 s.
       let mutable m = model()
 
-      Projectiles.handle
-        (ProjectileMsg.Spawn {
+      Projectiles.spawn
+        {
           Pos = Vector2(10f, 0f)
           TargetEnemy = target
           LastTargetPos = Vector2(10f, 0f)
@@ -107,7 +107,7 @@ let tests =
           SlowSeconds = 2f
           SplashRadius = 0f
           ProjectileSprite = "rocket_small"
-        })
+        }
         m
 
       let m' = m
@@ -181,8 +181,8 @@ let tests =
     testCase "spawn carries the splash payload to Impact" (fun () ->
       let mutable m = model()
 
-      Projectiles.handle
-        (ProjectileMsg.Spawn {
+      Projectiles.spawn
+        {
           Pos = Vector2(10f, 0f)
           TargetEnemy = target
           LastTargetPos = Vector2(10f, 0f)
@@ -192,7 +192,7 @@ let tests =
           SlowSeconds = 0f
           SplashRadius = 96f
           ProjectileSprite = "rocket_large"
-        })
+        }
         m
 
       let m' = m
@@ -236,11 +236,7 @@ let tests =
         // State-owned projection — build the pieces it joins.
         let enemies = Enemies.Enemies.init()
 
-        let _ =
-          Enemies.Enemies.handle
-            (EnemyMsg.Spawn Fixtures.runner)
-            enemies
-            map.Path
+        let _ = Enemies.Enemies.spawn Fixtures.runner enemies map.Path
 
         let enemies' = enemies
         let eid = 0<EnemyId>
@@ -283,7 +279,7 @@ let tests =
         // Kill the enemy (despawn): the homing entry STAYS — the render
         // row falls back to the projectile's LastTargetPos (the sim
         // flies the shot to the detonation point; no render-side pop).
-        let _ = Enemies.Enemies.handle (EnemyMsg.Despawn eid) enemies2 map.Path
+        let _ = Enemies.Enemies.despawn eid enemies2
 
         let enemies3 = enemies2
         let rows3 = projections.Homing |> AMap.getValue

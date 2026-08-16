@@ -16,9 +16,6 @@ open Defli.State
 // ─────────────────────────────────────────────────────────────
 
 [<Struct>]
-type SpawnMsg = FillWave of wave: WaveDef
-
-[<Struct>]
 type SpawnEvent =
   | SpawnEnemy of def: EnemyDef
   | SpawnFailed of reason: string
@@ -65,30 +62,27 @@ module Spawning =
   /// at their fixed delays (the boss leads), then one weighted pick
   /// per spawn, spaced by the wave's interval. Each entry carries its
   /// own remaining delay, so queue order never affects timing.
-  let handle (msg: SpawnMsg) (model: SpawningModel) : SpawnEvent[] =
-    match msg with
-    | FillWave wave ->
-      model.Queue.Clear()
-      let queue = model.Queue
+  let fillWave (wave: WaveDef) (model: SpawningModel) : SpawnEvent[] =
+    model.Queue.Clear()
+    let queue = model.Queue
 
-      for struct (def, delay) in wave.ExtraSpawns do
+    for struct (def, delay) in wave.ExtraSpawns do
+      queue.Add struct (def, delay)
+
+    let mutable delay = wave.InitialDelay
+    let mutable failed = false
+
+    for _ in 1 .. wave.Count do
+      match pickKey model.Rng wave.Table with
+      | ValueSome def ->
         queue.Add struct (def, delay)
+        delay <- delay + wave.Interval
+      | ValueNone -> failed <- true
 
-      let mutable delay = wave.InitialDelay
-      let mutable failed = false
-
-      for _ in 1 .. wave.Count do
-        match pickKey model.Rng wave.Table with
-        | ValueSome def ->
-          queue.Add struct (def, delay)
-          delay <- delay + wave.Interval
-        | ValueNone -> failed <- true
-
-
-      (if failed then
-         [| SpawnFailed "empty wave table" |]
-       else
-         Array.empty)
+    if failed then
+      [| SpawnFailed "empty wave table" |]
+    else
+      Array.empty
 
   /// Hot path: drain the queue — decrement delays, emit due spawns,
   /// swap-remove (order is not significant, Kimo's pattern).

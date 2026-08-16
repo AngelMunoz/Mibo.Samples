@@ -67,7 +67,7 @@ let tests =
       let m = model()
       let cell = struct (3, 3)
 
-      Towers.handle (TowerMsg.Place(cell, def)) m
+      Towers.place cell def m
       let m' = m
 
       Expect.equal (m'.Statics |> AMap.getValue).Count 1 "statics"
@@ -85,7 +85,7 @@ let tests =
       let m = model()
       let cell = struct (3, 3)
 
-      Towers.handle (TowerMsg.Place(cell, def)) m
+      Towers.place cell def m
       let m' = m
 
       // Range 2 cells ≈ 128 px; enemy is far away.
@@ -105,7 +105,7 @@ let tests =
       let m = model()
       let cell = struct (3, 3)
 
-      Towers.handle (TowerMsg.Place(cell, def)) m
+      Towers.place cell def m
       let m' = m
 
       // Tower center (3,3) = (224, 224); enemy one cell east = in range 2.
@@ -132,7 +132,7 @@ let tests =
       let m = model()
       let cell = struct (3, 3)
 
-      Towers.handle (TowerMsg.Place(cell, def)) m
+      Towers.place cell def m
       let m' = m
 
       // Two enemies both in range; the one with higher progress wins.
@@ -196,7 +196,7 @@ let tests =
     let picked(policy: TargetPolicy) : int<EnemyId> =
       let m = model()
 
-      Towers.handle (TowerMsg.Place(struct (3, 3), defWith policy)) m
+      Towers.place (struct (3, 3)) (defWith policy) m
       let m' = m
 
       let events =
@@ -243,9 +243,7 @@ let tests =
 
       let m = model()
 
-      Towers.handle
-        (TowerMsg.Place(struct (3, 3), defWith TargetPolicy.Closest))
-        m
+      Towers.place (struct (3, 3)) (defWith TargetPolicy.Closest) m
 
       let m' = m
 
@@ -265,7 +263,7 @@ let tests =
       let m = model()
       let cell = struct (3, 3)
 
-      Towers.handle (TowerMsg.Place(cell, TowerDefs.frost)) m
+      Towers.place cell TowerDefs.frost m
       let m' = m
 
       let alive =
@@ -287,7 +285,7 @@ let tests =
       let m = model()
       let cell = struct (3, 3)
 
-      Towers.handle (TowerMsg.Place(cell, TowerDefs.cannon)) m
+      Towers.place cell TowerDefs.cannon m
       let m' = m
 
       let alive =
@@ -311,11 +309,11 @@ let tests =
         let m = model()
         let cell = struct (3, 3)
 
-        Towers.handle (TowerMsg.Place(cell, def)) m
+        Towers.place cell def m
         let m' = m
 
         // Level 2: +10 % fire rate → the cooldown must shrink.
-        Towers.handle (TowerMsg.Upgrade(0<TowerId>)) m'
+        Towers.upgrade (0<TowerId>) m'
         let m2 = m'
 
         let alive =
@@ -340,7 +338,7 @@ let tests =
         let m = model()
         let cell = struct (3, 3)
 
-        Towers.handle (TowerMsg.Place(cell, def)) m
+        Towers.place cell def m
         let m' = m
 
         let suppression = Dictionary<int<TowerId>, float32>()
@@ -368,7 +366,7 @@ let tests =
         let m = model()
         let cell = struct (3, 3)
 
-        Towers.handle (TowerMsg.Place(cell, def)) m
+        Towers.place cell def m
         let m' = m
         let tid = 0<TowerId>
 
@@ -381,7 +379,7 @@ let tests =
         | ValueNone -> failtest "effective def must exist"
 
         // Level 2 → +25 % damage, +10 % fire rate, +0.5 range.
-        Towers.handle (TowerMsg.Upgrade tid) m'
+        Towers.upgrade tid m'
         let m2 = m'
 
         match m2.Levels |> CMap.tryGetValue tid with
@@ -401,7 +399,7 @@ let tests =
       let m = model()
       let cell = struct (3, 3)
 
-      Towers.handle (TowerMsg.Place(cell, def)) m
+      Towers.place cell def m
       let m' = m
 
       let alive =

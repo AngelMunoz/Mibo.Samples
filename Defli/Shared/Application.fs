@@ -12,17 +12,15 @@ open Defli.State.Systems
 // ─────────────────────────────────────────────────────────────
 // Application — the host-facing driver AND the Update phase (the
 // ex-Router). There is no Msg, no Cmd: `update` runs the nine
-// systems in Kimo order; systems emit events as data, and update
-// posts the five handle* translations through the `post` callback as
-// intents. The caller wires `post` to the runner's queue
+// systems in order; systems emit events as data, and update posts
+// the five handle* translations through the intent queue
 // (`ctx.Intents.post`), so the sim never depends on the IntentQueue
-// type. The runner drains the queue after Update and before the frame
-// is forced, in post order — the same order Defli's Cmd batch
-// translated them. The cold paths are the host-facing handlers
-// (startNextWave / placeTower / upgradeTower / selectTower /
-// apply*Msg): they stay synchronous Immediate-semantics handlers,
-// validation unchanged from Defli's original router. Windowed frontends
-// deliver input through subscriptions that post intents.
+// type. The runner drains the queue after Update and before the
+// frame is forced, in post order — the same order Defli's Cmd batch
+// translated them. The cold paths (startNextWave / placeTower /
+// upgradeTower / selectTower) are plain synchronous handlers,
+// validation unchanged from Defli's original router. Windowed
+// frontends deliver input through subscriptions that post intents.
 //
 // The event flow is one direction: systems emit, the handlers
 // translate, and only ApplyDamage (→ Killed), FillWave (→
@@ -86,10 +84,10 @@ module Application =
           |> ValueOption.map(fun mv -> struct (mv.Progress, mv.PathIndex))
           |> ValueOption.defaultValue struct (0f, 0)
 
-        Economy.Economy.handle (Economy.EarnGold reward) state.Economy
+        Economy.Economy.earnGold reward state.Economy
         Enemies.Enemies.despawn eid state.Enemies
 
-        Vfx.Vfx.handle (Vfx.Burst(Vfx.VfxKind.DeathPoof, pos)) state.Vfx
+        Vfx.Vfx.burst Vfx.VfxKind.DeathPoof pos state.Vfx
 
         // Boss split-on-death (Phase 6): grunts burst from the corpse.
         // Spawned SYNCHRONOUSLY (the FillWave-on-WaveStarted precedent):
@@ -116,8 +114,8 @@ module Application =
       | Enemies.ReachedBase _ ->
         let basePos = Cells.center state.Map.BaseCell (State.cellSize state)
 
-        Economy.Economy.handle Economy.LoseLife state.Economy
-        Vfx.Vfx.handle (Vfx.Burst(Vfx.VfxKind.BaseHit, basePos)) state.Vfx
+        Economy.Economy.loseLife state.Economy
+        Vfx.Vfx.burst Vfx.VfxKind.BaseHit basePos state.Vfx
         Camera.Camera.handle (Camera.Shake 8f) state.Camera
 
   let handleSpawnEvents
@@ -138,14 +136,11 @@ module Application =
         // would leave one frame where the wave is active with an empty
         // queue, and the clear check would fire instantly (the wave
         // starts and clears without spawning anything).
-        let spawnEvents =
-          Spawning.Spawning.handle (Spawning.FillWave wave) state.Spawning
+        let spawnEvents = Spawning.Spawning.fillWave wave state.Spawning
 
         handleSpawnEvents state spawnEvents
       | Waves.WaveCleared ->
-        Economy.Economy.handle
-          (Economy.EarnGold state.Config.WaveClearBonus)
-          state.Economy
+        Economy.Economy.earnGold state.Config.WaveClearBonus state.Economy
 
   let handleProjectileEvents
     (post: (unit -> unit) -> unit)
@@ -183,9 +178,7 @@ module Application =
           post(fun () ->
             handleEnemyEvents state events
 
-            Vfx.Vfx.handle
-              (Vfx.Burst(Vfx.VfxKind.Explosion, impact.Pos))
-              state.Vfx)
+            Vfx.Vfx.burst Vfx.VfxKind.Explosion impact.Pos state.Vfx)
         else
           let enemyEvents =
             Enemies.Enemies.applyDamage impact.Enemy impact.Damage state.Enemies
@@ -201,7 +194,7 @@ module Application =
               }
               state.Enemies
 
-          Vfx.Vfx.handle (Vfx.Burst(Vfx.VfxKind.Impact, impact.Pos)) state.Vfx
+          Vfx.Vfx.burst Vfx.VfxKind.Impact impact.Pos state.Vfx
 
   let handleTowerEvents (state: State) (events: Towers.TowerEvent seq) : unit =
     for ev in events do
@@ -232,8 +225,8 @@ module Application =
           |> CMap.tryGetValue shot.Enemy
           |> ValueOption.defaultValue pos
 
-        Projectiles.Projectiles.handle
-          (Projectiles.Spawn {
+        Projectiles.Projectiles.spawn
+          {
             Pos = pos
             TargetEnemy = shot.Enemy
             LastTargetPos = lastTargetPos
@@ -243,10 +236,10 @@ module Application =
             SlowSeconds = shot.SlowSeconds
             SplashRadius = shot.SplashRadius
             ProjectileSprite = shot.ProjectileSprite
-          })
+          }
           state.Projectiles
 
-        Vfx.Vfx.handle (Vfx.Burst(Vfx.VfxKind.Muzzle, pos)) state.Vfx
+        Vfx.Vfx.burst Vfx.VfxKind.Muzzle pos state.Vfx
 
   // ── The per-frame sim (ex-Router.update) ───────────────────────────
 
@@ -256,7 +249,7 @@ module Application =
   /// The player starts the next wave. No-op on game over.
   let inline startNextWave(state: State) : unit =
     if not(AVal.getValue state.Economy.GameOver) then
-      let events = Waves.Waves.handle Waves.WaveMsg.StartNextWave state.Waves
+      let events = Waves.Waves.startNextWave state.Waves
 
       handleWaveEvents state events
 
@@ -274,14 +267,12 @@ module Application =
     let affordable = AVal.getValue state.Economy.Gold >= def.Cost
 
     if tileOk && not occupied && affordable then
-      Towers.Towers.handle (Towers.Place(cell, def)) state.Towers
-      Economy.Economy.handle (Economy.SpendGold def.Cost) state.Economy
+      Towers.Towers.place cell def state.Towers
+      Economy.Economy.spendGold def.Cost state.Economy
 
-      Vfx.Vfx.handle
-        (Vfx.Burst(
-          Vfx.VfxKind.Placement,
-          Cells.center cell (State.cellSize state)
-        ))
+      Vfx.Vfx.burst
+        Vfx.VfxKind.Placement
+        (Cells.center cell (State.cellSize state))
         state.Vfx
 
       true
@@ -311,31 +302,21 @@ module Application =
       if capped || not affordable then
         false
       else
-        Towers.Towers.handle (Towers.Upgrade tid) state.Towers
-        Economy.Economy.handle (Economy.SpendGold def.UpgradeCost) state.Economy
+        Towers.Towers.upgrade tid state.Towers
+        Economy.Economy.spendGold def.UpgradeCost state.Economy
         true
 
   /// Player switched the tower kind to place (cold path).
   let inline selectTower (state: State) (def: TowerDef) : unit =
     state.SelectedTower |> CVal.set def
 
-  /// Host-facing system messages (tests and debug hosts): applies the
-  /// message and handles the events it emits, exactly as the sim update
-  /// does when the same message arrives from a tick.
-  let inline applyEnemyMsg (state: State) (msg: Enemies.EnemyMsg) : unit =
-    let events = Enemies.Enemies.handle msg state.Enemies state.Map.Path
-
-    handleEnemyEvents state events
-
-  /// Host-facing economy messages (tests and debug hosts).
-  let inline applyEconomyMsg (state: State) (msg: Economy.EconomyMsg) : unit =
-    Economy.Economy.handle msg state.Economy
-
   // ── The adaptive program ─────────────────────────────────────────
 
   /// Builds the graph: the frame force reads the CURRENT state's
   /// projections at the end of every Step (a restart swaps the cell and
-  /// the force re-binds on the next force).
+  /// the force re-binds on the next force). The force is a pure
+  /// State → RenderFrame mapping — the clock is part of the state (the
+  /// Clock root, written below in update).
   let inline init
     (getState: unit -> State)
     (_ctx: AdaptiveFrameContext)
@@ -351,10 +332,9 @@ module Application =
     : unit =
     let state = getState()
 
-    // Presentation clock: the host's GameTime is forced into the frame
-    // so the draw side (shader-driven auras) animates on the sim's
-    // clock — updated even while the sim is paused.
-    state.LastTime <- gameTime
+    // The draw side's clock — written every step, paused included, so
+    // the frame always carries a fresh time (shader-driven auras).
+    state.Clock.Set gameTime
 
     if not(AVal.getValue state.Paused) then
       let dt = float32 gameTime.ElapsedGameTime.TotalSeconds
@@ -368,7 +348,6 @@ module Application =
 
       let waveEvents =
         Waves.Waves.tick
-          dt
           state.Waves
           state.AliveCount
           (state.Spawning.Queue.Count = 0)
