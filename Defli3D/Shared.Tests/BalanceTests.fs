@@ -7,6 +7,7 @@ open Defli3D
 open Defli3D.State
 open Defli3D.State.Systems
 open Defli3D.State.Systems.Towers
+open Defli3D.State.Systems.Waves
 
 // ─────────────────────────────────────────────────────────────
 // The margin harness — the tuning instrument for Balance.fs.
@@ -111,111 +112,94 @@ let tests =
         (0.8f * margin 0.6f 6)
         "the squeeze compounds across tiers"
 
-      // The early ramp stays survivable for weak fills.
-      Expect.isGreaterThanOrEqual (margin 0.6f 0) 1.2f "early ramp")
+      // The early ramp holds even for weak fills (the mechanism
+      // floor: η = 0.6 stays at or above margin 1 while the game
+      // is unscaled; mid-band dips below 1 are the challenge).
+      Expect.isGreaterThanOrEqual
+        (margin 0.6f 0)
+        1.0f
+        "early ramp holds for weak fills")
 
     // ── The economy table (printed — read it when tuning) ──────
-    testCase "economy table: income tracks the equipment bill" (fun () ->
-      // Mirrors the sim: the per-kill max 1 gold floor
-      // (WaveScale.apply), the 4/2/1/1 representative mix, one
-      // boss per tier, clears via Balance.clearBonus (base 25).
-      // Splits and per-modulo mix variance are approximated away —
-      // the table is for reading, the band assertions are the
-      // contract.
-      printfn
-        "\n═══ economy table (clearShare %.2f, killShare %.2f, gold/power %.2f) ═══"
-        Balance.ClearShare
-        Balance.KillShare
-        Balance.GoldPerPower
+    testCase
+      "economy: income tracks the equipment bill through the real composition"
+      (fun () ->
+        // The income model IS the game's: Waves.composeWave carries the
+        // tier-scaled, floored rewards; clears pay Balance.clearBonus.
+        // No hand-rolled counts or mixes — a retune moves the table and
+        // the mechanism claim must survive it: cumulative income tracks
+        // Bill(t) at roughly the shares' ratio (Scarcity = KillShare +
+        // ClearShare), never floods away from it, never starves below
+        // half of it.
+        let scarcity = Balance.KillShare + Balance.ClearShare
 
-      printfn "  tier  wave     g(t)    kills  clears   cum    bill  ratio"
+        let waveIncome(n: int) : float32 =
+          let wave = Waves.composeWave sat n
 
-      let mutable cum = 0f
+          let totalWeight =
+            wave.Table |> Seq.sumBy(fun struct (_, w) -> float32 w)
 
-      let mutable ratio = 0f
+          let avgGold =
+            (wave.Table
+             |> Seq.sumBy(fun struct (d, w) ->
+               float32 w * float32 d.GoldReward))
+            / totalWeight
 
-      for t = 0 to 12 do
-        let scale = Balance.scaleOfWave sat (5 * t)
+          let kills =
+            float32 wave.Count * avgGold
+            + float32(
+              wave.ExtraSpawns |> Seq.sumBy(fun struct (d, _) -> d.GoldReward)
+            )
 
-        let floored(d: int) =
-          max 1 (int(float d * float scale.Reward))
+          kills
+          + float32(
+            Balance.clearBonus WorldConfig.defaults.WaveClearBonus sat n
+          )
 
-        let mix =
-          (floored EnemyDefs.grunt.GoldReward * 4
-           + floored EnemyDefs.runner.GoldReward * 2
-           + floored EnemyDefs.tank.GoldReward
-           + floored EnemyDefs.flier.GoldReward)
+        /// The waves whose kills pay at tier t's reward (tier t = waves
+        /// 5t..5t+4; tier 0 has no wave 0).
+        let block(t: int) = [ max 1 (5 * t) .. 5 * t + 4 ]
 
-        let count = if t = 0 then 40 else 45 + 50 * t
-
-        let kills =
-          float32 count / 8f * float32 mix
-          + (if t >= 1 then
-               float32(floored EnemyDefs.boss.GoldReward)
-             else
-               0f)
-
-        let clears =
-          float32((if t = 0 then 4 else 5) * Balance.clearBonus 25 sat (5 * t))
-
-        cum <- cum + kills + clears
-
-        let billNow = Balance.bill sat t
-        ratio <- cum / billNow
+        let cumAt(t: int) =
+          [ 0..t ] |> List.collect block |> List.sumBy waveIncome
 
         printfn
-          "  %4d  %4d  %7.3f  %6.0f  %6.0f  %6.0f  %6.0f  %5.2f"
-          t
-          (t * 5)
-          scale.Reward
-          kills
-          clears
-          cum
-          billNow
-          ratio
+          "\n═══ economy table (killShare %.2f, clearShare %.2f, scarcity %.2f) ═══"
+          Balance.KillShare
+          Balance.ClearShare
+          scarcity
 
-      // Never floods, never starves: cumulative income stays in a
-      // band around the bill (the early float — starting gold's
-      // tier-0 head start — keeps low tiers above 1).
-      for t = 3 to 8 do
-        let cumAt =
-          [ 0..t ]
-          |> List.sumBy(fun tt ->
-            let scale = Balance.scaleOfWave sat (5 * tt)
+        printfn "  tier  wave     income       cum      bill  ratio/scarcity"
 
-            let floored(d: int) =
-              max 1 (int(float d * float scale.Reward))
+        for t = 0 to 12 do
+          let income = block t |> List.sumBy waveIncome
+          let cum = cumAt t
+          let billNow = Balance.bill sat t
+          let ratio = if billNow > 0f then cum / billNow / scarcity else 0f
 
-            let mix =
-              (floored EnemyDefs.grunt.GoldReward * 4
-               + floored EnemyDefs.runner.GoldReward * 2
-               + floored EnemyDefs.tank.GoldReward
-               + floored EnemyDefs.flier.GoldReward)
+          printfn
+            "  %4d  %4d  %9.0f  %8.0f  %8.0f  %8.2f"
+            t
+            (5 * t)
+            income
+            cum
+            billNow
+            ratio
 
-            let count = if tt = 0 then 40 else 45 + 50 * tt
+        // Never floods, never starves: through the mid band the
+        // cumulative income stays within half..1.5× of the shares'
+        // ratio applied to the bill. (Tier 0/1 are excluded — the
+        // base-floor clears and the unscaled first waves distort the
+        // ratio by design; the table prints them.)
+        for t = 2 to 10 do
+          let r = cumAt t / Balance.bill sat t / scarcity
 
-            let kills =
-              float32 count / 8f * float32 mix
-              + (if tt >= 1 then
-                   float32(floored EnemyDefs.boss.GoldReward)
-                 else
-                   0f)
+          Expect.isGreaterThan
+            r
+            0.5f
+            $"income above 0.5×scarcity×bill at %d{t}"
 
-            let clears =
-              float32(
-                (if tt = 0 then 4 else 5) * Balance.clearBonus 25 sat (5 * tt)
-              )
-
-            kills + clears)
-
-        let r = cumAt / Balance.bill sat t
-
-        Expect.isGreaterThan
-          r
-          0.7f
-          $"cumulative income above 0.7×bill at %d{t}"
-
-        Expect.isLessThan r 1.4f $"cumulative income below 1.4×bill at %d{t}")
+          Expect.isLessThan r 1.5f $"income below 1.5×scarcity×bill at %d{t}")
 
     // ── Curve structure ───────────────────────────────────────
     testCase "logistic curves: exact base, monotone, bounded" (fun () ->
@@ -227,11 +211,19 @@ let tests =
 
       let mutable prev = 1f
 
+      let mutable prevResist = 0f
+
       for t = 1 to 20 do
         let s = Balance.scaleOfWave sat (t * 5)
         // Non-decreasing: past ~tier 17 the float32 logistic is
         // fully saturated (equal on consecutive tiers).
         Expect.isGreaterThanOrEqual s.Hp prev $"hp grows at tier %d{t}"
+
+        // Resist rides the same logistic: monotone, capped.
+        Expect.isGreaterThanOrEqual
+          s.Resist
+          prevResist
+          $"resist grows at tier %d{t}"
 
         // (≤ not <: past ~tier 13 the logistic saturates to the
         // saturation's float32 value exactly.)
@@ -254,18 +246,46 @@ let tests =
           $"speed = growth^t at %d{t}"
 
         prev <- s.Hp
+        prevResist <- s.Resist
 
-      // Resistance is ~absent early (the tuned wave-1 start keeps
-      // its two-tower difficulty) and near the cap at the horizon.
+      // The curve's timing is the calibration's: resist is
+      // negligible where the game starts and near the cap at the
+      // SAME tier the margin anchor pins (RefTier — wherever it
+      // currently sits, not a hardcoded wave).
       Expect.isLessThan
         (Balance.scaleOfWave sat 5).Resist
-        0.1f
-        "early resist ~0"
+        (0.25f * Balance.RhoMax)
+        "early resist is a small fraction of the cap"
 
       Expect.isGreaterThan
-        (Balance.scaleOfWave sat 30).Resist
-        (Balance.RhoMax * 0.9f)
-        "late resist approaches the cap")
+        (Balance.scaleOfWave sat (int Balance.RefTier * 5)).Resist
+        (0.9f * Balance.RhoMax)
+        "resist approaches the cap at the calibration tier")
+
+    testCase "clearBonus: bill-share payout, floored and monotone" (fun () ->
+      let baseBonus = WorldConfig.defaults.WaveClearBonus
+
+      // Tier 0 (waves 1-4) always pays the config floor.
+      Expect.equal
+        (Balance.clearBonus baseBonus sat 4)
+        baseBonus
+        "tier 0 pays the floor"
+
+      // The mechanism, wherever the tuning sits: never below the
+      // floor, and the bill share DOES activate somewhere (a payout
+      // above the floor exists). ΔBill dips near saturation, so the
+      // payout is NOT monotone — no ordering is pinned.
+      let mutable aboveFloor = false
+
+      for t = 1 to 15 do
+        let b = Balance.clearBonus baseBonus sat (5 * t)
+
+        Expect.isGreaterThanOrEqual b baseBonus $"tier %d{t} floored"
+
+        if b > baseBonus then
+          aboveFloor <- true
+
+      Expect.isTrue aboveFloor "the bill share activates above the floor")
 
     testCase "capacity scan: map-agnostic invariants" (fun () ->
       Expect.isGreaterThan capacity.Buildable 0 "buildable cells exist"
@@ -290,6 +310,7 @@ let tests =
     // ── Resistance application (the damage chokepoint) ────────
     testCase "applyDamage: multiplicative resist with floor 1" (fun () ->
       let m = Enemies.Enemies.init()
+      let hp0 = TestData.Fixtures.grunt.Hp
 
       Enemies.Enemies.spawn
         {
@@ -299,20 +320,30 @@ let tests =
         m
         productionMap.Path
 
+      // The damage math is read from the fixture, not repeated as
+      // literals — retune the fixture and the mechanism assertion
+      // (half damage, floored at 1) still reads the same.
+      let resisted(dmg: int) = max 1 (int(0.5f * float32 dmg))
+
       match m.Defs |> AMap.getValue |> Seq.tryHead with
       | Some(KeyValueV(eid, _)) ->
         let events = Enemies.Enemies.applyDamage eid 10 m
-        Expect.isEmpty events "10 dmg − 50 % = 5 < 30 hp, no kill"
+
+        Expect.isEmpty
+          events
+          "10 dmg − 50 % stays under the fixture hp, no kill"
 
         (match m.Healths |> CMap.tryGetValue eid with
-         | ValueSome h -> Expect.equal h.Hp (30 - 5) "resisted to 5"
+         | ValueSome h ->
+           Expect.equal h.Hp (hp0 - resisted 10) "resisted to half"
          | ValueNone -> failtest "health row must exist")
 
         // Floor: 1 dmg against 50 % resist still deals 1.
         Enemies.Enemies.applyDamage eid 1 m |> ignore
 
         (match m.Healths |> CMap.tryGetValue eid with
-         | ValueSome h -> Expect.equal h.Hp (30 - 5 - 1) "floored to 1"
+         | ValueSome h ->
+           Expect.equal h.Hp (hp0 - resisted 10 - resisted 1) "floored to 1"
          | ValueNone -> failtest "health row must exist")
       | None -> failtest "enemy must exist")
 

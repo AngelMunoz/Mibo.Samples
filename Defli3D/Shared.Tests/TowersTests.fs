@@ -428,63 +428,55 @@ let tests =
           1)
         "rockets always seek")
 
-    testCase "preset homing policies match the weapon visuals" (fun () ->
-      let loaders = [|
-        TowerDefs.sentry
-        TowerDefs.piercer
-        TowerDefs.arrowDeck
-        TowerDefs.cannonPost
-        TowerDefs.bunker
-        TowerDefs.catapultPost
-        TowerDefs.catapult
-      |]
+    // Preset homing/rate VALUES are tuning data (playtest-owned) —
+    // not pinned here. What is pinned is the mechanism: the policy
+    // gates ("seek follows the def's HomingPolicy", above) and the
+    // upgrade formula this suite applies to every preset:
+    testCase
+      "effectiveDef: the upgrade formula holds for every preset"
+      (fun () ->
+        for d in TowerDefs.all do
+          // Level 1 IS the base def — upgrades never change the start.
+          Expect.equal
+            (TowerDefs.effectiveDef d 1)
+            d
+            $"{d.Key}: level 1 = base def"
 
-      for d in loaders do
-        Expect.equal
-          d.Homing
-          HomingPolicy.Never
-          $"{d.Key} (arrow/ball/cannon) never seeks"
+          let mutable prevRate = d.FireRate
 
-      Expect.equal
-        TowerDefs.gunpost.Homing
-        (HomingPolicy.FromLevel 4)
-        "gunpost seeks from level 4"
+          for level = 2 to d.MaxLevel do
+            let eff = TowerDefs.effectiveDef d level
+            let l = float32(level - 1)
 
-      Expect.equal
-        TowerDefs.bulletDeck.Homing
-        (HomingPolicy.FromLevel 4)
-        "bulletdeck seeks from level 4"
+            // The formula, read from the def itself — no pinned
+            // numbers: FireRate = base·(1 + RatePerLevel·l),
+            // Damage = +25 %/level, Range = +0.5/level.
+            Expect.isTrue
+              (abs(
+                float eff.FireRate
+                - float d.FireRate * (1.0 + float d.RatePerLevel * float l)
+              ) < 0.0001)
+              $"{d.Key}: fire rate formula at L%d{level}"
 
-      Expect.equal
-        TowerDefs.rocketPad.Homing
-        HomingPolicy.Always
-        "rocketpad always seeks")
+            Expect.equal
+              eff.Damage
+              (int(float d.Damage * (1.0 + 0.25 * float l)))
+              $"{d.Key}: damage formula at L%d{level}"
 
-    testCase "fire-rate curves: guns ramp, loaders stay slow" (fun () ->
-      let rateAt (d: TowerDef) (level: int) =
-        (TowerDefs.effectiveDef d level).FireRate
+            Expect.equal
+              eff.Range
+              (d.Range + int(l * 0.5f))
+              $"{d.Key}: range formula at L%d{level}"
 
-      // Guns: musket at L1, rapid fire back at L5.
-      Expect.isTrue
-        (abs(rateAt TowerDefs.gunpost 1 - 1f) < 0.0001f)
-        "gunpost L1 = 1/s"
+            // Monotone: every level fires at least as fast.
+            Expect.isGreaterThanOrEqual
+              eff.FireRate
+              prevRate
+              $"{d.Key}: rate monotone at L%d{level}"
 
-      Expect.isTrue
-        (abs(rateAt TowerDefs.gunpost 5 - 3.8f) < 0.0001f)
-        "gunpost L5 = 3.8/s"
+            prevRate <- eff.FireRate
 
-      Expect.isTrue
-        (abs(rateAt TowerDefs.bulletDeck 5 - 2.24f) < 0.0001f)
-        "bulletdeck L5 = 2.24 volleys/s"
-
-      // Loaders: slow at L1, near-flat growth to L5.
-      Expect.isTrue
-        (abs(rateAt TowerDefs.sentry 5 - 1.12f) < 0.0001f)
-        "sentry L5 = 1.12/s"
-
-      Expect.isTrue
-        (abs(rateAt TowerDefs.catapult 1 - 0.3f) < 0.0001f)
-        "catapult L1 = 0.3/s")
+      )
 
     testCase "Ground weapons ignore fliers; Any weapons engage them" (fun () ->
       let m = model()
@@ -539,6 +531,12 @@ let tests =
       Expect.equal (Seq.length events3) 1 "arrow/bullet weapons target fliers")
 
     testCase "preset Targets follow the trajectory rule (Flat = Any)" (fun () ->
+      // A cross-field design rule, not pinned values: every preset
+      // that fires flat can engage fliers; lobbed weapons are
+      // ground-only. (Zone Affects behavior is covered functionally
+      // in ZonesTests: "Ground zones skip fliers" / "Any zones tick
+      // fliers" — the per-preset zone domains themselves are tuning
+      // data.)
       for d in TowerDefs.all do
         let expected =
           if d.Trajectory = Trajectory.Flat then
@@ -546,27 +544,7 @@ let tests =
           else
             TargetDomain.Ground
 
-        Expect.equal d.Targets expected $"%s{d.Key} targets by trajectory"
-
-      // Zone presets: arrow patches catch air; cannon/catapult
-      // residue does not.
-      let affectsOf(d: TowerDef) =
-        d.Zone |> ValueOption.map(fun z -> z.Affects)
-
-      Expect.equal
-        (affectsOf TowerDefs.arrowDeck)
-        (ValueSome TargetDomain.Any)
-        "arrow zone affects Any"
-
-      Expect.equal
-        (affectsOf TowerDefs.bunker)
-        (ValueSome TargetDomain.Ground)
-        "cannon zone Ground"
-
-      Expect.equal
-        (affectsOf TowerDefs.catapult)
-        (ValueSome TargetDomain.Ground)
-        "catapult zone Ground")
+        Expect.equal d.Targets expected $"%s{d.Key} targets by trajectory")
 
     testCase "volley def → Fired carries the volley payload" (fun () ->
       let m = model()

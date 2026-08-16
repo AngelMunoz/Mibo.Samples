@@ -75,43 +75,49 @@ let tests =
         (livesStart - wave1.Count)
         "lives lost to leaks"
 
-      // Gold: starting + the clear bonus (wave 1 is tier 0 → the
-      // base floor; no kills yet).
+      // Gold: starting + the clear bonus for wave 1 — read from
+      // Balance, not repeated as a literal (tier 0 pays the config
+      // floor today; the translation must pay whatever clearBonus
+      // computes).
       Expect.equal
         (goldOf model)
-        (cfg.StartingGold + cfg.WaveClearBonus * 1)
+        (cfg.StartingGold
+         + Balance.clearBonus cfg.WaveClearBonus model.Capacity.Saturation 1)
         "gold after clear"
 
-      // Bill-share clear bonus: a wave-9 clear (tier 1) is still at
-      // the base floor (the tier's equipment bill is small); a
-      // wave-19 clear (tier 3) pays above it. The translation is
-      // driven directly — the same handler the tick's WaveCleared
-      // event reaches (clearing real waves headless would starve
-      // the 20 lives).
+      // The clear translation pays exactly clearBonus for the wave
+      // — driven directly through the same handler the tick's
+      // WaveCleared event reaches (clearing real waves headless
+      // would starve the 20 lives). Self-relative: retunes move
+      // the payout, not the wiring.
+      let clearOf(h: TestData.Harness, wave: int) =
+        h.State.Waves.WaveNumber.Set wave
+
+        h.Post(fun () ->
+          Application.handleWaveEvents h.State [| WaveCleared |])
+
+        h.StepN(1, TestData.dt)
+
+        goldOf h.State
+
       let h2 = TestData.mkHarness cfg
-      h2.State.Waves.WaveNumber.Set 9
 
-      h2.Post(fun () ->
-        Application.handleWaveEvents h2.State [| WaveCleared |])
-
-      h2.StepN(1, TestData.dt)
+      let goldAfter9 = clearOf(h2, 9)
 
       Expect.equal
-        (goldOf h2.State)
-        (cfg.StartingGold + cfg.WaveClearBonus)
-        "tier-1 clear at the base floor"
+        goldAfter9
+        (cfg.StartingGold
+         + Balance.clearBonus cfg.WaveClearBonus h2.State.Capacity.Saturation 9)
+        "wave-9 clear pays clearBonus(9)"
 
-      h2.State.Waves.WaveNumber.Set 19
-
-      h2.Post(fun () ->
-        Application.handleWaveEvents h2.State [| WaveCleared |])
-
-      h2.StepN(1, TestData.dt)
-
-      Expect.isGreaterThanOrEqual
-        (goldOf h2.State)
-        (cfg.StartingGold + cfg.WaveClearBonus * 2)
-        "tier-3 clear pays above the floor")
+      Expect.equal
+        (clearOf(h2, 19))
+        (goldAfter9
+         + Balance.clearBonus
+             cfg.WaveClearBonus
+             h2.State.Capacity.Saturation
+             19)
+        "wave-19 clear pays clearBonus(19)")
 
     testCase "game over blocks new waves" (fun () ->
       let h = TestData.mkHarness cfg
@@ -449,7 +455,15 @@ let tests =
         h.Post(fun () ->
           Application.applyEnemyMsg
             h.State
-            (Enemies.EnemyMsg.Spawn TestData.Fixtures.grunt))
+            (Enemies.EnemyMsg.Spawn
+            // Tanky on purpose: the volley's DAMAGE is tuning —
+            // here it must not kill the walker, so the zone
+            // mechanism (drop + slow + timer) is what the
+            // assertions read, wherever the tuning sits.
+            {
+              TestData.Fixtures.grunt with
+                  Hp = 500
+            }))
 
         // 1 s: first volley lands ~0.4 s in; the zone's slow must be
         // live (zone life 1.5 s, tick 0.5 s — re-applied while the

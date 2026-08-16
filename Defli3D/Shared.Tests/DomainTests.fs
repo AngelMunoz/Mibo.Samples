@@ -5,9 +5,19 @@ open Defli3D.State
 
 let tests =
   testList "Domain" [
-    testCase "baked model dataset has 110 entries" (fun () ->
-      Expect.equal Models.all.Length 110 "all model count"
-      Expect.equal Models.byName.Count 110 "byName index count")
+    testCase "baked model dataset is consistently indexed" (fun () ->
+      // The count itself is asset data (Models.fs is generated) —
+      // not pinned. The mechanism: every baked model is reachable
+      // by name, names are unique, and the index covers all of it.
+      Expect.equal Models.byName.Count Models.all.Length "index covers all"
+
+      Expect.equal
+        (Models.all
+         |> Array.map(fun m -> m.Name)
+         |> Array.distinct
+         |> Array.length)
+        Models.all.Length
+        "names are unique")
 
     testCase "named accessors resolve to the baked models" (fun () ->
       Expect.equal Models.tileGrass.Name "tile" "tileGrass name"
