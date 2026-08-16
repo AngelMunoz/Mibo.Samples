@@ -5,9 +5,11 @@ open System.Collections.Generic
 open System.Numerics
 open Mibo.Adaptive
 open Mibo.Elmish
+open Mibo.Input
 open Mibo.Layout
 open Defli3D.State
 open Defli3D.State.Systems
+open Defli3D.State.Systems.Camera
 
 // ─────────────────────────────────────────────────────────────
 // Application — the host-facing driver AND the Update phase (the
@@ -407,27 +409,91 @@ module Application =
   let inline applyEconomyMsg (state: State) (msg: Economy.EconomyMsg) : unit =
     Economy.Economy.handle msg state.Economy
 
+  // ── Semantic actions — the InputMapper root ────────────────────
+  // The mapper subscription (Input.subscriptions) builds an
+  // ActionState from the input deltas and writes the Actions root
+  // through the pre-step lane; this consumes the edges the same way
+  // the old keyboard handler did. Started drives the one-shots and
+  // the pan accumulation, Released subtracts the pan. Edges are
+  // cleared after consumption (ActionState.nextFrame) — a step with
+  // no new deltas reads an edge-free state and does nothing (the
+  // Set's equality gate makes the re-write free).
+  let private handleActions(cell: StateCell) : unit =
+    let state = cell.Value
+    let actions = state.Actions |> AVal.getValue
+    let mutable restart = false
+
+    for a in actions.Started do
+      match a with
+      | GameAction.StartNextWave -> startNextWave state
+      | GameAction.SelectTower slot ->
+        if slot >= 0 && slot < TowerDefs.slots.Length then
+          selectTower state TowerDefs.slots[slot]
+      | GameAction.ResetCamera ->
+        Camera.Camera.handle CameraMsg.Reset state.Camera
+      | GameAction.Restart -> restart <- true
+      | GameAction.PanLeft
+      | GameAction.PanRight
+      | GameAction.PanUp
+      | GameAction.PanDown ->
+        Camera.Camera.handle
+          (CameraMsg.AddKeyboardPan(Inputs.panStep a))
+          state.Camera
+
+    for a in actions.Released do
+      match a with
+      | GameAction.PanLeft
+      | GameAction.PanRight
+      | GameAction.PanUp
+      | GameAction.PanDown ->
+        // Released subtracts what the press added — the accumulated
+        // keyboard pan decays back to zero.
+        Camera.Camera.handle
+          (CameraMsg.AddKeyboardPan(-Inputs.panStep a))
+          state.Camera
+      | _ -> ()
+
+    // Restart stays in the game logic: swap the state in place. The
+    // frame force reads the cell at force time, so the next force
+    // re-binds the graph to the fresh state — no window/runner
+    // re-create. Deferred to the end so the loops above never act on
+    // a swapped-away state.
+    if restart && AVal.getValue state.Economy.GameOver then
+      cell.Value <- State.init state.Config
+
+    // Clear the consumed edges on the state the actions came from
+    // (after a restart that is the dead root — harmless).
+    state.Actions.Set(ActionState.nextFrame actions)
+
   // ── The adaptive program ─────────────────────────────────────────
 
   /// Builds the graph: the frame force reads the CURRENT state's
   /// projections at the end of every Step (a restart swaps the cell and
-  /// the force re-binds on the next force). The frame context supplies
-  /// the clock — its time root is written by the runner at the start of
-  /// every Step, so the frame always carries a fresh time.
+  /// the force re-binds on the next force). The force is a pure
+  /// State → RenderFrame mapping — the clock is part of the state (the
+  /// Clock root, written below in update).
   let inline init
-    (getState: unit -> State)
-    (ctx: AdaptiveFrameContext)
+    (cell: StateCell)
+    (_ctx: AdaptiveFrameContext)
     : AdaptiveInit<Frame.RenderFrame> =
-    AdaptiveInit.ofFrameBuilder(Frame.force ctx getState)
+    AdaptiveInit.ofFrameBuilder(Frame.force(fun () -> cell.Value))
 
   /// The Update phase entry: runs the sim for the current state and
   /// posts its reactions through the runner's intent queue.
   let update
-    (getState: unit -> State)
+    (cell: StateCell)
     (ctx: AdaptiveContext)
     (gameTime: GameTime)
     : unit =
-    let state = getState()
+    // Semantic actions first (they used to run in the pre-step drain):
+    // one-shots, pan edges, restart — restart may swap the cell, so
+    // everything after re-reads it.
+    handleActions cell
+
+    let state = cell.Value
+    // The draw side's clock — written every step, paused included, so
+    // the frame always carries a fresh time (hover bob, idle spins).
+    state.Clock.Set gameTime
 
     if not(AVal.getValue state.Paused) then
       let dt = float32 gameTime.ElapsedGameTime.TotalSeconds
@@ -502,11 +568,11 @@ module Application =
   /// after Update.
   let inline program
     (boot: AdaptiveFrameContext -> unit)
-    (getState: unit -> State)
+    (cell: StateCell)
     (subscribe: AdaptiveFrameContext -> amap<SubId, AdaptiveSub>)
     : AdaptiveProgram<Frame.RenderFrame> =
     AdaptiveProgram.mkProgram
       (fun ctx ->
         boot ctx
-        (init getState ctx) |> AdaptiveInit.withSubscriptions subscribe)
-      (update getState)
+        (init cell ctx) |> AdaptiveInit.withSubscriptions subscribe)
+      (update cell)

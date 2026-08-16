@@ -130,10 +130,11 @@ type Harness(state: State, runner: AdaptiveHeadless<Frame.RenderFrame>) =
 
 let mkHarness(cfg: WorldConfig) =
   let state = State.init cfg
+  let cell = StateCell(state)
 
   let runner =
     new AdaptiveHeadless<Frame.RenderFrame>(
-      Application.program ignore (fun () -> state) (fun _ -> AMap.empty)
+      Application.program ignore cell (fun _ -> AMap.empty)
     )
 
   Harness(state, runner)

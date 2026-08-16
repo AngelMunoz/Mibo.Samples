@@ -67,21 +67,21 @@ module Frame =
     /// The camera — a backend-neutral orbit-camera snapshot at force
     /// time; the frontend builds its native camera at the edge.
     Camera: CameraState
-    /// The framework's time root, read at force time — written by the
-    /// runner at the start of every Step, so the draw side (hover bob,
-    /// idle spins) rides the sim's clock, not a backend-specific one.
+    /// The sim's clock root, read at force time — written by
+    /// Application.update every step (paused included), so the draw
+    /// side (hover bob, idle spins) rides the sim's clock, not a
+    /// backend-specific one.
     Time: GameTime
   }
 
   /// Forcing the frame: resolve every output projection once, pack the
   /// struct. After this, drawing is plain struct reads — O(1), no
-  /// graph access. `force` follows the state it is handed at force
-  /// time; the count nodes live on the State record (created at init),
-  /// so restarts (cell swap) re-bind cleanly with zero per-step
-  /// allocation. The clock comes from the frame context's time root —
-  /// no state field carries it.
+  /// graph access. `force` is a pure State → RenderFrame mapping: it
+  /// follows the state it is handed at force time, and the count nodes
+  /// live on the State record (created at init), so restarts (cell
+  /// swap) re-bind cleanly with zero per-step allocation. The clock is
+  /// part of the state (the Clock root) — the force needs nothing else.
   let inline force
-    (ctx: AdaptiveFrameContext)
     ([<InlineIfLambda>] getState: unit -> State)
     : unit -> RenderFrame =
     fun () ->
@@ -113,5 +113,5 @@ module Frame =
         Map = state.Map
         Diag = state.Diag
         Camera = state.Camera.State
-        Time = ctx.Time |> AVal.getValue
+        Time = state.Clock |> AVal.getValue
       }

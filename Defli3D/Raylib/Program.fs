@@ -4,6 +4,7 @@ open System
 open System.IO
 open Mibo.Adaptive
 open Mibo.Elmish
+open Mibo.Input
 open Mibo.Elmish.Graphics2D
 open Mibo.Elmish.Graphics3D
 open Mibo.Elmish.Graphics3D.Pipelines
@@ -56,8 +57,16 @@ let main _ =
   let program =
     Application.program
       boot
-      (fun () -> cell.Value)
-      (Input.subscriptions 1.1 cell shell)
+      cell
+      (Input.subscriptions
+        1.1
+        (fun ctx ->
+          InputMapper.subscribeStaticAdaptive
+            Inputs.inputMap
+            cell.Value.Actions
+            ctx)
+        cell
+        shell)
     |> AdaptiveProgram.withObserver(fun () ->
       AdaptiveProgram.observe(fun _ -> Diagnostics.update shell.Diag))
     |> AdaptiveProgram.withConfig(fun _ -> config)

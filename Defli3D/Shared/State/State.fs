@@ -1,7 +1,10 @@
 namespace Defli3D.State
 
+open System
 open System.Numerics
 open Mibo.Adaptive
+open Mibo.Elmish
+open Mibo.Input
 open Defli3D
 open Defli3D.State.Systems
 
@@ -46,6 +49,20 @@ type State = {
 
   /// Frozen by the host; the sim writes nothing while paused.
   Paused: cval<bool>
+
+  /// The semantic input state — the InputMapper subscription writes it
+  /// (pre-step lane), Application.update consumes its Started/Released
+  /// edges and clears them (ActionState.nextFrame). Input state, not
+  /// gameplay state: the mapper owns the writes, the sim owns the
+  /// reads.
+  Actions: cval<ActionState<GameAction>>
+
+  /// The sim's clock root — written by Application.update every step
+  /// (paused included) and packed into the frame as Time, so the draw
+  /// side (hover bob, idle spins) rides the sim's clock. A root rather
+  /// than a mutable field: the frame force stays a pure State →
+  /// RenderFrame mapping.
+  Clock: cval<GameTime>
 
   Projections: Projections
 
@@ -104,6 +121,13 @@ module State =
     let selectedTower = CVal.create TowerDefs.sentry
     let hoverCell = CVal.create ValueNone
     let paused = CVal.create false
+    let actions = CVal.create ActionState.empty
+
+    let clock =
+      CVal.create {
+        TotalTime = TimeSpan.Zero
+        ElapsedGameTime = TimeSpan.Zero
+      }
 
     let projections =
       Projections(
@@ -131,6 +155,8 @@ module State =
       SelectedTower = selectedTower
       HoverCell = hoverCell
       Paused = paused
+      Actions = actions
+      Clock = clock
       Projections = projections
       Capacity = capacity
       AliveCount = enemies.Alive |> AMap.count

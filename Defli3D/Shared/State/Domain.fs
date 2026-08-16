@@ -1,6 +1,7 @@
 namespace Defli3D.State
 
 open System.Numerics
+open Mibo.Input
 
 // ─────────────────────────────────────────────────────────────
 // Typed IDs (units of measure — zero-cost, struct-friendly)
@@ -617,3 +618,64 @@ module Cells =
       float32 x * cellSize.X + cellSize.X / 2f,
       float32 y * cellSize.Y + cellSize.Y / 2f
     )
+
+// ─────────────────────────────────────────────────────────────
+// Semantic input — GameAction + its InputMap live here (not
+// Input.fs) because the sim's action consumption (Application.
+// handleActions) compiles before the input wiring file; KeyCode
+// and InputMap are Mibo.Input core types, backend-neutral.
+// ─────────────────────────────────────────────────────────────
+
+[<Struct>]
+type GameAction =
+  | StartNextWave
+  /// Select the tower preset at hotbar slot 0-9 (keys 1-9 and 0).
+  | SelectTower of slot: int
+  | Restart
+  | ResetCamera
+  | PanLeft
+  | PanRight
+  | PanUp
+  | PanDown
+
+module Inputs =
+
+  /// The key bindings — the semantic map the InputMapper subscription
+  /// evaluates. F3 stays out: the diagnostics overlay is FRONTEND
+  /// state, toggled by a direct subscription in Input.fs.
+  let inputMap: InputMap<GameAction> =
+    InputMap.empty
+    |> InputMap.key StartNextWave KeyCode.Space
+    |> InputMap.key StartNextWave KeyCode.Enter
+    |> InputMap.key (SelectTower 0) KeyCode.D1
+    |> InputMap.key (SelectTower 1) KeyCode.D2
+    |> InputMap.key (SelectTower 2) KeyCode.D3
+    |> InputMap.key (SelectTower 3) KeyCode.D4
+    |> InputMap.key (SelectTower 4) KeyCode.D5
+    |> InputMap.key (SelectTower 5) KeyCode.D6
+    |> InputMap.key (SelectTower 6) KeyCode.D7
+    |> InputMap.key (SelectTower 7) KeyCode.D8
+    |> InputMap.key (SelectTower 8) KeyCode.D9
+    |> InputMap.key (SelectTower 9) KeyCode.D0
+    |> InputMap.key Restart KeyCode.R
+    |> InputMap.key ResetCamera KeyCode.Home
+    |> InputMap.key PanLeft KeyCode.A
+    |> InputMap.key PanLeft KeyCode.Left
+    |> InputMap.key PanRight KeyCode.D
+    |> InputMap.key PanRight KeyCode.Right
+    |> InputMap.key PanUp KeyCode.W
+    |> InputMap.key PanUp KeyCode.Up
+    |> InputMap.key PanDown KeyCode.S
+    |> InputMap.key PanDown KeyCode.Down
+
+  /// The pan direction a pan action contributes. The pressed key moves
+  /// the CAMERA (Up → the view pans north); Camera.Pan subtracts its
+  /// input (drag semantics: the world follows the cursor), so keyboard
+  /// deltas carry the OPPOSITE sign of the drag they mirror.
+  let inline panStep(action: GameAction) : Vector2 =
+    match action with
+    | PanLeft -> Vector2(1f, 0f)
+    | PanRight -> Vector2(-1f, 0f)
+    | PanUp -> Vector2(0f, -1f)
+    | PanDown -> Vector2(0f, 1f)
+    | _ -> Vector2.Zero

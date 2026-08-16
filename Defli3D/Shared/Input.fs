@@ -9,82 +9,26 @@ open Defli3D.State.Systems.Camera
 
 // ─────────────────────────────────────────────────────────────
 // Input — the shared input wiring for the windowed frontends
-// (Defli3D/Raylib + the MonoGame clients). Input arrives through the
-// subscription projection (the IInput service delivers per-frame
-// deltas); the handlers post intents that drain after Update,
-// before the frame force. Shell state stays direct; a restart
-// swaps the state cell in place.
+// (Defli3D/Raylib + the MonoGame clients).
 //
-// Hover picking goes through the 3D orbit camera: the mouse
-// subscription has the viewport size (window) and the camera state,
-// and Camera.pickGroundCell unprojects the cursor to the ground
-// plane (XZ) and floors it to the containing cell — the same
-// convention the view uses to draw the hover overlay. Middle-drag
-// pan posts CameraMsg.Pan with the raw pixel delta (the camera
-// converts: yaw-relative, distance-scaled); the wheel posts ZoomBy.
+// KEYBOARD is semantic: the InputMapper subscription evaluates the
+// GameAction InputMap (Domain.fs) against the input deltas and
+// writes the Actions root through the pre-step lane; Application's
+// update consumes the Started/Released edges (one-shots, pan
+// accumulation, restart). No per-key handlers, no key codes here.
 //
-// Ordering per frame (host): input.Poll() → the subscriptions run
-// (shell writes + posted intents) → Application.update → intents drained
-// → frame forced → draw. Keyboard pan deltas post as camera
-// messages (AddKeyboardPan) and decay inside Camera.tick.
+// POINTER is direct: hover picking goes through the 3D orbit camera
+// (the mouse subscription has the viewport size and the camera
+// state, and Camera.pickGroundCell unprojects the cursor to the
+// ground plane); middle-drag pan posts CameraMsg.Pan with the raw
+// pixel delta; the wheel posts ZoomBy; clicks post place/upgrade.
+// F3 (diagnostics overlay) is frontend state — a direct subscription,
+// not a GameAction.
+//
+// Ordering per frame (host): input.Poll() → the mapper builds and
+// the pointer handlers post → Application.update (consumes action
+// edges first) → intents drained → frame forced → draw.
 // ─────────────────────────────────────────────────────────────
-
-[<Struct>]
-type GameAction =
-  | StartNextWave
-  | ToggleDiagnostics
-  /// Select the tower preset at hotbar slot 0-9 (keys 1-9 and 0).
-  | SelectTower of slot: int
-  | Restart
-  | ResetCamera
-  | PanLeft
-  | PanRight
-  | PanUp
-  | PanDown
-
-module Inputs =
-
-  /// The key bindings — the original InputMap as a plain match (the
-  /// mapper's ActionState tracking is replaced by the camera's
-  /// keyboard-pan accumulation, CameraMsg.AddKeyboardPan).
-  let actionOfKey(key: KeyCode) : GameAction voption =
-    match key with
-    | KeyCode.Space
-    | KeyCode.Enter -> ValueSome GameAction.StartNextWave
-    | KeyCode.F3 -> ValueSome GameAction.ToggleDiagnostics
-    | KeyCode.D1 -> ValueSome(GameAction.SelectTower 0)
-    | KeyCode.D2 -> ValueSome(GameAction.SelectTower 1)
-    | KeyCode.D3 -> ValueSome(GameAction.SelectTower 2)
-    | KeyCode.D4 -> ValueSome(GameAction.SelectTower 3)
-    | KeyCode.D5 -> ValueSome(GameAction.SelectTower 4)
-    | KeyCode.D6 -> ValueSome(GameAction.SelectTower 5)
-    | KeyCode.D7 -> ValueSome(GameAction.SelectTower 6)
-    | KeyCode.D8 -> ValueSome(GameAction.SelectTower 7)
-    | KeyCode.D9 -> ValueSome(GameAction.SelectTower 8)
-    | KeyCode.D0 -> ValueSome(GameAction.SelectTower 9)
-    | KeyCode.R -> ValueSome GameAction.Restart
-    | KeyCode.Home -> ValueSome GameAction.ResetCamera
-    | KeyCode.A
-    | KeyCode.Left -> ValueSome GameAction.PanLeft
-    | KeyCode.D
-    | KeyCode.Right -> ValueSome GameAction.PanRight
-    | KeyCode.W
-    | KeyCode.Up -> ValueSome GameAction.PanUp
-    | KeyCode.S
-    | KeyCode.Down -> ValueSome GameAction.PanDown
-    | _ -> ValueNone
-
-  /// The pan direction a pan action contributes. The pressed key moves
-  /// the CAMERA (Up → the view pans north); Camera.Pan subtracts its
-  /// input (drag semantics: the world follows the cursor), so keyboard
-  /// deltas carry the OPPOSITE sign of the drag they mirror.
-  let inline panStep(action: GameAction) : Vector2 =
-    match action with
-    | GameAction.PanLeft -> Vector2(1f, 0f)
-    | GameAction.PanRight -> Vector2(-1f, 0f)
-    | GameAction.PanUp -> Vector2(0f, -1f)
-    | GameAction.PanDown -> Vector2(0f, 1f)
-    | _ -> Vector2.Zero
 
 module Input =
 
@@ -99,62 +43,6 @@ module Input =
     (screenPos: Vector2)
     : struct (int * int) voption =
     Camera.pickGroundCell viewport.X viewport.Y screenPos state.Camera.State
-
-  let private handleKeyboard
-    (post: (unit -> unit) -> unit)
-    (cell: StateCell)
-    (shell: Shell)
-    (delta: KeyboardDelta)
-    : unit =
-    for code in delta.Pressed do
-      match Inputs.actionOfKey code with
-      | ValueSome action ->
-        match action with
-        | GameAction.StartNextWave ->
-          post(fun () -> Application.startNextWave cell.Value)
-        | GameAction.ToggleDiagnostics ->
-          shell.Diag.Visible <- not shell.Diag.Visible
-        | GameAction.SelectTower slot ->
-          if slot >= 0 && slot < TowerDefs.slots.Length then
-            post(fun () ->
-              Application.selectTower cell.Value TowerDefs.slots[slot])
-        | GameAction.ResetCamera ->
-          post(fun () -> Camera.handle CameraMsg.Reset cell.Value.Camera)
-        | GameAction.Restart ->
-          // Restart stays in the game logic: swap the state inside an
-          // intent. The frame force reads the cell at force time, so
-          // the next force re-binds the graph to the fresh state — no
-          // window/runner re-create.
-          if AVal.getValue cell.Value.Economy.GameOver then
-            post(fun () ->
-              cell.Value <- State.init cell.Value.Config
-              shell.MiddleDown <- false)
-        | GameAction.PanLeft
-        | GameAction.PanRight
-        | GameAction.PanUp
-        | GameAction.PanDown ->
-          post(fun () ->
-            Camera.handle
-              (CameraMsg.AddKeyboardPan(Inputs.panStep action))
-              cell.Value.Camera)
-      | ValueNone -> ()
-
-    for code in delta.Released do
-      match Inputs.actionOfKey code with
-      | ValueSome action ->
-        match action with
-        | GameAction.PanLeft
-        | GameAction.PanRight
-        | GameAction.PanUp
-        | GameAction.PanDown ->
-          // Released subtracts what the press added — the accumulated
-          // keyboard pan decays back to zero.
-          post(fun () ->
-            Camera.handle
-              (CameraMsg.AddKeyboardPan(-Inputs.panStep action))
-              cell.Value.Camera)
-        | _ -> ()
-      | ValueNone -> ()
 
   let private handleMouse
     (post: (unit -> unit) -> unit)
@@ -207,34 +95,56 @@ module Input =
       |> ValueOption.iter(fun c ->
         post(fun () -> Application.upgradeTower cell.Value c |> ignore))
 
-  /// The two input subscriptions (keyboard + mouse) the windowed
-  /// frontends wire via
-  /// `AdaptiveInit.withSubscriptions (Input.subscriptions wheelScale cell shell)`.
-  /// wheelScale is the wheel-zoom factor per ScrollDelta unit — see
-  /// handleMouse.
+  /// The input subscriptions the windowed frontends wire via
+  /// `AdaptiveInit.withSubscriptions (Input.subscriptions wheelScale actionsSub cell shell)`:
+  /// the semantic keyboard mapper (`actionsSub` — the BACKEND builds it,
+  /// `InputMapper.subscribeStaticAdaptive Inputs.inputMap state.Actions ctx`;
+  /// the factory lives in the backend packages, so Shared stays
+  /// backend-free), the pointer handler, and the F3 diagnostics toggle.
+  ///
+  /// The returned projection caches its map and rebuilds only when the
+  /// cell swaps (restart) so the mapper writes the fresh state's root —
+  /// the runner's version check makes clean steps diff-free.
   let subscriptions
     (wheelScale: float)
+    (actionsSub: GameContext -> AdaptiveSub)
     (cell: StateCell)
     (shell: Shell)
-    (frameCtx: AdaptiveFrameContext)
-    : amap<SubId, AdaptiveSub> =
-    let input = frameCtx.Context |> GameContext.getService<IInput>
+    : AdaptiveFrameContext -> amap<SubId, AdaptiveSub> =
+    let mutable cached: amap<SubId, AdaptiveSub> = Unchecked.defaultof<_>
+    let mutable cachedFor: State = Unchecked.defaultof<_>
 
-    AMap.ofList [
-      SubId.ofString "keyboard",
-      {
-        Id = SubId.ofString "keyboard"
-        Attach =
-          fun post ->
-            input.KeyboardDelta.Subscribe(handleKeyboard post cell shell)
-      }
-      SubId.ofString "mouse",
-      {
-        Id = SubId.ofString "mouse"
-        Attach =
-          fun post ->
-            input.MouseDelta.Subscribe(
-              handleMouse post wheelScale frameCtx cell shell
-            )
-      }
-    ]
+    fun frameCtx ->
+      let state = cell.Value
+
+      if not(obj.ReferenceEquals(state, cachedFor)) then
+        let input = frameCtx.Context |> GameContext.getService<IInput>
+
+        cachedFor <- state
+
+        cached <-
+          AMap.ofList [
+            SubId.ofString "actions", actionsSub frameCtx.Context
+
+            SubId.ofString "mouse",
+            {
+              Id = SubId.ofString "mouse"
+              Attach =
+                fun post ->
+                  input.MouseDelta.Subscribe(
+                    handleMouse post wheelScale frameCtx cell shell
+                  )
+            }
+
+            SubId.ofString "diagnostics",
+            {
+              Id = SubId.ofString "diagnostics"
+              Attach =
+                fun _ ->
+                  input.KeyboardDelta.Subscribe(fun d ->
+                    if d.Pressed |> Array.contains KeyCode.F3 then
+                      shell.Diag.Visible <- not shell.Diag.Visible)
+            }
+          ]
+
+      cached

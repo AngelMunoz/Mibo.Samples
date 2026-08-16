@@ -4,6 +4,7 @@ open System
 open Microsoft.Xna.Framework
 open Mibo.Adaptive
 open Mibo.Elmish
+open Mibo.Input
 open Mibo.Elmish.Graphics2D
 open Mibo.Elmish.Graphics3D
 open Mibo.Elmish.Graphics3D.Pipelines
@@ -44,8 +45,16 @@ let main _ =
     // one notch = ×1.1, same as the raylib client.
     Application.program
       ignore
-      (fun () -> cell.Value)
-      (Input.subscriptions (1.1 ** (1.0 / 120.0)) cell shell)
+      cell
+      (Input.subscriptions
+        (1.1 ** (1.0 / 120.0))
+        (fun ctx ->
+          InputMapper.subscribeStaticAdaptive
+            Inputs.inputMap
+            cell.Value.Actions
+            ctx)
+        cell
+        shell)
     |> AdaptiveProgram.withObserver(fun () ->
       AdaptiveProgram.observe(fun _ -> Diagnostics.update shell.Diag))
     |> AdaptiveProgram.withConfig(fun _ -> config)
