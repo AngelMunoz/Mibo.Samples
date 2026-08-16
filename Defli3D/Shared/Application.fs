@@ -12,21 +12,17 @@ open Defli3D.State.Systems
 open Defli3D.State.Systems.Camera
 
 // ─────────────────────────────────────────────────────────────
-// Application — the host-facing driver AND the Update phase (the
-// ex-Router). There is no Msg, no Cmd: `update` runs the nine
-// systems in Kimo order; systems emit events as data, and update
-// posts the five handle* translations through the `post` callback as
-// intents. The caller wires `post` to the runner's queue
-// (`ctx.Intents.post`), so the sim never depends on the IntentQueue
-// type. The runner drains the queue after Update and before the frame
-// is forced, in post order — the same order Defli's Cmd batch
-// translated them. The cold paths are the host-facing handlers
-// (startNextWave / placeTower / upgradeTower / selectTower /
-// apply*Msg): they stay synchronous Immediate-semantics handlers.
-// Build decisions (tile/occupancy/gold/cap) live in Placement —
-// this file only translates an accepted plan into system handles.
-// Windowed frontends deliver input through subscriptions that post
-// intents.
+// Application — the host-facing driver AND the Update phase. There
+// is no Msg, no Cmd: `update` runs the nine systems in order;
+// systems emit events as data, and update posts the handle*
+// translations through the intent queue (`ctx.Intents.post`), so
+// the sim never depends on the IntentQueue type. The runner drains
+// the queue after Update and before the frame is forced, in post
+// order. The cold paths (startNextWave / placeTower / upgradeTower /
+// selectTower) are plain synchronous handlers; the build decisions
+// (tile/occupancy/gold/cap) live in Placement — this file only
+// translates an accepted plan into system calls. Windowed frontends
+// deliver input through subscriptions that post intents.
 //
 // The event flow is one direction: systems emit, the handlers
 // translate, and only ApplyDamage (→ Killed), FillWave (→
@@ -90,10 +86,10 @@ module Application =
           |> ValueOption.map(fun mv -> struct (mv.Progress, mv.PathIndex))
           |> ValueOption.defaultValue struct (0f, 0)
 
-        Economy.Economy.handle (Economy.EarnGold reward) state.Economy
+        Economy.Economy.earnGold reward state.Economy
         Enemies.Enemies.despawn eid state.Enemies
 
-        Vfx.Vfx.handle (Vfx.Burst(Vfx.VfxKind.DeathPoof, pos, 0f)) state.Vfx
+        Vfx.Vfx.burst Vfx.VfxKind.DeathPoof pos 0f state.Vfx
 
         // Boss split-on-death (Phase 6): grunts burst from the corpse.
         // Spawned SYNCHRONOUSLY (the FillWave-on-WaveStarted precedent):
@@ -121,9 +117,9 @@ module Application =
       | Enemies.ReachedBase _ ->
         let basePos = Cells.center state.Map.BaseCell (State.cellSize state)
 
-        Economy.Economy.handle Economy.LoseLife state.Economy
-        Vfx.Vfx.handle (Vfx.Burst(Vfx.VfxKind.BaseHit, basePos, 0f)) state.Vfx
-        Camera.Camera.handle (Camera.Shake 0.125f) state.Camera
+        Economy.Economy.loseLife state.Economy
+        Vfx.Vfx.burst Vfx.VfxKind.BaseHit basePos 0f state.Vfx
+        Camera.Camera.shake 0.125f state.Camera
 
   let handleSpawnEvents
     (state: State)
@@ -143,8 +139,7 @@ module Application =
         // would leave one frame where the wave is active with an empty
         // queue, and the clear check would fire instantly (the wave
         // starts and clears without spawning anything).
-        let spawnEvents =
-          Spawning.Spawning.handle (Spawning.FillWave wave) state.Spawning
+        let spawnEvents = Spawning.Spawning.fillWave wave state.Spawning
 
         handleSpawnEvents state spawnEvents
       | Waves.WaveCleared ->
@@ -160,7 +155,7 @@ module Application =
             state.Waves.Saturation
             waveNumber
 
-        Economy.Economy.handle (Economy.EarnGold bonus) state.Economy
+        Economy.Economy.earnGold bonus state.Economy
 
   let handleProjectileEvents
     (post: (unit -> unit) -> unit)
@@ -204,17 +199,15 @@ module Application =
 
           impact.Zone
           |> ValueOption.iter(fun z ->
-            Zones.Zones.handle (Zones.Drop(impact.Pos, z)) state.Zones)
+            Zones.Zones.drop impact.Pos z state.Zones)
 
-          Vfx.Vfx.handle
-            (Vfx.Burst(
-              (if bigBurst then
-                 Vfx.VfxKind.Explosion
-               else
-                 Vfx.VfxKind.Impact),
-              impact.Pos,
-              impact.Y
-            ))
+          Vfx.Vfx.burst
+            (if bigBurst then
+               Vfx.VfxKind.Explosion
+             else
+               Vfx.VfxKind.Impact)
+            impact.Pos
+            impact.Y
             state.Vfx)
 
   /// Zone ticks: declarative applications (damage + slow) translated
@@ -309,8 +302,8 @@ module Application =
 
           let dir = if total > 0f then d / total else Vector2.UnitX
 
-          Projectiles.Projectiles.handle
-            (Projectiles.Spawn {
+          Projectiles.Projectiles.spawn
+            {
               Pos = pos
               Height = shot.Height
               TargetY = targetY
@@ -327,7 +320,7 @@ module Application =
               Model = shot.ProjectileModel
               Scale = shot.ProjectileScale
               Speed = speed
-            })
+            }
             state.Projectiles
 
         // Muzzle VFX: bow-style weapons puff dust; guns flash. The
@@ -339,17 +332,17 @@ module Application =
           else
             Vfx.VfxKind.Muzzle
 
-        Vfx.Vfx.handle (Vfx.Burst(muzzleKind, pos, shot.Height)) state.Vfx
+        Vfx.Vfx.burst muzzleKind pos shot.Height state.Vfx
 
-  // ── The per-frame sim (ex-Router.update) ───────────────────────────
+  // ── The per-frame sim ─────────────────────────────────────────────
 
   // ── Cold paths — plain handlers, called by the host ──────────────
-  // Validation stays exactly where Defli had it (in the update's callers).
+  // Placement owns the build rules; these translate accepted plans.
 
   /// The player starts the next wave. No-op on game over.
   let inline startNextWave(state: State) : unit =
     if not(AVal.getValue state.Economy.GameOver) then
-      let events = Waves.Waves.handle Waves.WaveMsg.StartNextWave state.Waves
+      let events = Waves.Waves.startNextWave state.Waves
 
       handleWaveEvents state events
 
@@ -366,15 +359,13 @@ module Application =
         cell
     with
     | ValueSome plan ->
-      Towers.Towers.handle (Towers.Place(plan.Cell, plan.Def)) state.Towers
-      Economy.Economy.handle (Economy.SpendGold plan.Cost) state.Economy
+      Towers.Towers.place plan.Cell plan.Def state.Towers
+      Economy.Economy.spendGold plan.Cost state.Economy
 
-      Vfx.Vfx.handle
-        (Vfx.Burst(
-          Vfx.VfxKind.Placement,
-          Cells.center plan.Cell (State.cellSize state),
-          0f
-        ))
+      Vfx.Vfx.burst
+        Vfx.VfxKind.Placement
+        (Cells.center plan.Cell (State.cellSize state))
+        0f
         state.Vfx
 
       true
@@ -388,26 +379,14 @@ module Application =
       Placement.upgrade state.Towers (AVal.getValue state.Economy.Gold) cell
     with
     | ValueSome plan ->
-      Towers.Towers.handle (Towers.Upgrade plan.Tower) state.Towers
-      Economy.Economy.handle (Economy.SpendGold plan.Cost) state.Economy
+      Towers.Towers.upgrade plan.Tower state.Towers
+      Economy.Economy.spendGold plan.Cost state.Economy
       true
     | ValueNone -> false
 
   /// Player switched the tower kind to place (cold path).
   let inline selectTower (state: State) (def: TowerDef) : unit =
     state.SelectedTower |> CVal.set def
-
-  /// Host-facing system messages (tests and debug hosts): applies the
-  /// message and handles the events it emits, exactly as the sim update
-  /// does when the same message arrives from a tick.
-  let inline applyEnemyMsg (state: State) (msg: Enemies.EnemyMsg) : unit =
-    let events = Enemies.Enemies.handle msg state.Enemies state.Map.Path
-
-    handleEnemyEvents state events
-
-  /// Host-facing economy messages (tests and debug hosts).
-  let inline applyEconomyMsg (state: State) (msg: Economy.EconomyMsg) : unit =
-    Economy.Economy.handle msg state.Economy
 
   // ── Semantic actions — the InputMapper root ────────────────────
   // The mapper subscription (Input.subscriptions) builds an
@@ -434,8 +413,7 @@ module Application =
       | GameAction.SelectTower slot ->
         if slot >= 0 && slot < TowerDefs.slots.Length then
           selectTower state TowerDefs.slots[slot]
-      | GameAction.ResetCamera ->
-        Camera.Camera.handle CameraMsg.Reset state.Camera
+      | GameAction.ResetCamera -> Camera.Camera.reset state.Camera
       | GameAction.Restart -> restart <- true
       | GameAction.PanLeft
       | GameAction.PanRight
@@ -449,7 +427,7 @@ module Application =
     for a in actions.Held do
       pan <- pan + Inputs.panStep a
 
-    Camera.Camera.handle (CameraMsg.SetKeyboardPan pan) state.Camera
+    Camera.Camera.setKeyboardPan pan state.Camera
 
     // Restart stays in the game logic: swap the state in place. The
     // frame force reads the cell at force time, so the next force

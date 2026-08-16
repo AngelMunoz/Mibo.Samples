@@ -4,6 +4,7 @@ open System
 open Mibo.Adaptive
 open Defli3D
 open Defli3D.State
+open Defli3D.State.Systems.Enemies
 
 // ─────────────────────────────────────────────────────────────
 // Test-owned fixtures — never production data (Kimo convention:
@@ -138,6 +139,18 @@ let mkHarness(cfg: WorldConfig) =
     )
 
   Harness(state, runner)
+
+/// Spawns an enemy through the system's direct function (the shape
+/// the sim's handlers use).
+let spawnEnemy (state: State) (def: EnemyDef) =
+  Enemies.spawn def state.Enemies state.Map.Path
+
+/// Drives damage through the same event translation the sim's enemy
+/// handler uses (kills pay gold, burst, boss split).
+let damageEnemy (state: State) (eid: int<EnemyId>) (amount: int) =
+  Application.handleEnemyEvents
+    state
+    (Enemies.applyDamage eid amount state.Enemies)
 
 /// Coarse step for e2e timing tests (the sim is dt-agnostic — the
 /// movement/spawn math consumes dt directly).

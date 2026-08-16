@@ -81,12 +81,6 @@ type VfxModel() =
   member val Placement = VfxPool 128 with get, set
   member val BaseHit = VfxPool 128 with get, set
 
-/// Burst — spawn one burst of `kind` at the world-space point
-/// (pos is x/z, y is the spawn height: muzzle bursts spawn at the
-/// tower top, ground effects pass 0).
-[<Struct>]
-type VfxMsg = Burst of kind: VfxKind * pos: Vector2 * y: float32
-
 module Vfx =
 
   let init() = VfxModel()
@@ -120,51 +114,54 @@ module Vfx =
   /// Cold path: spawn a burst into the kind's pool (deterministic
   /// spread — index-based angles, three speed tiers, golden-angle
   /// rotation so overlapping puffs don't read as copies). The burst
-  /// position is a world-space point: the msg's Vector2 is x/z and
-  /// its y is the spawn height (muzzle bursts spawn at the tower
-  /// top, ground effects at 0).
-  let handle (msg: VfxMsg) (model: VfxModel) : unit =
-    match msg with
-    | Burst(kind, pos, y) ->
-      let struct (count, speed, size, _, _, _, _) = paramsOf kind
+  /// position is a world-space point (pos is x/z; y is the spawn
+  /// height: muzzle bursts spawn at the tower top, ground effects
+  /// pass 0).
+  let burst
+    (kind: VfxKind)
+    (pos: Vector2)
+    (y: float32)
+    (model: VfxModel)
+    : unit =
+    let struct (count, speed, size, _, _, _, _) = paramsOf kind
 
-      // Dust puffs spawn tan (ground dust) — the raylib view draws
-      // the particle color directly; MonoGame tints per kind.
-      // Everything else stays white.
-      let baseColor =
-        match kind with
-        | VfxKind.MuzzleDust -> Color.rgb 200uy 180uy 150uy
-        | _ -> Color.White
+    // Dust puffs spawn tan (ground dust) — the raylib view draws
+    // the particle color directly; MonoGame tints per kind.
+    // Everything else stays white.
+    let baseColor =
+      match kind with
+      | VfxKind.MuzzleDust -> Color.rgb 200uy 180uy 150uy
+      | _ -> Color.White
 
-      let pool =
-        match kind with
-        | Impact -> model.Impact
-        | Explosion -> model.Explosion
-        | DeathPoof -> model.DeathPoof
-        | Muzzle -> model.Muzzle
-        | MuzzleDust -> model.MuzzleDust
-        | Placement -> model.Placement
-        | BaseHit -> model.BaseHit
+    let pool =
+      match kind with
+      | Impact -> model.Impact
+      | Explosion -> model.Explosion
+      | DeathPoof -> model.DeathPoof
+      | Muzzle -> model.Muzzle
+      | MuzzleDust -> model.MuzzleDust
+      | Placement -> model.Placement
+      | BaseHit -> model.BaseHit
 
-      let mutable i = 0
+    let mutable i = 0
 
-      while i < count && pool.Count < pool.Particles.Length do
-        let angle = float32 i / float32 count * 2f * MathF.PI
-        let tier = float32(i % 3 + 1)
-        let dir = Vector2(MathF.Cos angle, MathF.Sin angle)
-        let velocity = dir * (speed * tier)
+    while i < count && pool.Count < pool.Particles.Length do
+      let angle = float32 i / float32 count * 2f * MathF.PI
+      let tier = float32(i % 3 + 1)
+      let dir = Vector2(MathF.Cos angle, MathF.Sin angle)
+      let velocity = dir * (speed * tier)
 
-        pool.Particles[pool.Count] <-
-          {
-            Position = Vector3(pos.X, y, pos.Y)
-            Size = Vector2(size, size)
-            Rotation = float32((i * 137) % 360)
-            Color = baseColor
-          }
+      pool.Particles[pool.Count] <-
+        {
+          Position = Vector3(pos.X, y, pos.Y)
+          Size = Vector2(size, size)
+          Rotation = float32((i * 137) % 360)
+          Color = baseColor
+        }
 
-        pool.Velocities[pool.Count] <- velocity
-        pool.Count <- pool.Count + 1
-        i <- i + 1
+      pool.Velocities[pool.Count] <- velocity
+      pool.Count <- pool.Count + 1
+      i <- i + 1
 
   let inline private stepPool dt (kind: VfxKind) (pool: VfxPool) =
     let struct (_, _, _, fadeSpeed, growth, rise, damp) = paramsOf kind

@@ -133,7 +133,7 @@ let tests =
 
     testCase "StartNextWave composes + activates, then refuses" (fun () ->
       let m = Waves.init capacity
-      let events = Waves.handle WaveMsg.StartNextWave m
+      let events = Waves.startNextWave m
       let m' = m
 
       match events with
@@ -144,14 +144,14 @@ let tests =
       Expect.isTrue m'.WaveActive.Value "active"
       Expect.equal m'.WaveNumber.Value 1 "wave number"
 
-      let events = Waves.handle WaveMsg.StartNextWave m'
+      let events = Waves.startNextWave m'
       let m2 = m'
       Expect.equal events.Length 0 "refuses while active"
       Expect.equal m2.WaveNumber.Value 1 "wave number unchanged")
 
     testCase "clear detection via direct values" (fun () ->
       let m = Waves.init capacity
-      let _ = Waves.handle WaveMsg.StartNextWave m
+      let _ = Waves.startNextWave m
       let m' = m
 
       // Still spawning: no clear.
@@ -177,7 +177,7 @@ let tests =
         "Press Enter"
         "idle banner"
 
-      let _ = Waves.handle WaveMsg.StartNextWave m
+      let _ = Waves.startNextWave m
       let m' = m
       Expect.stringContains (AVal.getValue m'.Banner) "Wave 1" "active banner")
   ]

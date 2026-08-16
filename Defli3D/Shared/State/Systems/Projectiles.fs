@@ -31,9 +31,6 @@ open Defli3D.State
 // ─────────────────────────────────────────────────────────────
 
 [<Struct>]
-type ProjectileMsg = Spawn of spawn: ProjectileSpawn
-
-[<Struct>]
 type ProjectileEvent = Impact of impact: ProjectileImpact
 
 type ProjectilesModel() =
@@ -51,35 +48,33 @@ module Projectiles =
 
   /// Cold path: spawn one shot (translated by Application from
   /// TowerEvent.Fired — one spawn per volley projectile).
-  let handle (msg: ProjectileMsg) (model: ProjectilesModel) : unit =
-    match msg with
-    | Spawn spawn ->
-      let pid = model.NextId
-      model.NextId <- model.NextId + 1<ProjectileId>
+  let spawn (spawn: ProjectileSpawn) (model: ProjectilesModel) : unit =
+    let pid = model.NextId
+    model.NextId <- model.NextId + 1<ProjectileId>
 
-      model.Rows
-      |> CMap.addOrUpdate pid {
-        Pos = spawn.Pos
-        Y = spawn.Height
-        Dir = spawn.Dir
-        Speed = spawn.Speed
-        Traveled = 0f
-        TotalLen = spawn.TotalLen
-        MuzzleY = spawn.Height
-        TargetY = spawn.TargetY
-        ArcHeight = spawn.ArcHeight
-        Seek = spawn.Seek
-        Target = spawn.Target
-        Aim = spawn.Aim
-        Damage = spawn.Damage
-        ImpactRadius = spawn.ImpactRadius
-        Piercing = spawn.Piercing
-        HitIds = (if spawn.Piercing then ResizeArray() else null)
-        Zone = spawn.Zone
-        Lifetime = lifetime
-        Model = spawn.Model
-        Scale = spawn.Scale
-      }
+    model.Rows
+    |> CMap.addOrUpdate pid {
+      Pos = spawn.Pos
+      Y = spawn.Height
+      Dir = spawn.Dir
+      Speed = spawn.Speed
+      Traveled = 0f
+      TotalLen = spawn.TotalLen
+      MuzzleY = spawn.Height
+      TargetY = spawn.TargetY
+      ArcHeight = spawn.ArcHeight
+      Seek = spawn.Seek
+      Target = spawn.Target
+      Aim = spawn.Aim
+      Damage = spawn.Damage
+      ImpactRadius = spawn.ImpactRadius
+      Piercing = spawn.Piercing
+      HitIds = (if spawn.Piercing then ResizeArray() else null)
+      Zone = spawn.Zone
+      Lifetime = lifetime
+      Model = spawn.Model
+      Scale = spawn.Scale
+    }
 
   /// The flight height at progress t (0..1) for the dumbfire leg:
   /// the muzzle→target lerp plus the arc's parabola.

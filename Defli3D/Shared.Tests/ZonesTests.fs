@@ -55,7 +55,7 @@ let tests =
     testCase "Drop adds a row armed with an immediate tick" (fun () ->
       let m = model()
 
-      Zones.handle (ZoneMsg.Drop(Vector2(2f, 2f), zoneDef)) m
+      Zones.drop (Vector2(2f, 2f)) zoneDef m
 
       match m.Rows |> CMap.tryGetValue(0<ZoneId>) with
       | ValueSome row ->
@@ -67,7 +67,7 @@ let tests =
     testCase "tick applies slow + DoT to enemies inside" (fun () ->
       let m = model()
 
-      Zones.handle (ZoneMsg.Drop(Vector2.Zero, zoneDef)) m
+      Zones.drop Vector2.Zero zoneDef m
 
       let eid = 0<EnemyId>
       let positions = walkersAt [| eid |] [| Vector2(0.5f, 0f) |]
@@ -89,9 +89,7 @@ let tests =
     testCase "enemies outside the radius are untouched" (fun () ->
       let m = model()
 
-      Zones.handle
-        (ZoneMsg.Drop(Vector2.Zero, { zoneDef with Radius = 0.5f }))
-        m
+      Zones.drop Vector2.Zero { zoneDef with Radius = 0.5f } m
 
       let positions =
         walkersAt [| 0<EnemyId>; 1<EnemyId> |] [|
@@ -124,8 +122,8 @@ let tests =
               Slow = 0.5f
         }
 
-        Zones.handle (ZoneMsg.Drop(Vector2.Zero, weak)) m
-        Zones.handle (ZoneMsg.Drop(Vector2.Zero, strong)) m
+        Zones.drop Vector2.Zero weak m
+        Zones.drop Vector2.Zero strong m
 
         let eid = 0<EnemyId>
 
@@ -142,7 +140,7 @@ let tests =
         let m2 = model()
 
         for _ in 1..6 do
-          Zones.handle (ZoneMsg.Drop(Vector2.Zero, zoneDef)) m2
+          Zones.drop Vector2.Zero zoneDef m2
 
         let applies2 =
           Zones.tick 0.1f m2 (walkersAt [| eid |] [| Vector2.Zero |])
@@ -155,7 +153,7 @@ let tests =
     testCase "tick interval gates damage ticks between applications" (fun () ->
       let m = model()
 
-      Zones.handle (ZoneMsg.Drop(Vector2.Zero, zoneDef)) m
+      Zones.drop Vector2.Zero zoneDef m
 
       let eid = 0<EnemyId>
       let positions = walkersAt [| eid |] [| Vector2.Zero |]
@@ -175,7 +173,7 @@ let tests =
     testCase "the zone expires after its life" (fun () ->
       let m = model()
 
-      Zones.handle (ZoneMsg.Drop(Vector2.Zero, zoneDef)) m
+      Zones.drop Vector2.Zero zoneDef m
 
       let eid = 0<EnemyId>
       let positions = walkersAt [| eid |] [| Vector2.Zero |]
@@ -189,7 +187,7 @@ let tests =
     testCase "Ground zones skip fliers (no DoT, no slow)" (fun () ->
       let m = model()
 
-      Zones.handle (ZoneMsg.Drop(Vector2.Zero, zoneDef)) m
+      Zones.drop Vector2.Zero zoneDef m
 
       let fliers =
         enemiesAt [| 0<EnemyId> |] [| Vector2.Zero |] EnemyArchetype.Flier
@@ -201,15 +199,13 @@ let tests =
     testCase "Any zones tick fliers (arrow patches slow them)" (fun () ->
       let m = model()
 
-      Zones.handle
-        (ZoneMsg.Drop(
-          Vector2.Zero,
-          {
-            zoneDef with
-                TickDamage = 0
-                Affects = TargetDomain.Any
-          }
-        ))
+      Zones.drop
+        Vector2.Zero
+        {
+          zoneDef with
+              TickDamage = 0
+              Affects = TargetDomain.Any
+        }
         m
 
       let fliers =

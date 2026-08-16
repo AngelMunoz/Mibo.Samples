@@ -385,13 +385,9 @@ let tests =
       let state = State.init TestData.Fixtures.cfg
       state.Waves.WaveNumber.Set 10 // tier 2
 
-      Towers.Towers.handle
-        (TowerMsg.Place(struct (1, 1), TowerDefs.gunpost))
-        state.Towers
+      Towers.Towers.place struct (1, 1) TowerDefs.gunpost state.Towers
 
-      Towers.Towers.handle
-        (TowerMsg.Place(struct (1, 3), TowerDefs.sentry))
-        state.Towers
+      Towers.Towers.place struct (1, 3) TowerDefs.sentry state.Towers
 
       Application.handleTowerEvents state [|
         shotFor 0<TowerId>

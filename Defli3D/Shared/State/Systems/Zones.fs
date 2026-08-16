@@ -11,9 +11,9 @@ open Defli3D.State
 // Zones sub-system — lasting ground effects (slow + damage over
 // time), dropped at projectile impact points by Application
 // (catapult/cannon/arrow weapons). Purely own-map: rows live and
-// expire here; effects are emitted as declarative applications the
-// router (Application) translates into Enemies.applyDamage /
-// applySlow — zones never touch another system's maps.
+// expire here; effects are emitted as declarative applications
+// Application translates into Enemies.applyDamage / applySlow —
+// zones never touch another system's maps.
 //
 // Stacking: multiple zones may affect one enemy; per tick each
 // enemy accepts at most Def.MaxStacks zone contributions (damage
@@ -22,11 +22,8 @@ open Defli3D.State
 // (the Enemies slow-timer machinery already handles expiry).
 // ─────────────────────────────────────────────────────────────
 
-[<Struct>]
-type ZoneMsg = Drop of drop: struct (Vector2 * ZoneDef)
-
 /// One zone's effect on one enemy this tick — declarative data for
-/// the router (damage → applyDamage, slow → applySlow).
+/// Application (damage → applyDamage, slow → applySlow).
 [<Struct>]
 type ZoneApply = {
   Enemy: int<EnemyId>
@@ -48,25 +45,24 @@ module Zones =
 
   /// Slow expiry horizon: one tick interval after the last
   /// application, so the effect lapses shortly after leaving.
-  let private slowSeconds(def: ZoneDef) : float32 = def.TickInterval * 1.5f
+  let inline private slowSeconds(def: ZoneDef) : float32 =
+    def.TickInterval * 1.5f
 
   let init() : ZonesModel = ZonesModel()
 
   /// Cold path: drop a zone at an impact point (Application, from
   /// ProjectileImpact.Zone).
-  let handle (msg: ZoneMsg) (model: ZonesModel) : unit =
-    match msg with
-    | Drop struct (pos, def) ->
-      let zid = model.NextId
-      model.NextId <- model.NextId + 1<ZoneId>
+  let inline drop (pos: Vector2) (def: ZoneDef) (model: ZonesModel) : unit =
+    let zid = model.NextId
+    model.NextId <- model.NextId + 1<ZoneId>
 
-      model.Rows
-      |> CMap.addOrUpdate zid {
-        Pos = pos
-        Def = def
-        Remaining = def.Seconds
-        TickTimer = 0f
-      }
+    model.Rows
+    |> CMap.addOrUpdate zid {
+      Pos = pos
+      Def = def
+      Remaining = def.Seconds
+      TickTimer = 0f
+    }
 
   /// Hot path: expire rows and tick each zone's damage/slow
   /// application. `enemies` is the Enemies.Alive projection — the

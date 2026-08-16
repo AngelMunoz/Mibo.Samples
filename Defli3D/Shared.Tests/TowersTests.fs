@@ -94,7 +94,7 @@ let tests =
       let m = model()
       let cell = struct (3, 3)
 
-      Towers.handle (TowerMsg.Place(cell, def)) m
+      Towers.place cell def m
       let m' = m
 
       Expect.equal (m'.Statics |> AMap.getValue).Count 1 "statics"
@@ -112,7 +112,7 @@ let tests =
       let m = model()
       let cell = struct (3, 3)
 
-      Towers.handle (TowerMsg.Place(cell, def)) m
+      Towers.place cell def m
       let m' = m
 
       // Range 2 cells = 2 units; enemy is far away.
@@ -134,7 +134,7 @@ let tests =
       let m = model()
       let cell = struct (3, 3)
 
-      Towers.handle (TowerMsg.Place(cell, def)) m
+      Towers.place cell def m
       let m' = m
 
       // Tower center (3,3) = (3.5, 3.5); enemy one cell east = in range 2.
@@ -163,7 +163,7 @@ let tests =
       let m = model()
       let cell = struct (3, 3)
 
-      Towers.handle (TowerMsg.Place(cell, def)) m
+      Towers.place cell def m
       let m' = m
 
       // Two enemies both in range; the one with higher progress wins.
@@ -235,7 +235,7 @@ let tests =
     let picked(policy: TargetPolicy) : int<EnemyId> voption =
       let m = model()
 
-      Towers.handle (TowerMsg.Place(struct (3, 3), defWith policy)) m
+      Towers.place (struct (3, 3)) (defWith policy) m
       let m' = m
 
       let events =
@@ -291,9 +291,7 @@ let tests =
 
       let m = model()
 
-      Towers.handle
-        (TowerMsg.Place(struct (3, 3), defWith TargetPolicy.Closest))
-        m
+      Towers.place (struct (3, 3)) (defWith TargetPolicy.Closest) m
 
       let m' = m
 
@@ -319,7 +317,7 @@ let tests =
         let m = model()
         let cell = struct (3, 3)
 
-        Towers.handle (TowerMsg.Place(cell, def)) m
+        Towers.place cell def m
         let m' = m
 
         let enemyPos = cellCenter struct (4, 3) // (4.5, 3.5) — 1 unit east
@@ -346,7 +344,7 @@ let tests =
     testCase "stationary target: Aim equals the target position" (fun () ->
       let m = model()
 
-      Towers.handle (TowerMsg.Place(struct (3, 3), def)) m
+      Towers.place struct (3, 3) def m
 
       let enemyPos = cellCenter struct (4, 3)
       let alive = AMap.constant(fun () -> enemyAt enemyPos 0.5f)
@@ -362,7 +360,7 @@ let tests =
       (fun () ->
         let m = model()
 
-        Towers.handle (TowerMsg.Place(struct (3, 3), def)) m
+        Towers.place struct (3, 3) def m
 
         let alive =
           AMap.constant(fun () -> enemyAt (cellCenter struct (4, 3)) 0.5f)
@@ -391,10 +389,10 @@ let tests =
       let seekAt (d: TowerDef) (level: int) =
         let m = model()
 
-        Towers.handle (TowerMsg.Place(struct (3, 3), d)) m
+        Towers.place struct (3, 3) d m
 
         for _ in 2..level do
-          Towers.handle (TowerMsg.Upgrade(0<TowerId>)) m
+          Towers.upgrade 0<TowerId> m
 
         let events =
           Towers.tick
@@ -481,14 +479,12 @@ let tests =
     testCase "Ground weapons ignore fliers; Any weapons engage them" (fun () ->
       let m = model()
 
-      Towers.handle
-        (TowerMsg.Place(
-          struct (3, 3),
-          {
-            def with
-                Targets = TargetDomain.Ground
-          }
-        ))
+      Towers.place
+        (struct (3, 3))
+        {
+          def with
+              Targets = TargetDomain.Ground
+        }
         m
 
       // Only a flier in range: the cannon idles.
@@ -517,7 +513,7 @@ let tests =
 
       // The Any-domain def (the local test def) engages the flier.
       let m2 = model()
-      Towers.handle (TowerMsg.Place(struct (3, 3), def)) m2
+      Towers.place struct (3, 3) def m2
 
       let events3 =
         Towers.tick
@@ -550,7 +546,7 @@ let tests =
       let m = model()
       let d = { def with Volley = 4; Spread = 0.6f }
 
-      Towers.handle (TowerMsg.Place(struct (3, 3), d)) m
+      Towers.place struct (3, 3) d m
 
       let events =
         Towers.tick
@@ -570,7 +566,7 @@ let tests =
     testCase "zone weapon (bunker) → Fired carries the zone payload" (fun () ->
       let m = model()
 
-      Towers.handle (TowerMsg.Place(struct (3, 3), TowerDefs.bunker)) m
+      Towers.place struct (3, 3) TowerDefs.bunker m
 
       let events =
         Towers.tick
@@ -594,7 +590,7 @@ let tests =
     testCase "piercer def → Fired carries piercing" (fun () ->
       let m = model()
 
-      Towers.handle (TowerMsg.Place(struct (3, 3), TowerDefs.piercer)) m
+      Towers.place struct (3, 3) TowerDefs.piercer m
 
       let events =
         Towers.tick
@@ -616,7 +612,7 @@ let tests =
       (fun () ->
         let m = model()
 
-        Towers.handle (TowerMsg.Place(struct (3, 3), def)) m
+        Towers.place struct (3, 3) def m
 
         let enemyPos = cellCenter struct (4, 3)
 
@@ -639,11 +635,11 @@ let tests =
         let m = model()
         let cell = struct (3, 3)
 
-        Towers.handle (TowerMsg.Place(cell, def)) m
+        Towers.place cell def m
         let m' = m
 
         // Level 2: +RatePerLevel fire rate → the cooldown must shrink.
-        Towers.handle (TowerMsg.Upgrade(0<TowerId>)) m'
+        Towers.upgrade 0<TowerId> m'
         let m2 = m'
 
         let alive =
@@ -670,7 +666,7 @@ let tests =
         let m = model()
         let cell = struct (3, 3)
 
-        Towers.handle (TowerMsg.Place(cell, def)) m
+        Towers.place cell def m
         let m' = m
 
         let suppression = Dictionary<int<TowerId>, float32>()
@@ -700,7 +696,7 @@ let tests =
         let m = model()
         let cell = struct (3, 3)
 
-        Towers.handle (TowerMsg.Place(cell, def)) m
+        Towers.place cell def m
         let m' = m
         let tid = 0<TowerId>
 
@@ -713,7 +709,7 @@ let tests =
         | ValueNone -> failtest "effective def must exist"
 
         // Level 2 → +25 % damage, +RatePerLevel fire rate, +0.5 range.
-        Towers.handle (TowerMsg.Upgrade tid) m'
+        Towers.upgrade tid m'
         let m2 = m'
 
         match m2.Levels |> CMap.tryGetValue tid with
@@ -733,7 +729,7 @@ let tests =
       let m = model()
       let cell = struct (3, 3)
 
-      Towers.handle (TowerMsg.Place(cell, def)) m
+      Towers.place cell def m
       let m' = m
 
       let alive =

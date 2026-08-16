@@ -24,7 +24,7 @@ let private aliveView(m: EnemiesModel) = m.Alive |> AMap.getValue
 let private viewsView(m: EnemiesModel) = m.Views |> AMap.getValue
 
 let private spawn (m: EnemiesModel) (def: EnemyDef) =
-  let _ = Enemies.handle (EnemyMsg.Spawn def) m map.Path
+  let _ = Enemies.spawn def m map.Path
   let m' = m
   m'
 
@@ -49,7 +49,7 @@ let tests =
       m <- spawn m Fixtures.runner // id 2
 
       // Damage the tank (id 1).
-      let _ = Enemies.handle (EnemyMsg.ApplyDamage(1<EnemyId>, 50)) m map.Path
+      let _ = Enemies.applyDamage 1<EnemyId> 50 m
       let m' = m
 
       let expectedHp(eid: int<EnemyId>) =
@@ -69,7 +69,7 @@ let tests =
       let mutable m = spawn (Enemies.init()) Fixtures.grunt
       m <- spawn m Fixtures.runner
 
-      let _ = Enemies.handle (EnemyMsg.ApplyDamage(0<EnemyId>, 999)) m map.Path
+      let _ = Enemies.applyDamage 0<EnemyId> 999 m
       let m' = m
 
       Expect.equal (aliveView m').Count 1 "only runner alive"
@@ -80,7 +80,7 @@ let tests =
         1
         "count follows Alive"
 
-      let _ = Enemies.handle (EnemyMsg.Despawn(0<EnemyId>)) m' map.Path
+      let _ = Enemies.despawn 0<EnemyId> m'
       let m2 = m'
 
       Expect.equal (viewsView m2).Count 1 "corpse removed"
@@ -93,7 +93,7 @@ let tests =
     testCase "repeated reads at a settled state are stable" (fun () ->
       let mutable m = spawn (Enemies.init()) Fixtures.tank
 
-      let _ = Enemies.handle (EnemyMsg.ApplyDamage(0<EnemyId>, 10)) m map.Path
+      let _ = Enemies.applyDamage 0<EnemyId> 10 m
       let m' = m
 
       let first = viewsView m'
@@ -152,9 +152,7 @@ let tests =
       let enemies = Enemies.init()
       let towers = Towers.Towers.init()
 
-      Towers.Towers.handle
-        (Towers.TowerMsg.Place(struct (2, 3), TowerDefs.sentry))
-        towers
+      Towers.Towers.place (struct (2, 3)) TowerDefs.sentry towers
 
       // No target yet → no aim.
       let projections =
@@ -195,11 +193,11 @@ let tests =
     testCase "game over aval follows lives" (fun () ->
       let e = Economy.init cfg
       Expect.isFalse (AVal.getValue e.GameOver) "not over"
-      Economy.handle EconomyMsg.LoseLife e
+      Economy.loseLife e
       Expect.isFalse (AVal.getValue e.GameOver) "still not over"
 
       for _ in 2 .. cfg.StartingLives do
-        Economy.handle EconomyMsg.LoseLife e
+        Economy.loseLife e
 
       Expect.isTrue (AVal.getValue e.GameOver) "over at zero")
 
@@ -208,9 +206,7 @@ let tests =
       let towers = Towers.Towers.init()
 
       // Tower at cell (2,3) — center (2.5, 3.5) in world units.
-      Towers.Towers.handle
-        (Towers.TowerMsg.Place(struct (2, 3), TowerDefs.sentry))
-        towers
+      Towers.Towers.place (struct (2, 3)) TowerDefs.sentry towers
 
       let t' = towers
 
@@ -234,11 +230,7 @@ let tests =
       Expect.equal (factorOf(0<TowerId>)) (ValueSome 1f) "free without boss"
 
       // Boss ON the tower's cell → suppressed (Radius 2 units).
-      let _ =
-        Enemies.handle
-          (EnemyMsg.SpawnAt(Fixtures.boss, Vector2(2.5f, 3.5f), 0f, 0))
-          enemies
-          map.Path
+      let _ = Enemies.spawnAt Fixtures.boss (Vector2(2.5f, 3.5f)) 0f 0 enemies
 
       let e2 = enemies
 
@@ -248,14 +240,10 @@ let tests =
         "suppressed in radius"
 
       // A non-boss at the same spot does NOT suppress.
-      let _ = Enemies.handle (EnemyMsg.Despawn(0<EnemyId>)) e2 map.Path
+      let _ = Enemies.despawn 0<EnemyId> e2
       let e3 = e2
 
-      let _ =
-        Enemies.handle
-          (EnemyMsg.SpawnAt(Fixtures.grunt, Vector2(2.5f, 3.5f), 0f, 0))
-          e3
-          map.Path
+      let _ = Enemies.spawnAt Fixtures.grunt (Vector2(2.5f, 3.5f)) 0f 0 e3
 
       let e4 = e3
 
@@ -265,14 +253,10 @@ let tests =
         "grunts don't suppress"
 
       // A boss OUTSIDE the radius (3 units away > Radius 2) doesn't either.
-      let _ = Enemies.handle (EnemyMsg.Despawn(1<EnemyId>)) e4 map.Path
+      let _ = Enemies.despawn 1<EnemyId> e4
       let e5 = e4
 
-      let _ =
-        Enemies.handle
-          (EnemyMsg.SpawnAt(Fixtures.boss, Vector2(5.5f, 3.5f), 0f, 0))
-          e5
-          map.Path
+      let _ = Enemies.spawnAt Fixtures.boss (Vector2(5.5f, 3.5f)) 0f 0 e5
 
       Expect.equal (factorOf(0<TowerId>)) (ValueSome 1f) "out of radius")
   ]

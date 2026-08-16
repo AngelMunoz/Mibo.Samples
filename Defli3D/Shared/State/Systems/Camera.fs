@@ -42,32 +42,6 @@ open System.Numerics
 // wobbles, matching the 2D camera).
 // ─────────────────────────────────────────────────────────────
 
-[<Struct>]
-type CameraMsg =
-  /// Screen-space drag delta (pixels) — grab semantics: the world
-  /// follows the cursor, so the camera target moves opposite the
-  /// drag, converted to world units with the distance-based scale
-  /// (unitsPerPixel = Distance / PanScale) and oriented by the yaw.
-  /// Keyboard pan mirrors a drag: Camera.tick converts the
-  /// SET keyboard-pan direction (world units/s) back to
-  /// the pixel convention and applies it as a Pan.
-  | Pan of dx: float32 * dy: float32
-  /// Keyboard pan: the CURRENT held keyboard-pan direction (the sum of
-  /// the held pan actions' world-space steps). The sim SETS it every
-  /// step from the mapped actions' Held set — set-state, not
-  /// accumulation: synonym bindings (A and Left both map PanLeft) count
-  /// once, and a missed edge can never leave a stale direction behind.
-  /// Camera.tick applies the direction as a Pan each step.
-  | SetKeyboardPan of dir: Vector2
-  /// Multiplicative zoom step (e.g. 1.1 = zoom in, 0.9 = zoom out) —
-  /// scales the orbit Distance, clamped to [MinDistance, MaxDistance].
-  | ZoomBy of factor: float32
-  | SetTarget of target: Vector2
-  /// Kick the shake timer (amplitude in world units).
-  | Shake of strength: float32
-  /// Back to the world center at the default yaw/pitch/distance.
-  | Reset
-
 /// Backend-neutral orbit-camera state — everything the view needs to
 /// build a backend camera at the edge. A struct copy rides the
 /// RenderFrame.
@@ -150,49 +124,72 @@ module Camera =
       KeyboardPan = Vector2.Zero
     )
 
-  /// Cold path: apply an input intent by mutating the state in place
-  /// (never re-creating it). No return.
-  let handle (msg: CameraMsg) (model: CameraModel) : unit =
-    match msg with
-    | Pan(dx, dy) ->
-      let unitsPerPixel = model.State.Distance / PanScale
+  // ── Cold-path commands (the input edge and the sim call these
+  // directly) — in-place mutations, no return. ──
 
-      // Yaw-relative screen axes on the XZ plane: right (+screen X)
-      // and down-screen (+screen Y, the ground projection of the
-      // view direction).
-      let right = Vector2(MathF.Cos model.State.Yaw, -MathF.Sin model.State.Yaw)
-      let down = Vector2(-MathF.Sin model.State.Yaw, -MathF.Cos model.State.Yaw)
+  /// Screen-space drag delta (pixels) — grab semantics: the world
+  /// follows the cursor, so the camera target moves opposite the
+  /// drag, converted to world units with the distance-based scale
+  /// (unitsPerPixel = Distance / PanScale) and oriented by the yaw.
+  /// Keyboard pan mirrors a drag: Camera.tick converts the SET
+  /// keyboard-pan direction (world units/s) back to the pixel
+  /// convention and applies it as a pan.
+  let inline pan (dx: float32) (dy: float32) (model: CameraModel) : unit =
+    let unitsPerPixel = model.State.Distance / PanScale
 
-      model.State <- {
-        model.State with
-            Target =
-              model.State.Target
-              - (right * (dx * unitsPerPixel) + down * (dy * unitsPerPixel))
-      }
-    | SetKeyboardPan dir -> model.KeyboardPan <- dir
-    | ZoomBy f ->
-      model.State <- {
-        model.State with
-            Distance =
-              Math.Clamp(model.State.Distance * f, MinDistance, MaxDistance)
-      }
-    | SetTarget t -> model.State <- { model.State with Target = t }
-    | Shake strength ->
-      model.State <- {
-        model.State with
-            ShakeRemaining = ShakeDuration
-            ShakeStrength = strength
-      }
-    | Reset ->
-      model.State <- {
-        model.State with
-            Target = model.State.WorldSize / 2f
-            Yaw = 0f
-            Pitch = DefaultPitch
-            Distance = DefaultDistance
-            ShakeRemaining = 0f
-            ShakeStrength = 0f
-      }
+    // Yaw-relative screen axes on the XZ plane: right (+screen X)
+    // and down-screen (+screen Y, the ground projection of the
+    // view direction).
+    let right = Vector2(MathF.Cos model.State.Yaw, -MathF.Sin model.State.Yaw)
+    let down = Vector2(-MathF.Sin model.State.Yaw, -MathF.Cos model.State.Yaw)
+
+    model.State <- {
+      model.State with
+          Target =
+            model.State.Target
+            - (right * (dx * unitsPerPixel) + down * (dy * unitsPerPixel))
+    }
+
+  /// The CURRENT held keyboard-pan direction (the sum of the held pan
+  /// actions' world-space steps). The sim SETS it every step from the
+  /// mapped actions' Held set — set-state, not accumulation: synonym
+  /// bindings (A and Left both map PanLeft) count once, and a missed
+  /// edge can never leave a stale direction behind. Camera.tick
+  /// applies the direction as a pan each step.
+  let inline setKeyboardPan (dir: Vector2) (model: CameraModel) : unit =
+    model.KeyboardPan <- dir
+
+  /// Multiplicative zoom step (e.g. 1.1 = zoom in, 0.9 = zoom out) —
+  /// scales the orbit Distance, clamped to [MinDistance, MaxDistance].
+  let inline zoomBy (factor: float32) (model: CameraModel) : unit =
+    model.State <- {
+      model.State with
+          Distance =
+            Math.Clamp(model.State.Distance * factor, MinDistance, MaxDistance)
+    }
+
+  let inline setTarget (target: Vector2) (model: CameraModel) : unit =
+    model.State <- { model.State with Target = target }
+
+  /// Kick the shake timer (amplitude in world units).
+  let inline shake (strength: float32) (model: CameraModel) : unit =
+    model.State <- {
+      model.State with
+          ShakeRemaining = ShakeDuration
+          ShakeStrength = strength
+    }
+
+  /// Back to the world center at the default yaw/pitch/distance.
+  let reset(model: CameraModel) : unit =
+    model.State <- {
+      model.State with
+          Target = model.State.WorldSize / 2f
+          Yaw = 0f
+          Pitch = DefaultPitch
+          Distance = DefaultDistance
+          ShakeRemaining = 0f
+          ShakeStrength = 0f
+    }
 
   /// The XZ target clamped into the world bounds (0,0 → WorldSize).
   /// The orbit camera never shows void: Camera.tick clamps every
@@ -208,19 +205,17 @@ module Camera =
           )
   }
 
-  /// Hot path (per tick): apply the accumulated keyboard pan as a
-  /// Pan (the accumulated direction is in world units/s — converted
-  /// to the Pan message's pixel convention), decay the shake timer,
-  /// and clamp the target to the world bounds.
+  /// Hot path (per tick): apply the keyboard-pan direction as a pan
+  /// (the direction is in world units/s — converted to the pixel
+  /// convention pan expects), decay the shake timer, and clamp the
+  /// target to the world bounds.
   let tick (dt: float32) (model: CameraModel) : unit =
     if model.KeyboardPan <> Vector2.Zero then
       let pxPerUnit = PanScale / model.State.Distance
 
-      handle
-        (Pan(
-          model.KeyboardPan.X * KeyboardPanSpeed * dt * pxPerUnit,
-          model.KeyboardPan.Y * KeyboardPanSpeed * dt * pxPerUnit
-        ))
+      pan
+        (model.KeyboardPan.X * KeyboardPanSpeed * dt * pxPerUnit)
+        (model.KeyboardPan.Y * KeyboardPanSpeed * dt * pxPerUnit)
         model
 
     if model.State.ShakeRemaining > 0f then

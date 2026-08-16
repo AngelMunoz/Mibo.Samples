@@ -125,8 +125,7 @@ let tests =
 
       // Drain all lives through the economy (handled synchronously).
       for _ in 1 .. cfg.StartingLives do
-        h.Post(fun () ->
-          Application.applyEconomyMsg h.State (EconomyMsg.LoseLife))
+        h.Post(fun () -> Economy.Economy.loseLife h.State.Economy)
 
       h.StepN(2, TestData.dt)
 
@@ -226,9 +225,7 @@ let tests =
 
       // Drain gold below the cost.
       h.Post(fun () ->
-        Application.applyEconomyMsg
-          h.State
-          (EconomyMsg.SpendGold(cfg.StartingGold - 1)))
+        Economy.Economy.spendGold (cfg.StartingGold - 1) h.State.Economy)
 
       h.StepN(2, TestData.dt)
 
@@ -251,10 +248,7 @@ let tests =
         h.StepN(2, TestData.dt)
 
         // Spawn one grunt on the path in range of the tower.
-        h.Post(fun () ->
-          Application.applyEnemyMsg
-            h.State
-            (Enemies.EnemyMsg.Spawn TestData.Fixtures.grunt))
+        h.Post(fun () -> TestData.spawnEnemy h.State TestData.Fixtures.grunt)
 
         h.StepN(2, TestData.dt)
 
@@ -298,8 +292,7 @@ let tests =
 
         // Bunker next to the path (the road runs along row 4). The
         // fixture gold (100) cannot afford a bunker (130) — top up.
-        h.Post(fun () ->
-          Application.applyEconomyMsg h.State (EconomyMsg.EarnGold 200))
+        h.Post(fun () -> Economy.Economy.earnGold 200 h.State.Economy)
 
         h.Post(fun () -> Application.selectTower h.State TowerDefs.bunker)
 
@@ -316,15 +309,9 @@ let tests =
         // crash). The reactions now run as posted intents drained
         // after the fan-out — the despawns/splits never mutate
         // Positions mid-enumeration.
-        h.Post(fun () ->
-          Application.applyEnemyMsg
-            h.State
-            (Enemies.EnemyMsg.Spawn TestData.Fixtures.boss))
+        h.Post(fun () -> TestData.spawnEnemy h.State TestData.Fixtures.boss)
 
-        h.Post(fun () ->
-          Application.applyEnemyMsg
-            h.State
-            (Enemies.EnemyMsg.Spawn TestData.Fixtures.runner))
+        h.Post(fun () -> TestData.spawnEnemy h.State TestData.Fixtures.runner)
 
         h.StepN(2, TestData.dt)
 
@@ -338,10 +325,7 @@ let tests =
             else
               None)
 
-        h.Post(fun () ->
-          Application.applyEnemyMsg
-            h.State
-            (Enemies.EnemyMsg.ApplyDamage(bossId, 190)))
+        h.Post(fun () -> TestData.damageEnemy h.State bossId 190)
 
         let cleared =
           h.StepUntil(
@@ -386,10 +370,7 @@ let tests =
         | ValueNone -> failtest "level must exist"
 
         // The tower fires with the EFFECTIVE (scaled) damage.
-        h.Post(fun () ->
-          Application.applyEnemyMsg
-            h.State
-            (Enemies.EnemyMsg.Spawn TestData.Fixtures.grunt))
+        h.Post(fun () -> TestData.spawnEnemy h.State TestData.Fixtures.grunt)
 
         let fired =
           h.StepUntil(
@@ -414,8 +395,7 @@ let tests =
       h.StepN(1, TestData.dt)
 
       // Top up so the full ladder is affordable (sentry ladder: 4 × 30).
-      h.Post(fun () ->
-        Application.applyEconomyMsg h.State (EconomyMsg.EarnGold 110))
+      h.Post(fun () -> Economy.Economy.earnGold 110 h.State.Economy)
 
       h.StepN(1, TestData.dt)
 
@@ -454,17 +434,16 @@ let tests =
         h.StepN(2, TestData.dt)
 
         h.Post(fun () ->
-          Application.applyEnemyMsg
-            h.State
-            (Enemies.EnemyMsg.Spawn
-            // Tanky on purpose: the volley's DAMAGE is tuning —
-            // here it must not kill the walker, so the zone
-            // mechanism (drop + slow + timer) is what the
-            // assertions read, wherever the tuning sits.
-            {
-              TestData.Fixtures.grunt with
-                  Hp = 500
-            }))
+          // Tanky on purpose: the volley's DAMAGE is tuning —
+          // here it must not kill the walker, so the zone
+          // mechanism (drop + slow + timer) is what the
+          // assertions read, wherever the tuning sits.
+          let walker = {
+            TestData.Fixtures.grunt with
+                Hp = 500
+          }
+
+          TestData.spawnEnemy h.State walker)
 
         // 1 s: first volley lands ~0.4 s in; the zone's slow must be
         // live (zone life 1.5 s, tick 0.5 s — re-applied while the
@@ -498,23 +477,16 @@ let tests =
       let h = TestData.mkHarness cfg
 
       // Bunker costs 130 > StartingGold 100 — top up first.
-      h.Post(fun () ->
-        Application.applyEconomyMsg h.State (EconomyMsg.EarnGold 60))
+      h.Post(fun () -> Economy.Economy.earnGold 60 h.State.Economy)
 
       h.Post(fun () -> Application.selectTower h.State TowerDefs.bunker)
       h.Post(fun () -> Application.placeTower h.State struct (1, 3) |> ignore)
       h.StepN(2, TestData.dt)
 
       // Two runners stacked on the same path cell (identical motion).
-      h.Post(fun () ->
-        Application.applyEnemyMsg
-          h.State
-          (Enemies.EnemyMsg.Spawn TestData.Fixtures.runner))
+      h.Post(fun () -> TestData.spawnEnemy h.State TestData.Fixtures.runner)
 
-      h.Post(fun () ->
-        Application.applyEnemyMsg
-          h.State
-          (Enemies.EnemyMsg.Spawn TestData.Fixtures.runner))
+      h.Post(fun () -> TestData.spawnEnemy h.State TestData.Fixtures.runner)
 
       h.StepN(2, TestData.dt)
 
@@ -539,8 +511,7 @@ let tests =
       (fun () ->
         let h = TestData.mkHarness cfg
 
-        h.Post(fun () ->
-          Application.applyEconomyMsg h.State (EconomyMsg.EarnGold 60))
+        h.Post(fun () -> Economy.Economy.earnGold 60 h.State.Economy)
 
         h.Post(fun () -> Application.selectTower h.State TowerDefs.bunker)
 
@@ -549,15 +520,9 @@ let tests =
 
         h.StepN(2, TestData.dt)
 
-        h.Post(fun () ->
-          Application.applyEnemyMsg
-            h.State
-            (Enemies.EnemyMsg.Spawn TestData.Fixtures.runner))
+        h.Post(fun () -> TestData.spawnEnemy h.State TestData.Fixtures.runner)
 
-        h.Post(fun () ->
-          Application.applyEnemyMsg
-            h.State
-            (Enemies.EnemyMsg.Spawn TestData.Fixtures.runner))
+        h.Post(fun () -> TestData.spawnEnemy h.State TestData.Fixtures.runner)
 
         // Wait for the bunker's shell to be in flight.
         let fired =
@@ -574,10 +539,7 @@ let tests =
         | Some(KeyValueV(_, row)) ->
           row.Target
           |> ValueOption.iter(fun target ->
-            h.Post(fun () ->
-              Application.applyEnemyMsg
-                h.State
-                (Enemies.EnemyMsg.ApplyDamage(target, 999))))
+            h.Post(fun () -> TestData.damageEnemy h.State target 999))
         | None -> failtest "shell must exist"
 
         // The shell must NOT vanish: it flies on to the aim point and
@@ -652,10 +614,7 @@ let tests =
         | Some bossId ->
           let aliveBefore = aliveOf h.State
 
-          h.Post(fun () ->
-            Application.applyEnemyMsg
-              h.State
-              (Enemies.EnemyMsg.ApplyDamage(bossId, 99999)))
+          h.Post(fun () -> TestData.damageEnemy h.State bossId 99999)
 
           h.StepN(2, TestData.dt)
 

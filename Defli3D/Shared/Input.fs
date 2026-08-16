@@ -20,7 +20,7 @@ open Defli3D.State.Systems.Camera
 // POINTER is direct: hover picking goes through the 3D orbit camera
 // (the mouse subscription has the viewport size and the camera
 // state, and Camera.pickGroundCell unprojects the cursor to the
-// ground plane); middle-drag pan posts CameraMsg.Pan with the raw
+// ground plane); middle-drag pan posts Camera.pan with the raw
 // pixel delta; the wheel posts ZoomBy; clicks post place/upgrade.
 // F3 (diagnostics overlay) is frontend state — a direct subscription,
 // not a GameAction.
@@ -66,7 +66,7 @@ module Input =
     // write — the poll runs on the game thread before Step.
     state.HoverCell |> CVal.set(hoverCell state viewport delta.Position)
 
-    // Wheel zoom / middle-drag pan: posted camera messages (no dt).
+    // Wheel zoom / middle-drag pan: posted camera calls (no dt).
     if delta.ScrollDelta <> 0f then
       // Multiplicative steps toward the camera target. wheelScale is
       // the zoom factor per unit of ScrollDelta: the raylib client
@@ -75,13 +75,14 @@ module Input =
       // base `1.1 ** (1.0 / 120.0)` to keep the same feel.
       let factor = float32(wheelScale ** float delta.ScrollDelta)
 
-      post(fun () -> Camera.handle (CameraMsg.ZoomBy factor) cell.Value.Camera)
+      post(fun () -> Camera.zoomBy factor cell.Value.Camera)
     elif shell.MiddleDown && delta.PositionDelta <> Vector2.Zero then
       // Middle-drag pan: world moves opposite the drag (screen px —
       // the camera converts to a yaw-relative XZ offset).
       post(fun () ->
-        Camera.handle
-          (CameraMsg.Pan(delta.PositionDelta.X, delta.PositionDelta.Y))
+        Camera.pan
+          delta.PositionDelta.X
+          delta.PositionDelta.Y
           cell.Value.Camera)
 
     // Clicks → place / upgrade (Application validates everything).

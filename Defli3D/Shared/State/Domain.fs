@@ -544,7 +544,7 @@ type ProjectileImpact = {
   Zone: ZoneDef voption
 }
 
-/// A slow application (EnemyMsg.ApplySlow payload) — factor + expiry.
+/// A slow application (Enemies.applySlow input) — factor + expiry.
 [<Struct>]
 type SlowApply = {
   Enemy: int<EnemyId>

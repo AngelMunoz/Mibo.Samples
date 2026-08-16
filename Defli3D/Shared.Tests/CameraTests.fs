@@ -49,19 +49,19 @@ let tests =
         let m = model()
         // Drag right 64 px at Distance 16 (unitsPerPixel = 16/1024 =
         // 1/64) → the world moves left 1 unit.
-        Camera.Camera.handle (CameraMsg.Pan(64f, 0f)) m
+        Camera.Camera.pan 64f 0f m
         Expect.equal m.State.Target (Vector2(9f, 6f)) "pan at default distance"
 
         // Zoom in (Distance 8): the same drag moves the world half as far.
-        Camera.Camera.handle (CameraMsg.ZoomBy 0.5f) m
-        Camera.Camera.handle (CameraMsg.Pan(64f, 0f)) m
+        Camera.Camera.zoomBy 0.5f m
+        Camera.Camera.pan 64f 0f m
         Expect.equal m.State.Target (Vector2(8.5f, 6f)) "pan at half distance"
 
         // Pan is yaw-relative: at yaw π/2 screen-right maps to −Y (world
         // +Z) — the same drag moves the target along +Y (MathF.Cos of
         // the float π/2 is ≈ −4e-8, so compare with floatClose).
         m.State <- { m.State with Yaw = MathF.PI / 2f }
-        Camera.Camera.handle (CameraMsg.Pan(64f, 0f)) m
+        Camera.Camera.pan 64f 0f m
 
         Expect.floatClose
           Accuracy.medium
@@ -77,19 +77,19 @@ let tests =
 
     testCase "ZoomBy scales and clamps the distance; pitch untouched" (fun () ->
       let m = model()
-      Camera.Camera.handle (CameraMsg.ZoomBy 2f) m
+      Camera.Camera.zoomBy 2f m
       Expect.equal m.State.Distance 32f "zoomed in"
-      Camera.Camera.handle (CameraMsg.ZoomBy 2f) m
+      Camera.Camera.zoomBy 2f m
       Expect.equal m.State.Distance Camera.MaxDistance "clamped at max"
-      Camera.Camera.handle (CameraMsg.ZoomBy 0.01f) m
+      Camera.Camera.zoomBy 0.01f m
       Expect.equal m.State.Distance Camera.MinDistance "clamped at min"
       Expect.equal m.State.Pitch Camera.DefaultPitch "zoom keeps pitch")
 
     testCase "SetTarget writes; tick clamps the target to the world" (fun () ->
       let m = model()
-      Camera.Camera.handle (CameraMsg.SetTarget(Vector2(2f, 3f))) m
+      Camera.Camera.setTarget (Vector2(2f, 3f)) m
       Expect.equal m.State.Target (Vector2(2f, 3f)) "target set"
-      Camera.Camera.handle (CameraMsg.SetTarget(Vector2(50f, -10f))) m
+      Camera.Camera.setTarget (Vector2(50f, -10f)) m
       Camera.Camera.tick 0.01f m
       Expect.equal m.State.Target (Vector2(20f, 0f)) "clamped at the corner")
 
@@ -123,10 +123,10 @@ let tests =
 
     testCase "Reset restores the world center at the default orbit" (fun () ->
       let m = model()
-      Camera.Camera.handle (CameraMsg.Pan(400f, 300f)) m
-      Camera.Camera.handle (CameraMsg.ZoomBy 2f) m
-      Camera.Camera.handle (CameraMsg.Shake 8f) m
-      Camera.Camera.handle CameraMsg.Reset m
+      Camera.Camera.pan 400f 300f m
+      Camera.Camera.zoomBy 2f m
+      Camera.Camera.shake 8f m
+      Camera.Camera.reset m
       Expect.equal m.State.Target (worldSize / 2f) "target"
       Expect.equal m.State.Yaw 0f "yaw"
       Expect.equal m.State.Pitch Camera.DefaultPitch "pitch"
@@ -135,7 +135,7 @@ let tests =
 
     testCase "Shake sets the timer, tick decays it, offset expires" (fun () ->
       let m = model()
-      Camera.Camera.handle (CameraMsg.Shake 0.5f) m
+      Camera.Camera.shake 0.5f m
       Expect.equal m.State.ShakeRemaining Camera.ShakeDuration "timer set"
       Expect.notEqual (Camera.shakeOffset m.State) Vector2.Zero "offset active"
       Camera.Camera.tick 0.2f m
@@ -158,8 +158,8 @@ let tests =
       // RNG): identical states always produce identical offsets.
       let a = model()
       let b = model()
-      Camera.Camera.handle (CameraMsg.Shake 0.5f) a
-      Camera.Camera.handle (CameraMsg.Shake 0.5f) b
+      Camera.Camera.shake 0.5f a
+      Camera.Camera.shake 0.5f b
 
       Expect.equal
         (Camera.shakeOffset a.State)

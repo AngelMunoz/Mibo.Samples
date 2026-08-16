@@ -13,9 +13,6 @@ open Defli3D.State
 // ─────────────────────────────────────────────────────────────
 
 [<Struct>]
-type WaveMsg = | StartNextWave
-
-[<Struct>]
 type WaveEvent =
   | WaveStarted of wave: WaveDef
   | WaveCleared
@@ -117,23 +114,21 @@ module Waves =
 
   /// Cold path: start the next wave (no-op while one is active or the
   /// game is over — Application guards game-over).
-  let handle (msg: WaveMsg) (model: WavesModel) : WaveEvent[] =
-    match msg with
-    | StartNextWave ->
-      let waveActive = model.WaveActive |> AVal.getValue
+  let startNextWave(model: WavesModel) : WaveEvent[] =
+    let waveActive = model.WaveActive |> AVal.getValue
 
-      if waveActive then
-        Array.empty
-      else
-        let waveNumber = model.WaveNumber |> AVal.getValue
-        let number = waveNumber + 1
-        let wave = composeWave model.Saturation number
+    if waveActive then
+      Array.empty
+    else
+      let waveNumber = model.WaveNumber |> AVal.getValue
+      let number = waveNumber + 1
+      let wave = composeWave model.Saturation number
 
-        Transaction.run(fun () ->
-          model.WaveNumber.Set number
-          model.WaveActive.Set true)
+      Transaction.run(fun () ->
+        model.WaveNumber.Set number
+        model.WaveActive.Set true)
 
-        [| WaveStarted wave |]
+      [| WaveStarted wave |]
 
   /// Hot path — waves are MANUALLY gated: nothing runs while idle; the
   /// player presses Enter to start the next wave. `aliveCount` and

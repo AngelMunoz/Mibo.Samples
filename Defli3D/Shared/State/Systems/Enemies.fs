@@ -27,17 +27,6 @@ open Defli3D
 // ─────────────────────────────────────────────────────────────
 
 [<Struct>]
-type EnemyMsg =
-  | Spawn of def: EnemyDef
-  /// Spawn mid-path at an explicit position/progress (Phase 6 split
-  /// children appear at the corpse — Spawn would teleport them to the
-  /// path origin).
-  | SpawnAt of spawnAt: struct (EnemyDef * Vector2 * float32 * int)
-  | ApplyDamage of applyDamage: struct (int<EnemyId> * int)
-  | ApplySlow of slow: SlowApply
-  | Despawn of enemy: int<EnemyId>
-
-[<Struct>]
 type EnemyEvent =
   | Killed of killed: struct (int<EnemyId> * int)
   | ReachedBase of enemy: int<EnemyId>
@@ -173,8 +162,8 @@ module Enemies =
     m
 
   // ── Cold-path mutations (unit — these never emit) ──
-  // Application calls these directly: in-place mutations with no return
-  // to discard. The host-facing union dispatch (handle) delegates here.
+  // In-place mutations with no return to discard; Application calls
+  // these directly. applyDamage is the one that emits (kills).
 
   /// Spawn at the path origin (the wave director's entry point).
   let inline spawn
@@ -277,28 +266,6 @@ module Enemies =
       else
         Array.empty
     | _ -> Array.empty
-
-  /// Host-facing dispatch over the union (tests, debug hosts) —
-  /// delegates to the mutations above; returns what was emitted.
-  let handle
-    (msg: EnemyMsg)
-    (model: EnemiesModel)
-    (path: Vector2[])
-    : EnemyEvent[] =
-    match msg with
-    | Spawn def ->
-      spawn def model path
-      Array.empty
-    | SpawnAt(def, pos, progress, pathIndex) ->
-      spawnAt def pos progress pathIndex model
-      Array.empty
-    | ApplyDamage(eid, amount) -> applyDamage eid amount model
-    | ApplySlow slow ->
-      applySlow slow model
-      Array.empty
-    | Despawn eid ->
-      despawn eid model
-      Array.empty
 
   // ── Hot path (movement / "physics" phase) — direct values, no closures ──
 

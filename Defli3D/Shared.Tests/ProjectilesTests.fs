@@ -36,8 +36,8 @@ let private spawnShot
   let d = aim - pos
   let len = d.Length()
 
-  Projectiles.handle
-    (ProjectileMsg.Spawn {
+  Projectiles.spawn
+    {
       Pos = pos
       Height = 0.3f
       TargetY = 0.3f
@@ -54,7 +54,7 @@ let private spawnShot
       Model = Models.ammoBullet
       Scale = 0.7f
       Speed = 1.5625f // 100 px/s ÷ 64
-    })
+    }
     m
 
   m
@@ -110,8 +110,8 @@ let tests =
       // parabola adds 4·t·(1−t)·0.8 = 0.8.
       let d = Vector2(1.5625f, 0f)
 
-      Projectiles.handle
-        (ProjectileMsg.Spawn {
+      Projectiles.spawn
+        {
           Pos = Vector2.Zero
           Height = 0.3f
           TargetY = 0.3f
@@ -128,7 +128,7 @@ let tests =
           Model = Models.ammoCannonball
           Scale = 1f
           Speed = 1.5625f
-        })
+        }
         m
 
       // 0.5 s at 1.5625 u/s → traveled 0.78125 = t 0.5 of 1.5625.
@@ -181,8 +181,8 @@ let tests =
 
         let d = Vector2(1.5625f, 0f)
 
-        Projectiles.handle
-          (ProjectileMsg.Spawn {
+        Projectiles.spawn
+          {
             Pos = Vector2.Zero
             Height = 0.3f
             TargetY = 0.3f
@@ -199,7 +199,7 @@ let tests =
             Model = Models.ammoArrow
             Scale = 1.4f
             Speed = 1.5625f
-          })
+          }
           m
 
         // The enemy sits ON the flight line at x = 0.3.
@@ -250,8 +250,8 @@ let tests =
 
       let d = Vector2(0.3f, 0f)
 
-      Projectiles.handle
-        (ProjectileMsg.Spawn {
+      Projectiles.spawn
+        {
           Pos = Vector2.Zero
           Height = 0.3f
           TargetY = 0.3f
@@ -268,7 +268,7 @@ let tests =
           Model = Models.ammoBoulder
           Scale = 1f
           Speed = 1.5625f
-        })
+        }
         m
 
       let events = Projectiles.tick 1.0f m noPositions
