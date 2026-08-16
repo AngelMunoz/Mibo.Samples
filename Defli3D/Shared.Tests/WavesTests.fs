@@ -155,12 +155,12 @@ let tests =
       let m' = m
 
       // Still spawning: no clear.
-      let events = Waves.tick 0.1f m' (AVal.constant 3) false
+      let events = Waves.tick m' (AVal.constant 3) false
       let m2 = m'
       Expect.equal (events |> Seq.length) 0 "not cleared with enemies alive"
 
       // Queue empty and no enemies: cleared.
-      let events = Waves.tick 0.1f m2 (AVal.constant 0) true
+      let events = Waves.tick m2 (AVal.constant 0) true
       let m3 = m2
 
       match events |> Seq.tryHead with

@@ -39,6 +39,11 @@ type ZonesModel() =
   member val Rows = CMap.empty<int<ZoneId>, ZoneRow> with get, set
   member val NextId = 0<ZoneId> with get, set
 
+  /// Tick scratch — the per-enemy stack accumulator, cleared and
+  /// reused every tick (steady state allocates nothing).
+  member val Scratch =
+    Dictionary<int<EnemyId>, struct (int * int * float32 * float32)>() with get, set
+
 module Zones =
 
   /// Slow expiry horizon: one tick interval after the last
@@ -82,8 +87,10 @@ module Zones =
     let mutable removes: ResizeArray<int<ZoneId>> = null
     let mutable updates: ResizeArray<struct (int<ZoneId> * ZoneRow)> = null
     // Per-enemy accumulation: (zone contributions, damage sum, best
-    // slow factor, that factor's expiry horizon).
-    let acc = Dictionary<int<EnemyId>, struct (int * int * float32 * float32)>()
+    // slow factor, that factor's expiry horizon). Owned scratch —
+    // Clear keeps the buckets, so steady state allocates nothing.
+    let acc = model.Scratch
+    acc.Clear()
 
     for KeyValueV(zid, row) in model.Rows |> AMap.getValue do
       let remaining = row.Remaining - dt

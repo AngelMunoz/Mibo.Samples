@@ -29,11 +29,7 @@ module Economy =
     m.Gold.Set cfg.StartingGold
     m.Lives.Set cfg.StartingLives
 
-    m.GameOver <-
-      m.Lives
-      |> AVal.map(fun lives ->
-        Telemetry.gameOver <- Telemetry.gameOver + 1
-        lives <= 0)
+    m.GameOver <- m.Lives |> AVal.map(fun lives -> lives <= 0)
 
     m
 

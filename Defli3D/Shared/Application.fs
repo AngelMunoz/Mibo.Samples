@@ -20,9 +20,11 @@ open Defli3D.State.Systems
 // is forced, in post order — the same order Defli's Cmd batch
 // translated them. The cold paths are the host-facing handlers
 // (startNextWave / placeTower / upgradeTower / selectTower /
-// apply*Msg): they stay synchronous Immediate-semantics handlers,
-// validation unchanged from Defli's original router. Windowed frontends
-// deliver input through subscriptions that post intents.
+// apply*Msg): they stay synchronous Immediate-semantics handlers.
+// Build decisions (tile/occupancy/gold/cap) live in Placement —
+// this file only translates an accepted plan into system handles.
+// Windowed frontends deliver input through subscriptions that post
+// intents.
 //
 // The event flow is one direction: systems emit, the handlers
 // translate, and only ApplyDamage (→ Killed), FillWave (→
@@ -35,12 +37,6 @@ open Defli3D.State.Systems
 // `program` composes the adaptive program the hosts run: init builds
 // the frame force over the current state (boot runs host wiring
 // first); update runs the sim and posts its reactions as intents.
-//
-// Telemetry (wired up here — dead code in Defli): update counts the
-// frames it runs (framesTotal) and the paused ones (framesPaused),
-// and prints the one-shot summary the first time GameOver reads true
-// — the frame after the last life is lost (the LoseLife write lands
-// in the intent drain, so the edge is seen on the NEXT update).
 // ─────────────────────────────────────────────────────────────
 
 module Application =
@@ -355,61 +351,45 @@ module Application =
 
       handleWaveEvents state events
 
-  /// Places the selected tower at a cell. Validates buildable tile,
-  /// occupancy and gold. Returns true when placed.
+  /// Places the selected tower at a cell. Placement owns the build
+  /// rules (buildable tile, free cell, gold); this translates the
+  /// accepted plan into system handles. Returns true when placed.
   let placeTower (state: State) (cell: struct (int * int)) : bool =
-    let def = AVal.getValue state.SelectedTower
-    let struct (cx, cy) = cell
-
-    let tileOk = MapModel.isBuildable cx cy state.Map
-
-    let occupied =
-      ValueOption.isSome(state.Towers.CellIndex |> CMap.tryGetValue cell)
-
-    let affordable = AVal.getValue state.Economy.Gold >= def.Cost
-
-    if tileOk && not occupied && affordable then
-      Towers.Towers.handle (Towers.Place(cell, def)) state.Towers
-      Economy.Economy.handle (Economy.SpendGold def.Cost) state.Economy
+    match
+      Placement.place
+        state.Map
+        state.Towers
+        (AVal.getValue state.Economy.Gold)
+        (AVal.getValue state.SelectedTower)
+        cell
+    with
+    | ValueSome plan ->
+      Towers.Towers.handle (Towers.Place(plan.Cell, plan.Def)) state.Towers
+      Economy.Economy.handle (Economy.SpendGold plan.Cost) state.Economy
 
       Vfx.Vfx.handle
         (Vfx.Burst(
           Vfx.VfxKind.Placement,
-          Cells.center cell (State.cellSize state),
+          Cells.center plan.Cell (State.cellSize state),
           0f
         ))
         state.Vfx
 
       true
-    else
-      false
-
-  /// Upgrades the tower under a cell. Validates gold and the level
-  /// cap. Returns true when upgraded.
-  let upgradeTower (state: State) (cell: struct (int * int)) : bool =
-    match state.Towers.CellIndex |> CMap.tryGetValue cell with
     | ValueNone -> false
-    | ValueSome tid ->
-      let level =
-        state.Towers.Levels
-        |> CMap.tryGetValue tid
-        |> ValueOption.defaultValue 1
 
-      let def =
-        state.Towers.Statics
-        |> CMap.tryGetValue tid
-        |> ValueOption.map(fun s -> s.Def)
-        |> ValueOption.defaultValue TowerDefs.sentry
-
-      let capped = level >= def.MaxLevel
-      let affordable = AVal.getValue state.Economy.Gold >= def.UpgradeCost
-
-      if capped || not affordable then
-        false
-      else
-        Towers.Towers.handle (Towers.Upgrade tid) state.Towers
-        Economy.Economy.handle (Economy.SpendGold def.UpgradeCost) state.Economy
-        true
+  /// Upgrades the tower under a cell. Placement owns the upgrade
+  /// rules (level cap, gold); this translates the accepted plan into
+  /// system handles. Returns true when upgraded.
+  let upgradeTower (state: State) (cell: struct (int * int)) : bool =
+    match
+      Placement.upgrade state.Towers (AVal.getValue state.Economy.Gold) cell
+    with
+    | ValueSome plan ->
+      Towers.Towers.handle (Towers.Upgrade plan.Tower) state.Towers
+      Economy.Economy.handle (Economy.SpendGold plan.Cost) state.Economy
+      true
+    | ValueNone -> false
 
   /// Player switched the tower kind to place (cold path).
   let inline selectTower (state: State) (def: TowerDef) : unit =
@@ -431,12 +411,14 @@ module Application =
 
   /// Builds the graph: the frame force reads the CURRENT state's
   /// projections at the end of every Step (a restart swaps the cell and
-  /// the force re-binds on the next force).
+  /// the force re-binds on the next force). The frame context supplies
+  /// the clock — its time root is written by the runner at the start of
+  /// every Step, so the frame always carries a fresh time.
   let inline init
     (getState: unit -> State)
-    (_ctx: AdaptiveFrameContext)
+    (ctx: AdaptiveFrameContext)
     : AdaptiveInit<Frame.RenderFrame> =
-    AdaptiveInit.ofFrameBuilder(Frame.force getState)
+    AdaptiveInit.ofFrameBuilder(Frame.force ctx getState)
 
   /// The Update phase entry: runs the sim for the current state and
   /// posts its reactions through the runner's intent queue.
@@ -446,10 +428,6 @@ module Application =
     (gameTime: GameTime)
     : unit =
     let state = getState()
-    // The draw side's clock — recorded even while paused so the frame
-    // always forces a fresh time (hover bob, idle spins).
-    state.LastTime <- gameTime
-    Telemetry.framesTotal <- Telemetry.framesTotal + 1
 
     if not(AVal.getValue state.Paused) then
       let dt = float32 gameTime.ElapsedGameTime.TotalSeconds
@@ -463,7 +441,6 @@ module Application =
 
       let waveEvents =
         Waves.Waves.tick
-          dt
           state.Waves
           state.AliveCount
           (state.Spawning.Queue.Count = 0)
@@ -518,17 +495,6 @@ module Application =
         handleProjectileEvents ctx.Intents.post state projectileEvents)
 
       ctx.Intents.post(fun () -> handleZoneApplies state zoneApplies)
-    else
-      Telemetry.framesPaused <- Telemetry.framesPaused + 1
-
-    // Game-over summary — one shot per state (reset by State.init):
-    // the LoseLife write lands in the intent drain, so this edge is
-    // seen on the first update after the game actually ends.
-    if
-      not Telemetry.gameOverPrinted && AVal.getValue state.Economy.GameOver
-    then
-      Telemetry.gameOverPrinted <- true
-      Telemetry.print Telemetry.framesTotal Telemetry.framesPaused
 
   /// The adaptive program: init builds the frame force and the
   /// subscription projection over the current state (boot runs host wiring

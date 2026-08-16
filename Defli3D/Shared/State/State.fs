@@ -1,9 +1,7 @@
 namespace Defli3D.State
 
-open System
 open System.Numerics
 open Mibo.Adaptive
-open Mibo.Elmish
 open Defli3D
 open Defli3D.State.Systems
 
@@ -49,12 +47,6 @@ type State = {
   /// Frozen by the host; the sim writes nothing while paused.
   Paused: cval<bool>
 
-  /// The last GameTime the host handed to update — forced into the
-  /// frame so the draw side (hover bob, idle spins) animates on the
-  /// sim's clock instead of a backend-specific one. Written every
-  /// update, paused or not (Defli's LastTime mechanism).
-  mutable LastTime: GameTime
-
   Projections: Projections
 
   /// The map's difficulty ceiling (Balance.capacityOf) — the
@@ -91,10 +83,6 @@ type StateCell(value: State) =
 module State =
 
   let init(cfg: WorldConfig) : State =
-    // Telemetry counters are global: zero them on every state build so
-    // a restart (cell swap) starts a clean summary.
-    Telemetry.reset()
-
     let map = MapModel.create cfg
     // The map's capacity scan (cold, once): feeds the wave scale's
     // saturation BEFORE the waves model builds its Scale projection.
@@ -140,10 +128,6 @@ module State =
       Vfx = vfx
       Economy = economy
       Camera = camera
-      LastTime = {
-        TotalTime = TimeSpan.Zero
-        ElapsedGameTime = TimeSpan.Zero
-      }
       SelectedTower = selectedTower
       HoverCell = hoverCell
       Paused = paused

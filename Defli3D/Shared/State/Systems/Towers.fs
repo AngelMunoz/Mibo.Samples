@@ -65,8 +65,6 @@ module Towers =
     AMap.joinOn m.Statics m.Levels (fun tid _ -> tid) (fun _ staticV levelV ->
       AVal.map2
         (fun (s: TowerStatic) (level: int voption) ->
-          Telemetry.effectiveDef <- Telemetry.effectiveDef + 1
-
           ValueSome(
             TowerDefs.effectiveDef s.Def (level |> ValueOption.defaultValue 1)
           ))

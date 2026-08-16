@@ -12,7 +12,6 @@
     <Compile Include="State/Models.fs" />
     <Compile Include="Diagnostics.fs" />
     <Compile Include="Shell.fs" />
-    <Compile Include="Telemetry.fs" />
     <Compile Include="State/Systems/Map.fs" />
     <Compile Include="State/Balance.fs" />
     <Compile Include="State/TowerLayout.fs" />
@@ -26,6 +25,7 @@
     <Compile Include="State/Systems/Zones.fs" />
     <Compile Include="State/Systems/Vfx.fs" />
     <Compile Include="State/Systems/Camera.fs" />
+    <Compile Include="State/Placement.fs" />
     <Compile Include="State/Projections.fs" />
     <Compile Include="State/State.fs" />
     <Compile Include="State/Frame.fs" />

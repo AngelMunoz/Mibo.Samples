@@ -23,7 +23,6 @@ type WaveEvent =
 type WavesModel() =
   member val WaveNumber = CVal.create 0 with get, set
   member val WaveActive = CVal.create false with get, set
-  member val Events = ResizeArray<WaveEvent>() with get, set
   /// The map-calibrated logistic saturation (Balance.capacityOf) —
   /// closed over by the Scale projection and composeWave; a constant
   /// per map, never written after init.
@@ -40,8 +39,6 @@ module Waves =
     m.WaveNumber
     |> AVal.map3
       (fun active scale number ->
-        Telemetry.banner <- Telemetry.banner + 1
-
         if active then
           if scale.Hp > 1f then
             $"Wave %d{number}  x%.2f{scale.Hp}"
@@ -143,7 +140,6 @@ module Waves =
   /// `queueEmpty` are direct values from the sim update (Enemies.AliveCount
   /// aval + Spawning queue, respectively).
   let tick
-    (dt: float32)
     (model: WavesModel)
     (aliveCount: aval<int>)
     (queueEmpty: bool)

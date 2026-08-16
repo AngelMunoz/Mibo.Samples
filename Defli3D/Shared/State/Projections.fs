@@ -51,16 +51,13 @@ type Projections
   /// self-contained in the row (dumbfire line or sim-side chase).
   member val Homing: amap<int<ProjectileId>, HomingView> =
     projectiles.Rows
-    |> AMap.map(fun _ (row: ProjectileRow) ->
-      Telemetry.homingJoin <- Telemetry.homingJoin + 1
-
-      {
-        Pos = row.Pos
-        Y = row.Y
-        Dir = row.Dir
-        Model = row.Model
-        Scale = row.Scale
-      })
+    |> AMap.map(fun _ (row: ProjectileRow) -> {
+      Pos = row.Pos
+      Y = row.Y
+      Dir = row.Dir
+      Model = row.Model
+      Scale = row.Scale
+    })
 
   /// TowerAim — per tower, the sim's current target position
   /// (Runtimes.Aim, written by Towers.tick). The rotating chassis
@@ -86,9 +83,7 @@ type Projections
       |> AMap.filter(fun _ bossPos ->
         Vector2.Distance(bossPos, center) <= BossAura.Radius)
       |> AMap.count
-      |> AVal.map(fun n ->
-        Telemetry.suppression <- Telemetry.suppression + 1
-        if n > 0 then BossAura.Factor else 1f))
+      |> AVal.map(fun n -> if n > 0 then BossAura.Factor else 1f))
 
   /// #10 RangeRing — hovered own tower → its EFFECTIVE def (the view
   /// draws the range circle). The chain composes derived-on-derived:
@@ -98,9 +93,7 @@ type Projections
     |> AVal.bind(fun cell ->
       match cell with
       | ValueNone -> AVal.constant ValueNone
-      | ValueSome c ->
-        Telemetry.rangeRing <- Telemetry.rangeRing + 1
-        towers.CellIndex |> AMap.tryFind c)
+      | ValueSome c -> towers.CellIndex |> AMap.tryFind c)
     |> AVal.bind(fun tid ->
       match tid with
       | ValueNone -> AVal.constant ValueNone
@@ -129,8 +122,6 @@ type Projections
           |> AMap.tryFind cellKey
           |> AVal.map3
             (fun gold def occupied ->
-              Telemetry.placementPreview <- Telemetry.placementPreview + 1
-
               if ValueOption.isSome occupied then PlacementStatus.Blocked
               elif gold >= def.Cost then PlacementStatus.Affordable
               else PlacementStatus.TooExpensive)

@@ -105,8 +105,6 @@ module Enemies =
             (fun
                  (struct (pos, h): struct (Vector2 * Health voption))
                  (mv: Motion voption) ->
-              Telemetry.viewsJoin <- Telemetry.viewsJoin + 1
-
               match struct (h, mv) with
               | ValueSome h, ValueSome mv ->
                 ValueSome
@@ -145,10 +143,7 @@ module Enemies =
   let inline private buildAlive
     (m: EnemiesModel)
     : amap<int<EnemyId>, EnemyView> =
-    m.Views
-    |> AMap.filter(fun _ v ->
-      Telemetry.aliveFilter <- Telemetry.aliveFilter + 1
-      v.Hp > 0)
+    m.Views |> AMap.filter(fun _ v -> v.Hp > 0)
 
   /// Boss positions: a same-key AMap.joinOn into Defs (the Views-join
   /// shape), kept only when the archetype is Boss — the join's
@@ -161,8 +156,6 @@ module Enemies =
     AMap.joinOn m.Positions m.Defs (fun eid _ -> eid) (fun _ posV defV ->
       AVal.map2
         (fun pos (def: EnemyDef voption) ->
-          Telemetry.bossPositions <- Telemetry.bossPositions + 1
-
           def
           |> ValueOption.bind(fun d ->
             if d.Archetype = EnemyArchetype.Boss then

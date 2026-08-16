@@ -67,9 +67,9 @@ module Frame =
     /// The camera — a backend-neutral orbit-camera snapshot at force
     /// time; the frontend builds its native camera at the edge.
     Camera: CameraState
-    /// The host's GameTime at the last update — the draw side's clock
-    /// (hover bob, idle spins) rides the sim's time, not a
-    /// backend-specific one.
+    /// The framework's time root, read at force time — written by the
+    /// runner at the start of every Step, so the draw side (hover bob,
+    /// idle spins) rides the sim's clock, not a backend-specific one.
     Time: GameTime
   }
 
@@ -78,8 +78,10 @@ module Frame =
   /// graph access. `force` follows the state it is handed at force
   /// time; the count nodes live on the State record (created at init),
   /// so restarts (cell swap) re-bind cleanly with zero per-step
-  /// allocation.
+  /// allocation. The clock comes from the frame context's time root —
+  /// no state field carries it.
   let inline force
+    (ctx: AdaptiveFrameContext)
     ([<InlineIfLambda>] getState: unit -> State)
     : unit -> RenderFrame =
     fun () ->
@@ -111,5 +113,5 @@ module Frame =
         Map = state.Map
         Diag = state.Diag
         Camera = state.Camera.State
-        Time = state.LastTime
+        Time = ctx.Time |> AVal.getValue
       }

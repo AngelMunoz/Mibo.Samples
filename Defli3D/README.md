@@ -255,21 +255,7 @@ waves-36+ reference, and the `Enemies.tick` growth (watch item 1) is the
 difference to expect. The tables above are the reference; per-session
 variance follows the wave mix.
 
-### 5.2 Telemetry (the recompute counters)
-
-Run the game without the tracer and play until game over:
-
-```bash
-dotnet run --project Defli3D/MonoDX12 -c Release
-```
-
-The summary prints once at the game-over transition (the one-shot print in
-`Shared/Application.fs`): forced frames, paused frames, and the per-node
-recompute counters. The stable unit is the per-forced-frame ratio (Homing
-≈ 25, Suppression ≈ 18, Views ≈ 9, Alive ≈ 8.5, BossPositions ≈ 8.3;
-upgrade/hover chains < 0.1).
-
-### 5.3 Analyze
+### 5.2 Analyze
 
 ```bash
 # sample census: busy share, Mibo.Adaptive share, allocation/string callers
