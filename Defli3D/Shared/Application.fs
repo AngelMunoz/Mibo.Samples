@@ -412,12 +412,17 @@ module Application =
   // ── Semantic actions — the InputMapper root ────────────────────
   // The mapper subscription (Input.subscriptions) builds an
   // ActionState from the input deltas and writes the Actions root
-  // through the pre-step lane; this consumes the edges the same way
-  // the old keyboard handler did. Started drives the one-shots and
-  // the pan accumulation, Released subtracts the pan. Edges are
-  // cleared after consumption (ActionState.nextFrame) — a step with
-  // no new deltas reads an edge-free state and does nothing (the
-  // Set's equality gate makes the re-write free).
+  // through the pre-step lane; this consumes it like the old keyboard
+  // handler did. One-shots ride the Started edges (single-binding
+  // actions — safe); edges are cleared after consumption
+  // (ActionState.nextFrame), so a step with no new deltas reads an
+  // edge-free state (the Set's equality gate makes the re-write free).
+  //
+  // PAN is a HELD query, not an edge: the root's Held is rebuilt from
+  // hardware truth on every delta, so the direction is recomputed each
+  // step from what is held RIGHT NOW — synonym bindings (A and Left
+  // both map PanLeft) count once, and no missed edge can leave the pan
+  // stuck (edge arithmetic add/subtract could not guarantee that).
   let private handleActions(cell: StateCell) : unit =
     let state = cell.Value
     let actions = state.Actions |> AVal.getValue
@@ -435,23 +440,16 @@ module Application =
       | GameAction.PanLeft
       | GameAction.PanRight
       | GameAction.PanUp
-      | GameAction.PanDown ->
-        Camera.Camera.handle
-          (CameraMsg.AddKeyboardPan(Inputs.panStep a))
-          state.Camera
+      | GameAction.PanDown -> ()
 
-    for a in actions.Released do
-      match a with
-      | GameAction.PanLeft
-      | GameAction.PanRight
-      | GameAction.PanUp
-      | GameAction.PanDown ->
-        // Released subtracts what the press added — the accumulated
-        // keyboard pan decays back to zero.
-        Camera.Camera.handle
-          (CameraMsg.AddKeyboardPan(-Inputs.panStep a))
-          state.Camera
-      | _ -> ()
+    // Pan direction: the sum of the held pan actions' steps
+    // (non-pan actions contribute Zero).
+    let mutable pan = Vector2.Zero
+
+    for a in actions.Held do
+      pan <- pan + Inputs.panStep a
+
+    Camera.Camera.handle (CameraMsg.SetKeyboardPan pan) state.Camera
 
     // Restart stays in the game logic: swap the state in place. The
     // frame force reads the cell at force time, so the next force

@@ -49,13 +49,16 @@ type CameraMsg =
   /// drag, converted to world units with the distance-based scale
   /// (unitsPerPixel = Distance / PanScale) and oriented by the yaw.
   /// Keyboard pan mirrors a drag: Camera.tick converts the
-  /// accumulated AddKeyboardPan direction (world units/s) back to
+  /// SET keyboard-pan direction (world units/s) back to
   /// the pixel convention and applies it as a Pan.
   | Pan of dx: float32 * dy: float32
-  /// Keyboard pan: the pressed/released deltas ACCUMULATE in the model
-  /// (pressed adds, released subtracts — the shell's PanDir tracking);
-  /// Camera.tick applies the accumulated direction as a Pan each step.
-  | AddKeyboardPan of delta: Vector2
+  /// Keyboard pan: the CURRENT held keyboard-pan direction (the sum of
+  /// the held pan actions' world-space steps). The sim SETS it every
+  /// step from the mapped actions' Held set — set-state, not
+  /// accumulation: synonym bindings (A and Left both map PanLeft) count
+  /// once, and a missed edge can never leave a stale direction behind.
+  /// Camera.tick applies the direction as a Pan each step.
+  | SetKeyboardPan of dir: Vector2
   /// Multiplicative zoom step (e.g. 1.1 = zoom in, 0.9 = zoom out) —
   /// scales the orbit Distance, clamped to [MinDistance, MaxDistance].
   | ZoomBy of factor: float32
@@ -97,8 +100,8 @@ type CameraModel() =
   [<DefaultValue>]
   val mutable State: CameraState
 
-  /// Accumulated keyboard pan direction (pressed adds, released
-  /// subtracts); Camera.tick consumes it as a Pan each step.
+  /// The current keyboard-pan direction (set every step from the held
+  /// pan actions); Camera.tick consumes it as a Pan each step.
   [<DefaultValue>]
   val mutable KeyboardPan: Vector2
 
@@ -120,7 +123,7 @@ module Camera =
   let DefaultDistance = 16f
   let ShakeDuration = 0.35f
   /// Keyboard pan speed in world units per second (Defli's 500 px/s
-  /// ÷ 64) — the accumulated AddKeyboardPan direction is scaled by
+  /// ÷ 64) — the SET keyboard-pan direction is scaled by
   /// it in Camera.tick.
   let KeyboardPanSpeed = 8f
   /// Vertical field of view (radians) of the sim-side projection —
@@ -166,7 +169,7 @@ module Camera =
               model.State.Target
               - (right * (dx * unitsPerPixel) + down * (dy * unitsPerPixel))
       }
-    | AddKeyboardPan d -> model.KeyboardPan <- model.KeyboardPan + d
+    | SetKeyboardPan dir -> model.KeyboardPan <- dir
     | ZoomBy f ->
       model.State <- {
         model.State with

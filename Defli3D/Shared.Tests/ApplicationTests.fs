@@ -4,6 +4,7 @@ open Expecto
 open System.Collections.Generic
 open System.Numerics
 open Mibo.Adaptive
+open Mibo.Input
 open Defli3D
 open Defli3D.State
 open Defli3D.State.Systems
@@ -704,32 +705,33 @@ let tests =
       let h = TestData.mkHarness cfg
       let before = h.State.Camera.State.Target
 
-      // Keyboard pan mirrors a drag: the accumulated AddKeyboardPan
-      // direction (world units/s) is applied as a Pan by Camera.tick,
-      // scaled by KeyboardPanSpeed * dt. The posted AddKeyboardPan
-      // drains AFTER the step's Update, so the first tick that sees it
-      // is the second step's. Camera.tick clamps the target into the
-      // world bounds — the pan here (100 u/s × 8 × 0.1 s = 80 units)
-      // would overshoot the world's left edge, so the target lands
-      // clamped at 0.
+      // Pan is a HELD query: handleActions reads the Actions root's
+      // Held set every step and SETS the keyboard-pan direction from
+      // it (synonym bindings count once; a stale direction cannot
+      // survive — nothing held rewrites it to Zero). The posted root
+      // write drains after the step's Update, so the first step that
+      // consumes it is the second's; Held persists (nextFrame clears
+      // only the edges), so with two steps the pan applies exactly
+      // once.
       h.Post(fun () ->
-        Camera.Camera.handle
-          (CameraMsg.AddKeyboardPan(Vector2(100f, 0f)))
-          h.State.Camera)
+        h.State.Actions.Set {
+          ActionState.empty with
+              Held = Set.ofList [ GameAction.PanLeft ]
+        })
 
       h.StepN(2, TestData.dt)
 
+      // PanLeft's step is the unit vector: 1 u/s × KeyboardPanSpeed ×
+      // dt of movement opposite the drag convention (left = west).
       let panDelta =
-        100f
-        * Camera.Camera.KeyboardPanSpeed
-        * float32 TestData.dt.TotalSeconds
+        Camera.Camera.KeyboardPanSpeed * float32 TestData.dt.TotalSeconds
 
       let after = h.State.Camera.State.Target
 
       Expect.equal
         after.X
-        (max 0f (before.X - panDelta))
-        "target moved opposite the pan delta, clamped"
+        (before.X - panDelta)
+        "target moved with the held pan"
 
       Expect.equal after.Y before.Y "no vertical motion")
   ]
