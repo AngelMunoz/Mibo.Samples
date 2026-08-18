@@ -3,6 +3,7 @@ module Defli3D.Raylib.Program
 open System
 open System.IO
 open Mibo.Adaptive
+open Mibo.Diagnostics
 open Mibo.Elmish
 open Mibo.Input
 open Mibo.Elmish.Graphics2D
@@ -31,10 +32,15 @@ open Defli3D.State
 
 [<EntryPoint>]
 let main _ =
-  let shell = {
-    MiddleDown = false
-    Diag = FrameDiag()
-  }
+  let shell = { MiddleDown = false; ShowDiag = false }
+
+  // The frame profiler: handed to the program below, measured by the
+  // host. The overlay starts hidden, so measurement starts off too;
+  // F3 turns both on.
+  let profiler =
+    FrameProfiler(FrameProfiler.DefaultWindow, canScreenshot = true)
+
+  profiler.Enabled <- false
 
   let cell = StateCell(State.init WorldConfig.defaults)
 
@@ -70,8 +76,7 @@ let main _ =
             ctx)
         cell
         shell)
-    |> AdaptiveProgram.withObserver(fun () ->
-      AdaptiveProgram.observe(fun _ -> Diagnostics.update shell.Diag))
+    |> AdaptiveProgram.withProfiler profiler
     |> AdaptiveProgram.withConfig(fun _ -> config)
     |> AdaptiveProgram.withAssetsBasePath assetsBasePath
     |> AdaptiveProgram.withInput

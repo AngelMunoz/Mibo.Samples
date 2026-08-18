@@ -39,9 +39,6 @@
     <Compile Include="..\MonoDX12\VfxView.fs">
       <Link>VfxView.fs</Link>
     </Compile>
-    <Compile Include="..\MonoDX12\DiagnosticsView.fs">
-      <Link>DiagnosticsView.fs</Link>
-    </Compile>
     <Compile Include="..\MonoDX12\WorldView.fs">
       <Link>WorldView.fs</Link>
     </Compile>

@@ -469,7 +469,6 @@ module Application =
 
     if not(AVal.getValue state.Paused) then
       let dt = float32 gameTime.ElapsedGameTime.TotalSeconds
-      let t0 = Diagnostics.tickStart()
 
       // Kimo's system organization: movement/"physics" first, then the
       // spawn/queue phases; read-only consumers after.
@@ -512,12 +511,6 @@ module Application =
 
       Vfx.Vfx.tick dt state.Vfx
       Camera.Camera.tick dt state.Camera
-
-      Diagnostics.tickEnd
-        t0
-        state.Diag
-        state.AliveCount
-        state.Spawning.Queue.Count
 
       // Reactions post as intents: the drain runs them after Update,
       // before the frame is forced — post order = the original Cmd

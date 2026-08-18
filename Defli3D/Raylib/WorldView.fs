@@ -3,6 +3,7 @@ namespace Defli3D.Raylib
 open System
 open System.Numerics
 open Mibo
+open Mibo.Diagnostics
 open Mibo.Elmish
 open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics3D
@@ -94,6 +95,13 @@ type WorldView(shell: Shell, vfx: VfxView) =
 
   let mutable warmed = false
 
+  // The diagnostics overlay lines, formatted once per window (TotalFrames
+  // moves only when a window closes; formatting every frame would
+  // allocate on the hot path).
+  let mutable diagLine1 = ""
+  let mutable diagLine2 = ""
+  let mutable diagLastWindow = 0L
+
   /// Placement preview: selection-a ring (1×0.05×1) on the hovered
   /// cell, tinted by the build status. One .mesh draw per sub-mesh
   /// with a tinted unlit material — the raylib instanced path has no
@@ -181,8 +189,6 @@ type WorldView(shell: Shell, vfx: VfxView) =
   member _.Render
     (ctx: GameContext, frame: RenderFrame, buffer: RenderBuffer3D)
     =
-    Diagnostics.drawn (Diagnostics.tickStart()) shell.Diag
-
     // The per-frame context for lazy asset loads.
     ModelMeshes.setContext ctx
 
@@ -314,6 +320,37 @@ type WorldView(shell: Shell, vfx: VfxView) =
         )
         .drop()
 
-    if shell.Diag.Visible then
-      buffer.frameDiagnostics(font, shell.Diag, Vector2(12f, 40f)).drop()
-      buffer.worldDiagnostics(font, frame.Diag, Vector2(12f, 64f)).drop()
+    if shell.ShowDiag then
+      match Diagnostics.tryGetProfiler ctx with
+      | ValueSome profiler ->
+        let stats = profiler.Snapshot
+
+        if stats.TotalFrames <> diagLastWindow then
+          diagLastWindow <- stats.TotalFrames
+          // Two lines: raylib text does not render newlines.
+          let lines = (Diagnostics.format stats).Split('\n')
+          diagLine1 <- lines[0]
+          diagLine2 <- lines[1]
+
+        let yellow = Mibo.Color.rgb 255uy 210uy 0uy
+
+        buffer.text(
+          font,
+          diagLine1,
+          Vector2(12f, 40f),
+          18f,
+          tint = yellow,
+          layer = Layers.Hud
+        )
+        |> ignore
+
+        buffer.text(
+          font,
+          diagLine2,
+          Vector2(12f, 64f),
+          18f,
+          tint = yellow,
+          layer = Layers.Hud
+        )
+        |> ignore
+      | ValueNone -> ()

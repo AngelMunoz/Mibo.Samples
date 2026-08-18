@@ -84,9 +84,6 @@ type State = {
   /// Projectile count node, created at init (frame draw-side; hoisted
   /// with the state so the frame force stays allocation-free).
   ProjectileCount: aval<int>
-
-  /// World-sim diagnostics (sampled inside the per-frame sim — Kimo WorldDiag).
-  Diag: WorldDiag
 }
 
 /// The holder the composition root, the frame force, and the host
@@ -160,7 +157,6 @@ module State =
       AliveCount = enemies.Alive |> AMap.count
       TowerCount = towers.Statics |> AMap.count
       ProjectileCount = projections.Homing |> AMap.count
-      Diag = WorldDiag()
     }
 
   /// Reset the sim to its initial state in place. Each root keeps the

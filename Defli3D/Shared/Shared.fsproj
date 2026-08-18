@@ -10,7 +10,6 @@
     <Compile Include="Extensions.fs" />
     <Compile Include="State/Domain.fs" />
     <Compile Include="State/Models.fs" />
-    <Compile Include="Diagnostics.fs" />
     <Compile Include="Shell.fs" />
     <Compile Include="State/Systems/Map.fs" />
     <Compile Include="State/Balance.fs" />

@@ -25,7 +25,6 @@
     <Compile Include="TowersView.fs" />
     <Compile Include="ProjectilesView.fs" />
     <Compile Include="VfxView.fs" />
-    <Compile Include="DiagnosticsView.fs" />
     <Compile Include="WorldView.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

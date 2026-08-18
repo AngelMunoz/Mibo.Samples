@@ -20,7 +20,6 @@
     <Compile Include="TowersTests.fs" />
     <Compile Include="ProjectilesTests.fs" />
     <Compile Include="ZonesTests.fs" />
-    <Compile Include="DiagnosticsTests.fs" />
     <Compile Include="CameraTests.fs" />
     <Compile Include="ApplicationTests.fs" />
     <Compile Include="Main.fs" />

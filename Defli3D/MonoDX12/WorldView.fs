@@ -3,6 +3,7 @@ namespace Defli3D.MonoGame
 open System
 open System.Numerics
 open Mibo
+open Mibo.Diagnostics
 open Mibo.Elmish
 open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics2D
@@ -114,6 +115,13 @@ type WorldView(shell: Shell, vfx: VfxView) =
 
   let mutable warmed = false
 
+  // The diagnostics overlay lines, formatted once per window (TotalFrames
+  // moves only when a window closes; formatting every frame would
+  // allocate on the hot path).
+  let mutable diagLine1 = ""
+  let mutable diagLine2 = ""
+  let mutable diagLastWindow = 0L
+
   /// Unit primitives — the range disc is a thin Cylinder. Built once.
   let mutable primitives: Primitive3D.PrimitiveSet voption = ValueNone
 
@@ -214,8 +222,6 @@ type WorldView(shell: Shell, vfx: VfxView) =
   member _.Render
     (ctx: GameContext, frame: RenderFrame, buffer: RenderBuffer3D)
     =
-    Diagnostics.drawn (Diagnostics.tickStart()) shell.Diag
-
     ModelCache.setContext ctx
 
     if not warmed then
@@ -335,6 +341,40 @@ type WorldView(shell: Shell, vfx: VfxView) =
         )
         .drop()
 
-    if shell.Diag.Visible then
-      buffer.frameDiagnostics(font, shell.Diag, Vector2(12f, 40f)).drop()
-      buffer.worldDiagnostics(font, frame.Diag, Vector2(12f, 64f)).drop()
+    if shell.ShowDiag then
+      match Diagnostics.tryGetProfiler ctx with
+      | ValueSome profiler ->
+        let stats = profiler.Snapshot
+
+        if stats.TotalFrames <> diagLastWindow then
+          diagLastWindow <- stats.TotalFrames
+
+          // Two lines: the draw side stays backend neutral.
+          let lines = (Diagnostics.format stats).Split('\n')
+          diagLine1 <- lines[0]
+          diagLine2 <- lines[1]
+
+        let yellow = Mibo.Color.rgb 255uy 210uy 0uy
+
+        // The text size argument is a scale on MonoGame (the SpriteFont
+        // bakes its pixel size), not a pixel size like on raylib.
+        buffer.text(
+          font,
+          diagLine1,
+          Vector2(12f, 40f),
+          1f,
+          tint = yellow,
+          layer = Layers.Hud
+        )
+        |> ignore
+
+        buffer.text(
+          font,
+          diagLine2,
+          Vector2(12f, 64f),
+          1f,
+          tint = yellow,
+          layer = Layers.Hud
+        )
+        |> ignore
+      | ValueNone -> ()

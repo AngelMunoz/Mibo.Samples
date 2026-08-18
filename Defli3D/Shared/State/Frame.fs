@@ -62,8 +62,6 @@ module Frame =
     /// The map — static world data (terrain/path/decorations/
     /// waypoints).
     Map: MapModel
-    /// World-sim diagnostics (the F3 overlay reads the display line).
-    Diag: WorldDiag
     /// The camera — a backend-neutral orbit-camera snapshot at force
     /// time; the frontend builds its native camera at the edge.
     Camera: CameraState
@@ -112,7 +110,6 @@ module Frame =
         RangeRing = state.Projections.RangeRing |> AVal.getValue
         Vfx = state.Vfx
         Map = state.Map
-        Diag = state.Diag
         Camera = state.Camera.State
         Time = state.Clock |> AVal.getValue
       }

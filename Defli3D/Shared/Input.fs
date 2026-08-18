@@ -2,6 +2,7 @@ namespace Defli3D
 
 open System.Numerics
 open Mibo.Adaptive
+open Mibo.Diagnostics
 open Mibo.Elmish
 open Mibo.Input
 open Mibo.Windowing
@@ -138,7 +139,14 @@ module Input =
               input.KeyboardDelta
               (fun _ d ->
                 if d.Pressed |> Array.contains KeyCode.F3 then
-                  shell.Diag.Visible <- not shell.Diag.Visible)
+                  shell.ShowDiag <- not shell.ShowDiag
+
+                  // The overlay and the measurement share the switch:
+                  // hidden also means nothing is measured.
+                  frameCtx.Context
+                  |> Diagnostics.tryGetProfiler
+                  |> ValueOption.iter(fun profiler ->
+                    profiler.Enabled <- shell.ShowDiag))
 
             // F11 fullscreen: frontend state like F3, so a direct
             // subscription, not a GameAction. The host-registered IWindow
