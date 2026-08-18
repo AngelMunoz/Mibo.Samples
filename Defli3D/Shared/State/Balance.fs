@@ -5,138 +5,132 @@ open System.Numerics
 open Mibo.Layout
 open Defli3D.State.Systems
 
-// ─────────────────────────────────────────────────────────────
-// Balance — the difficulty/economy MODEL, one home for every
-// tuning knob (see Shared.Tests/BalanceTests.fs: the margin table
-// prints what each knob does before you commit to it).
+// This file holds every difficulty and economy number in the game.
+// Change a value here, then run Shared.Tests/BalanceTests.fs: it
+// prints a per-wave table of HP, speed, reward and margin so you can
+// see what the change does before playing.
 //
-// The shape: enemy difficulty grows LOGISTICALLY in the tier
-// (t = wave/5) and saturates at a level CALIBRATED AGAINST THE
-// MAP's capacity, so the game never becomes unwinnable through
-// scaling alone — a perfect build stays above margin 1, an
-// average build trades lives. Player power is bounded (finite
-// buildable cells, level-5 cap), so enemy scaling must be bounded
-// relative to it; that single constraint picks the function
-// family.
+// HOW DIFFICULTY SCALES
 //
-//   s(t) = sat · σ(k·(t − x₀))      HP multiplier (logistic)
-//   ρ(t) = RhoMax · σ(k·(t − x₀))   resistance, same shape/timing
-//   v(t) = SpeedGrowth^t            speed multiplier, UNCAPPED
-//   g(t) = KillShare·ΔBill(t)/killBase(t)   reward multiplier
+// Waves are grouped in tiers: tier = wave / 5 (waves 5-9 are tier 1,
+// 10-14 are tier 2, ...). Waves 0-4 use the base defs unchanged.
 //
-// ECONOMY (the lesson of the first playtest): income must track the
-// MARGINAL cost of staying at parity, never the demand LEVEL. The
-// failed coupling g = s^0.8 paid kills at the demand level — on a
-// saturation-52 map that meant 13.5× base rewards at tier 3 and a
-// 20 k gold economy by wave 20, while the equipment bill was nearly
-// flat. The bill anchoring instead pays, per tier, a fixed share of
-// what the NEXT tier of margin-1 equipment costs:
+// Enemy HP and resistance follow a logistic curve in the tier: slow
+// growth at first, fast growth in the middle, then it levels off at
+// a cap (the "saturation"). The cap is not a constant in this file.
+// It is computed from the map itself (capacityOf below): how many
+// cells you can build on and how much damage those cells can put on
+// the road. Because the cap is tied to what the map can hold, a
+// fully-built map always stays winnable. If the map changes (more
+// obstacles, longer road, new seed), the cap is recomputed and the
+// whole curve follows. Do not hardcode a cap or a buildable count
+// here.
 //
-//   D(t)     = s(t)·v(t)/(1−ρ(t))            demand ratio
-//   Bill(t)  = GoldPerPower·avgHp·D(t)       gold a margin-1 build costs
-//   ΔBill(t) = Bill(t) − Bill(t−1)           the tier's equipment bill
-//   kills pay  KillShare·ΔBill  (per-kill max 1 gold floor in apply)
-//   clears pay ClearShare·ΔBill  (floored at the config base bonus)
+//   s(t) = sat / (1 + exp(-k (t - x0)))   HP multiplier, capped at sat
+//   ρ(t) = RhoMax · sigmoid(k (t - x0))   damage reduction, same curve
+//   v(t) = SpeedGrowth^t                  speed multiplier, never caps
 //
-// Both income streams share one budget (Scarcity = the shares' sum,
-// < 1 = slightly scarce by construction), so cumulative income
-// tracks Bill(t) at a roughly constant ratio — never floods, never
-// starves, on any map (a richer map raises ΔBill and income follows).
+// Speed is the only stat that never stops growing, so very late waves
+// slowly get harder even after HP has leveled off.
 //
-// MAP-AGNOSTIC BY CONTRACT: the saturation comes from THIS map's
-// capacity scan (capacityOf, below). A map rework — more obstacles,
-// longer roads, new seeds — recalibrates automatically. NEVER bake
-// a saturation or buildable count into these constants.
+// HOW INCOME SCALES
 //
-// Margin model (the harness math): with towers firing continuously
-// at the enemy stream, the enemy COUNT cancels — each extra enemy
-// takes proportionally more fire — so
+// Income follows the cost of keeping up, not the raw difficulty.
+// Each tier we compute what a build that just barely holds the line
+// would cost in gold:
 //
-//   M(t) = η · PowerTotal · (1 − ρ(t)) / (v(t) · avgHp · s(t))
+//   Bill(t) = GoldPerPower · avgHpNormal · s(t) · v(t) / (1 - ρ(t))
 //
-// where η is the player's fraction of the greedy capacity fill.
-// Uncapped speed is the only asymptotic margin erosion (M decays
-// like v(t_ref)/v(t) past saturation): a deliberate, printed
-// choice — bullets track wave speed (TowerDef.ProjectileSpeedScales)
-// and zones/AoE always land, so it stays a slow squeeze, not a
-// cliff.
+// The tier's budget is Bill(t) - Bill(t-1): the extra gold the player
+// must spend this tier to keep up. Kills pay KillShare of that budget,
+// wave clears pay ClearShare of it. Because both pay from the same
+// number, total income stays at a fixed ratio of what the player needs
+// to spend, on any map. A richer map raises the bill and income rises
+// with it. An earlier version paid kills proportional to HP growth and
+// the economy flooded (20k gold by wave 20 while there was nothing
+// left to buy). Do not go back to HP-based rewards.
 //
-// The early-slope trade-off (math truth, useful when tuning): in
-// the default mode (inflection pinned at TierHalf, s(0) = 1) the
-// first-tier multiplier is roughly s(1) ≈ sat^(1/3). Saturation 27
-// → wave 5 at ×3; saturation 125 → ×5. A gentler start forces a
-// later inflection; set EarlyHpOverride to pin the start instead
-// and let the inflection float.
-// ─────────────────────────────────────────────────────────────
+// EARLY GAME SHAPE
+//
+// With the default pins (s(0) = 1, fastest growth at TierHalf), the
+// first-tier HP multiplier comes out at roughly sat^(1/3): cap 27
+// means wave 5 enemies have about 3x HP, cap 125 means about 5x. To
+// set the wave-5 multiplier directly, use EarlyHpOverride and let the
+// midpoint float instead.
 
 module Balance =
 
-  // ── Universal knobs (player-experience constants) ──────────
+  // ── Player-experience knobs ─────────────────────────────────
 
-  /// Margin target at RefTier for the horizon build. BELOW 1 on
-  /// purpose: the margin model is single-target by contract, and
-  /// playtest measured the AoE/zone/slow cushion at roughly
-  /// +50-100 % felt power — the anchor absorbs the cushion, or
-  /// every calibrated build steamrolls (0.70 = the reference build
-  /// reads 0.70 single-target, ~1.1-1.4 felt).
-  let Alpha = 0.70f
+  /// How much stronger than "barely enough" the reference build is
+  /// when the curve caps out. 1.0 would mean a perfectly built map
+  /// exactly breaks even at RefTier, with zero room for mistakes.
+  /// 0.65 leaves 35% headroom, because the math here counts single-
+  /// target damage only and real builds also get splash, zones and
+  /// slows, which playtesting put at roughly +50-100% real power.
+  /// Raise it and the whole HP curve drops (easier). Lower it and
+  /// the curve rises (harder).
+  let Alpha = 0.65f
 
-  /// Fraction of the map's full power the reference player fields
-  /// when the curve saturates — calibrates the asymptote against a
-  /// realistic endgame build, not the theoretical full map. On rich
-  /// maps (the seed-42 grid: 192 buildable cells) this reads as the
-  /// chokepoint clusters plus a support line, NOT the whole map:
-  /// 0.05 there ≈ 10 maxed towers. Read the margin table before
-  /// changing it — the saturation (and with it the wave-10/15
-  /// multipliers) scales almost linearly with this knob.
+  /// How much of the map's total possible damage the reference player
+  /// has actually built by the late game, as a fraction. 0.015 on the
+  /// seed-42 grid (192 buildable cells) is about 10 maxed towers at
+  /// good spots. This sets the HP cap: double it and the late-game HP
+  /// cap roughly doubles. Check the balance test table after changing.
   let HorizonBuild = 0.015f
 
-  /// The logistic's inflection tier — the designed "hard middle".
-  /// 3 = wave 15. Ignored when EarlyHpOverride is set.
-  let TierHalf = 4f
+  /// The tier where HP grows fastest (the hard middle). 3 = around
+  /// wave 15. Ignored when EarlyHpOverride is set.
+  let TierHalf = 3f
 
-  /// The calibration tier (~wave 30-34): the anchor where the
-  /// horizon build's margin reads exactly Alpha.
-  let RefTier = 7f
+  /// The tier the whole curve is calibrated against (around wave 30).
+  /// At this tier the reference build's strength reads exactly Alpha.
+  /// Move it later and the early game gets easier while the cap stays
+  /// reachable; move it earlier and the curve steepens.
+  let RefTier = 6f
 
-  /// Resistance cap (multiplicative fraction, same logistic shape
-  /// as HP). 0.35 = late enemies take 35 % less from every source.
-  let RhoMax = 0.25f
+  /// The most damage resistance a late enemy can have. 0.50 = late
+  /// enemies take 50% less damage from everything.
+  let RhoMax = 0.50f
 
-  /// Gold per dps×exposure power unit, from the def store
-  /// (bulletdeck 0.56, gunpost 0.75, sentry 1.28 — the efficient
-  /// end of the range). Converts the demand ratio into the gold a
-  /// margin-1 build costs.
-  let GoldPerPower = 1f
+  /// Gold price of one unit of damage-per-second-times-road-coverage.
+  /// The tower defs price power at 0.56-1.28 (bulletdeck 0.56,
+  /// gunpost 0.75, sentry 1.28), so 2 pays above the defs' own range:
+  /// income comes out generous relative to build costs. Lower it
+  /// toward 1 and every reward tightens.
+  let GoldPerPower = 2f
 
-  /// Share of each tier's equipment bill paid by wave CLEARS
-  /// (floored at WorldConfig.WaveClearBonus per wave — the stable
-  /// sustenance late, when kill rewards shrink with the bill).
-  let ClearShare = 2f
+  /// How much of a tier's extra build cost is paid back through wave
+  /// clear bonuses (1 = the five clears of a tier refund exactly the
+  /// tier's bill increase). Never drops below WorldConfig.WaveClearBonus.
+  let ClearShare = 1f
 
-  /// Share of each tier's equipment bill paid by KILLS (the per-
-  /// kill max 1 gold floor in WaveScale.apply keeps small kills
-  /// from feeling pointless).
-  let KillShare = 1.2f
+  /// How much of a tier's extra build cost is paid back through kill
+  /// gold (1.5 = kills refund 1.5x the tier's bill increase). Kills
+  /// that round below 1 gold still pay 1.
+  let KillShare = 1.5f
 
-  /// Speed growth per tier, UNCAPPED by design (see module header).
-  let SpeedGrowth = 1.07f
+  /// Enemy speed per tier: 1.1 = +10% each tier, compounding, no cap.
+  /// This is what keeps long games threatening after HP levels off.
+  let SpeedGrowth = 1.1f
 
-  /// Optional: pin the first-tier HP multiplier instead of the
-  /// inflection tier (s(1) = this value, s(0) = 1; x₀ floats).
-  /// ValueNone = default mode (inflection at TierHalf).
+  /// Optional: fix the tier-1 (wave 5) HP multiplier to this value and
+  /// let the curve's midpoint float. ValueNone = the midpoint is fixed
+  /// at TierHalf and the wave-5 multiplier falls out of the curve.
   let EarlyHpOverride: float32 voption = ValueNone
 
-  // ── Def-store mix constants (the demand/income side) ────────
+  // ── Wave averages (derived from the defs, not tuned) ────────
 
-  /// The normal-wave enemy mix (composeWave's else branch: grunt 4
-  /// / runner 2) — the demand side's average base HP.
+  /// Average base HP of a normal wave. Normal waves spawn 4 grunts
+  /// and 2 runners (composeWave), so this is their mix. Used to
+  /// convert the tier's HP multiplier into a gold cost.
   let avgHpNormal: float32 =
-    (float32 EnemyDefs.grunt.Hp * 4f + float32 EnemyDefs.runner.Hp * 2f) / 6f
+    (EnemyDefs.grunt.Hp * 4f + EnemyDefs.runner.Hp * 2f) / 6f
 
-  /// Representative wave mix for income (grunt 4 / runner 2 / tank 1
-  /// / flier 1 — the mod-3/4 tables' blend) — the base gold one
-  /// enemy pays at reward ×1. Bosses are accounted separately.
+  /// Average base gold reward per kill across the mixed late-game
+  /// wave table (4 grunts, 2 runners, 1 tank, 1 flier). Used to turn
+  /// the tier's kill budget into a per-kill reward multiplier.
+  /// Bosses are paid separately and are not in this mix.
   let avgRewardMix: float32 =
     (float32 EnemyDefs.grunt.GoldReward * 4f
      + float32 EnemyDefs.runner.GoldReward * 2f
@@ -148,9 +142,9 @@ module Balance =
 
   let inline private sigma(x: float32) : float32 = 1f / (1f + MathF.Exp(-x))
 
-  /// (k, x₀) for a given saturation, from the active pin pair:
-  ///   default  — s(0) = 1 and inflection = TierHalf
-  ///              (k = ln(sat−1)/TierHalf; s(RefTier) = sat−1 exactly)
+  /// Picks the curve's steepness k and midpoint x0 from the cap and
+  /// the active pin:
+  ///   default  — s(0) = 1 and fastest growth at TierHalf
   ///   override — s(0) = 1 and s(1) = EarlyHpOverride
   let inline private steepness(sat: float32) : struct (float32 * float32) =
     match EarlyHpOverride with
@@ -159,7 +153,7 @@ module Balance =
       struct (k, MathF.Log(sat - 1f) / k)
     | ValueNone -> struct (MathF.Log(sat - 1f) / TierHalf, TierHalf)
 
-  /// The tier's curves at fractional tier t: (s, v, ρ).
+  /// (HP multiplier, speed multiplier, resistance) at tier t.
   let inline private curvesAt
     (sat: float32)
     (t: float32)
@@ -171,21 +165,21 @@ module Balance =
             MathF.Pow(SpeedGrowth, t),
             RhoMax * sigma x)
 
-  /// The gold a margin-1 tier-t build costs (the equipment bill):
-  /// demand ratio × power-to-gold conversion.
+  /// Gold cost of a tier-t build that just barely holds the line:
+  /// the damage the tier demands, converted to gold via GoldPerPower.
   let inline private billAt (sat: float32) (t: float32) : float32 =
     let struct (hp, v, rho) = curvesAt sat t
     GoldPerPower * avgHpNormal * hp * v / (1f - rho)
 
-  /// The tier's multiplier set — replaces the old WaveScale.ofWave.
-  /// Pure: a function of the map-derived saturation and the wave
-  /// number. Lives inside the Waves.Scale adaptive node (recomputes
-  /// once per wave) and composeWave (once per wave start).
+  /// All four multipliers for one wave. Pure function of the map cap
+  /// and the wave number. Called once per wave from the Waves.Scale
+  /// adaptive node and once per wave start from composeWave.
   let scaleOfWave (sat: float32) (number: int) : WaveScale =
     if number < 5 then
-      // Tier 0 = the base defs, EXACTLY unscaled (the s(0) = 1 pin,
-      // explicit: the emergent logistic value sits a float32
-      // rounding step below 1 and would truncate base HP).
+      // Waves 0-4 are tier 0 and use the base defs untouched. The
+      // explicit 1f matters: the logistic value at t=0 lands one
+      // float32 rounding step under 1 and would shave 1 HP off base
+      // enemies when truncated to int.
       {
         Hp = 1f
         Speed = 1f
@@ -196,9 +190,9 @@ module Balance =
       let t = float32(max 0 (number / 5))
       let struct (hp, v, rho) = curvesAt sat t
 
-      // The reward multiplier: KillShare of the tier's equipment
-      // bill, spread over the base gold the tier's kills would pay
-      // (tier t covers waves 5t..5t+4 → (45+50t) enemies × mix).
+      // Kill budget for the tier, divided by the base gold the
+      // tier's enemies pay at reward 1 (tier t covers waves 5t..5t+4,
+      // about 45+50t kills).
       let killBase = (45f + 50f * t) * avgRewardMix
 
       let reward = KillShare * (billAt sat t - billAt sat (t - 1f)) / killBase
@@ -210,10 +204,10 @@ module Balance =
         Resist = rho
       }
 
-  /// The per-wave clear payout: ClearShare of the tier's equipment
-  /// bill (spread over its 5 waves), floored at the config base
-  /// bonus so early waves keep the classic feel. `waveNumber` is
-  /// the wave that just CLEARED.
+  /// Gold paid for clearing a wave: the tier's clear budget split
+  /// over its 5 waves, never below the config base bonus so early
+  /// waves keep their usual payout. `waveNumber` is the wave that
+  /// just cleared.
   let clearBonus (baseBonus: int) (sat: float32) (waveNumber: int) : int =
     let t = float32(max 0 (waveNumber / 5))
 
@@ -223,45 +217,49 @@ module Balance =
       let share = ClearShare * (billAt sat t - billAt sat (t - 1f)) / 5f
       max baseBonus (int share)
 
-  /// The gold a margin-1 tier-t build costs — the economy's anchor
-  /// (harness table + budget assertions read this).
+  /// Same as billAt with an int tier. The tests read this to check
+  /// income against build costs.
   let bill (sat: float32) (t: int) : float32 = billAt sat (float32(max 0 t))
 
-  // ── The per-map capacity scan (cold: once per State.init) ───
+  // ── The per-map scan (runs once at State.init) ──────────────
 
-  /// The map's difficulty ceiling and the calibrated saturation.
+  /// What the map can hold, and the HP cap that falls out of it.
   type Capacity = {
-    /// Buildable cells — the hard cap on tower count.
+    /// Cells you can build on. The hard cap on tower count.
     Buildable: int
-    /// Road cells (the traversable length, 1 cell = 1 unit).
+    /// Cells of road. 1 cell = 1 world unit of walking.
     RoadCells: int
-    /// Σ over buildable cells of the best single-target power the
-    /// cell can hold: max over defs of [ dps(L5) × exposure(R) ].
-    /// AoE, zones and piercing are the margin cushion — excluded
-    /// on purpose.
+    /// Sum over all buildable cells of the best damage that cell
+    /// could do: max over tower defs of [dps at level 5 x road cells
+    /// in range]. Splash, zones and piercing are left out on purpose;
+    /// they are the headroom that Alpha accounts for.
     PowerTotal: float32
-    /// The logistic's asymptote: s(∞) = this. Derived, never tuned
-    /// directly — tune Alpha/HorizonBuild instead.
+    /// The HP cap s(infinity) = this. Computed from the other three,
+    /// never set by hand. Tune Alpha and HorizonBuild instead.
     Saturation: float32
   }
 
-  /// Scans the map: exposure of every buildable cell (road-cell
-  /// centers within each def's range — each road cell ≈ 1 unit of
-  /// traversal, matching Towers.tick's exact-distance check closely
-  /// and independent of the path's waypoint density), folds the
-  /// best per-cell single-target power at level 5, and solves the
-  /// saturation so the horizon build's margin reads exactly Alpha
-  /// at RefTier:
+  /// Measures the map and solves for the HP cap.
   ///
-  ///   sat · σ(k·(RefTier − x₀)) = HorizonBuild · PowerTotal
-  ///                              · (1 − ρ(RefTier))
-  ///                              / (Alpha · v(RefTier) · avgHp)
+  /// For every buildable cell, counts how many road cells each tower
+  /// def could cover from there (1 road cell = 1 unit of walking, so
+  /// this approximates time-in-range without depending on waypoint
+  /// spacing) and keeps the best def's damage x coverage. The sum is
+  /// PowerTotal.
   ///
-  /// The ρ(RefTier) term needs k which needs sat — a mild coupling,
-  /// settled by a short fixed-point sweep (cold path, floats).
+  /// The cap is the value that makes the reference build read exactly
+  /// Alpha strength at RefTier:
+  ///
+  ///   sat · sigma(k (RefTier - x0)) =
+  ///     HorizonBuild · PowerTotal · (1 - ρ(RefTier))
+  ///     / (Alpha · v(RefTier) · avgHpNormal)
+  ///
+  /// k depends on sat and ρ(RefTier) depends on k, so we iterate a
+  /// few rounds until it settles.
   let capacityOf(map: MapModel) : Capacity =
-    // 1 cell = 1 world unit, grid origin Zero → centers at (x+0.5).
-    let roadCell (x: int) (y: int) =
+    // Grid origin is Zero and 1 cell = 1 unit, so cell centers sit
+    // at (x + 0.5, y + 0.5).
+    let inline roadCell (x: int) (y: int) =
       Vector2(float32 x + 0.5f, float32 y + 0.5f)
 
     let pathGrid = MapModel.pathGrid map
@@ -273,14 +271,14 @@ module Balance =
         | ValueSome tile when tile.IsPath -> road.Add(roadCell x y)
         | _ -> ()
 
-    // Best single-target DPS × range per def at the level cap.
+    // Each def's squared range and max-level dps.
     let powers =
       TowerDefs.all
       |> Array.map(fun d ->
         let eff = TowerDefs.effectiveDef d 5
 
         struct (float32(d.Range * d.Range),
-                float32 eff.Damage * eff.FireRate * float32 eff.Volley))
+                eff.Warhead.Damage * eff.FireRate * float32 eff.Volley))
 
     let mutable buildable = 0
     let mutable powerTotal = 0f
@@ -304,11 +302,12 @@ module Balance =
 
           powerTotal <- powerTotal + best
 
-    // Saturation: the fixed point of the margin pin at RefTier.
+    // Cap at RefTier, before resistance is folded in.
     let vRef = MathF.Pow(SpeedGrowth, RefTier)
     let cRef = HorizonBuild * powerTotal / (Alpha * vRef * avgHpNormal)
 
-    // Start from the resist-free value, then settle the ρ↔k coupling.
+    // Iterate: each round recomputes k from the current cap and the
+    // resistance that k implies, then corrects the cap for both.
     let mutable sat = cRef + 1f
 
     for _ = 1 to 8 do

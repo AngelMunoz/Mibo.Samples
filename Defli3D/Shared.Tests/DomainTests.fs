@@ -48,7 +48,7 @@ let tests =
 
     testCase "fixture enemy defs are wired to baked models" (fun () ->
       for def in TestData.Fixtures.all do
-        Expect.isGreaterThan def.Hp 0 $"{def.Key} hp"
+        Expect.isGreaterThan def.Hp 0f $"{def.Key} hp"
         Expect.isGreaterThan def.Speed 0f $"{def.Key} speed"
         Expect.isGreaterThan def.GoldReward 0 $"{def.Key} reward"
 

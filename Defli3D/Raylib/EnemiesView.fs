@@ -279,7 +279,7 @@ type EnemiesView() =
         // recorded into the shared billboard batch. Sizes follow the
         // scaled hull.
         if v.Hp < v.MaxHp then
-          let frac = float32 v.Hp / float32 v.MaxHp
+          let frac = v.Hp / v.MaxHp
           let yBar = y + 0.35f + 0.55f * scale
           let barW = 0.9f * scale
           let barH = 0.09f * scale

@@ -200,7 +200,7 @@ type EnemiesView() =
           )
 
         if v.Hp < v.MaxHp then
-          let frac = float32 v.Hp / float32 v.MaxHp
+          let frac = v.Hp / v.MaxHp
           let s = def.Scale * EnemyLayout.enemyScale
           let y = EnemiesView.barY def eid v time
           let w = 0.75f * s

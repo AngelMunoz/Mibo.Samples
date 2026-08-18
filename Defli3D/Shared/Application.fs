@@ -166,9 +166,9 @@ module Application =
       match ev with
       | Projectiles.Impact impact ->
         // Damage batch: a DIRECT hit (pierce pass-through) damages
-        // exactly its enemy; an AREA detonation fans one ApplyDamage
-        // per enemy within ImpactRadius of the point (flat full
-        // damage, no falloff). All ApplyDamage first, then the kills
+        // exactly its enemy; an AREA detonation applies damage to
+        // every enemy within Warhead.ImpactRadius of the point (flat
+        // full damage, no falloff). All damage first, then the kills
         // are handled: despawns (Killed) never modify the Positions
         // view being enumerated here (the wave-13 ordering).
         let positions = state.Enemies.Positions |> AMap.getValue
@@ -177,14 +177,20 @@ module Application =
         match impact.Enemy with
         | ValueSome eid ->
           events.AddRange(
-            Enemies.Enemies.applyDamage eid impact.Damage state.Enemies
+            Enemies.Enemies.applyDamage eid impact.Warhead.Damage state.Enemies
           )
         | ValueNone ->
-          if impact.ImpactRadius > 0f then
+          if impact.Warhead.ImpactRadius > 0f then
             for KeyValueV(eid, epos) in positions do
-              if Vector2.Distance(epos, impact.Pos) <= impact.ImpactRadius then
+              if
+                Vector2.Distance(epos, impact.Pos)
+                <= impact.Warhead.ImpactRadius
+              then
                 events.AddRange(
-                  Enemies.Enemies.applyDamage eid impact.Damage state.Enemies
+                  Enemies.Enemies.applyDamage
+                    eid
+                    impact.Warhead.Damage
+                    state.Enemies
                 )
 
         // Kills + zone drop + burst post as one intent: the drain runs
@@ -192,12 +198,13 @@ module Application =
         // mutate the Positions view mid-enumeration. Bigger radii (and
         // zone droppers) read as explosions; the rest as small hits.
         let bigBurst =
-          impact.ImpactRadius > 0.5f || ValueOption.isSome impact.Zone
+          impact.Warhead.ImpactRadius > 0.5f
+          || ValueOption.isSome impact.Warhead.Zone
 
         post(fun () ->
           handleEnemyEvents state events
 
-          impact.Zone
+          impact.Warhead.Zone
           |> ValueOption.iter(fun z ->
             Zones.Zones.drop impact.Pos z state.Zones)
 
@@ -214,7 +221,7 @@ module Application =
   /// into Enemies writes; kills fan out through the enemy handler.
   let handleZoneApplies (state: State) (applies: Zones.ZoneApply[]) : unit =
     for z in applies do
-      if z.Damage > 0 then
+      if z.Damage > 0f then
         handleEnemyEvents
           state
           (Enemies.Enemies.applyDamage z.Enemy z.Damage state.Enemies)
@@ -313,10 +320,7 @@ module Application =
               Seek = shot.Seek
               Target = shot.Enemy
               Aim = aim
-              Damage = shot.Damage
-              ImpactRadius = shot.ImpactRadius
-              Piercing = shot.Piercing
-              Zone = shot.Zone
+              Warhead = shot.Warhead
               Model = shot.ProjectileModel
               Scale = shot.ProjectileScale
               Speed = speed

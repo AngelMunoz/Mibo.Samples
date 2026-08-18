@@ -21,8 +21,13 @@ let private def = {
   Name = "Test Gun"
   Chassis = Chassis.Emplacement
   Cost = 30
-  Range = 2
-  Damage = 5
+  Range = 2f
+  Warhead = {
+    Damage = 5f
+    ImpactRadius = 0.25f
+    Piercing = false
+    Zone = ValueNone
+  }
   FireRate = 4f
   RatePerLevel = 0.25f // distinct from the presets' 0.1 — pins the curve source
   ProjectileSpeed = 3.125f // 200 px/s ÷ 64
@@ -30,10 +35,7 @@ let private def = {
   Volley = 1
   Spread = 0f
   Trajectory = Trajectory.Flat
-  ImpactRadius = 0.25f
-  Piercing = false
   Homing = HomingPolicy.FromLevel 4
-  Zone = ValueNone
   WeaponModel = ValueSome Models.weaponTurret
   GunScale = 1f
   ProjectileModel = Models.ammoBullet
@@ -59,8 +61,8 @@ let private enemyOf
 
   d[0<EnemyId>] <- {
     Pos = pos
-    Hp = 100
-    MaxHp = 100
+    Hp = 100f
+    MaxHp = 100f
     Archetype = archetype
     Progress = progress
     Slow = 1f
@@ -150,7 +152,7 @@ let tests =
       | [| Fired shot |] ->
         Expect.equal shot.Tower (0<TowerId>) "tower id"
         Expect.equal shot.Enemy (ValueSome(0<EnemyId>)) "enemy id"
-        Expect.equal shot.Damage def.Damage "damage"
+        Expect.equal shot.Warhead.Damage def.Warhead.Damage "damage"
       | _ -> failtest "expected exactly one Fired"
 
       match m2.Runtimes |> CMap.tryGetValue(0<TowerId>) with
@@ -171,8 +173,8 @@ let tests =
 
       alive[1<EnemyId>] <- {
         Pos = cellCenter struct (4, 3)
-        Hp = 100
-        MaxHp = 100
+        Hp = 100f
+        MaxHp = 100f
         Progress = 0.2f
         Slow = 1f
         PathIndex = 1
@@ -181,8 +183,8 @@ let tests =
 
       alive[2<EnemyId>] <- {
         Pos = cellCenter struct (4, 2)
-        Hp = 100
-        MaxHp = 100
+        Hp = 100f
+        MaxHp = 100f
         Progress = 0.8f
         Slow = 1f
         PathIndex = 1
@@ -211,8 +213,8 @@ let tests =
 
       alive[1<EnemyId>] <- {
         Pos = cellCenter struct (4, 3)
-        Hp = 100
-        MaxHp = 100
+        Hp = 100f
+        MaxHp = 100f
         Progress = 0.2f
         Slow = 1f
         PathIndex = 1
@@ -221,8 +223,8 @@ let tests =
 
       alive[2<EnemyId>] <- {
         Pos = cellCenter struct (4, 3)
-        Hp = 60
-        MaxHp = 40
+        Hp = 60f
+        MaxHp = 40f
         Progress = 0.8f
         Slow = 1f
         PathIndex = 1
@@ -271,8 +273,8 @@ let tests =
 
       alive[1<EnemyId>] <- {
         Pos = cellCenter struct (3, 3) + Vector2(0.625f, 0f) // 40 px ÷ 64
-        Hp = 100
-        MaxHp = 100
+        Hp = 100f
+        MaxHp = 100f
         Progress = 0.5f
         Slow = 1f
         PathIndex = 1
@@ -281,8 +283,8 @@ let tests =
 
       alive[2<EnemyId>] <- {
         Pos = cellCenter struct (3, 3) + Vector2(1.5625f, 0f) // 100 px ÷ 64
-        Hp = 100
-        MaxHp = 100
+        Hp = 100f
+        MaxHp = 100f
         Progress = 0.5f
         Slow = 1f
         PathIndex = 1
@@ -457,13 +459,13 @@ let tests =
               $"{d.Key}: fire rate formula at L%d{level}"
 
             Expect.equal
-              eff.Damage
-              (int(float d.Damage * (1.0 + 0.25 * float l)))
+              eff.Warhead.Damage
+              (d.Warhead.Damage * (1.0f + 0.25f * l))
               $"{d.Key}: damage formula at L%d{level}"
 
             Expect.equal
               eff.Range
-              (d.Range + int(l * 0.5f))
+              (d.Range + l * 0.5f)
               $"{d.Key}: range formula at L%d{level}"
 
             // Monotone: every level fires at least as fast.
@@ -579,7 +581,10 @@ let tests =
 
       match events |> Seq.toArray with
       | [| Fired shot |] ->
-        Expect.equal shot.Zone TowerDefs.bunker.Zone "zone payload"
+        Expect.equal
+          shot.Warhead.Zone
+          TowerDefs.bunker.Warhead.Zone
+          "zone payload"
 
         Expect.equal
           shot.ProjectileModel
@@ -603,7 +608,7 @@ let tests =
 
       match events |> Seq.toArray with
       | [| Fired shot |] ->
-        Expect.isTrue shot.Piercing "piercing shot"
+        Expect.isTrue shot.Warhead.Piercing "piercing shot"
         Expect.isFalse shot.Seek "piercer never seeks (Never policy)"
       | _ -> failtest "expected exactly one Fired")
 
@@ -705,7 +710,8 @@ let tests =
           m'.EffectiveDef |> AMap.getValue |> ReadOnlyDict.tryGetValue tid
 
         match eff1 with
-        | ValueSome e -> Expect.equal e.Damage def.Damage "base damage"
+        | ValueSome e ->
+          Expect.equal e.Warhead.Damage def.Warhead.Damage "base damage"
         | ValueNone -> failtest "effective def must exist"
 
         // Level 2 → +25 % damage, +RatePerLevel fire rate, +0.5 range.
@@ -721,8 +727,12 @@ let tests =
 
         match eff2 with
         | ValueSome e ->
-          Expect.equal e.Damage (int(float def.Damage * 1.25)) "scaled damage"
-          Expect.equal e.Range (def.Range + 0) "range round-half-down"
+          Expect.equal
+            e.Warhead.Damage
+            (def.Warhead.Damage * 1.25f)
+            "scaled damage"
+
+          Expect.equal e.Range (def.Range + 0.5f) "range round-half-up"
         | ValueNone -> failtest "effective def must exist")
 
     testCase "cooldown gates firing" (fun () ->

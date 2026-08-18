@@ -44,14 +44,16 @@ let private shotFor(tid: int<TowerId>) : TowerEvent =
     Enemy = ValueNone
     Aim = Vector2(2f, 4.5f)
     Muzzle = Vector2(1.5f, 1.5f)
-    Damage = 1
-    ImpactRadius = 0.25f
-    Piercing = false
+    Warhead = {
+      Damage = 1f
+      ImpactRadius = 0.25f
+      Piercing = false
+      Zone = ValueNone
+    }
     Seek = false
     Volley = 1
     Spread = 0f
     Trajectory = Trajectory.Flat
-    Zone = ValueNone
     ProjectileModel = Models.ammoBullet
     ProjectileScale = 1f
     Height = 0.5f
@@ -234,11 +236,16 @@ let tests =
           Balance.RhoMax
           $"resist capped at %d{t}"
 
-        // Reward: bill-anchored, positive, and never a flood —
-        // the failed s^0.8 coupling paid up to 13.5× base.
+        // Reward: bill-anchored and positive, and it always grows
+        // slower than the difficulty it pays for — kill gold never
+        // outpaces enemy HP at any tier (the flood the failed
+        // demand-level coupling produced, at 13.5x base).
         Expect.isGreaterThan s.Reward 0f $"reward positive at %d{t}"
 
-        Expect.isLessThan s.Reward 2f $"reward bounded at %d{t}"
+        Expect.isLessThan
+          s.Reward
+          s.Hp
+          $"kill gold grows slower than enemy hp at %d{t}"
 
         // Speed compounds uncapped.
         Expect.isTrue
@@ -323,37 +330,49 @@ let tests =
       // The damage math is read from the fixture, not repeated as
       // literals — retune the fixture and the mechanism assertion
       // (half damage, floored at 1) still reads the same.
-      let resisted(dmg: int) = max 1 (int(0.5f * float32 dmg))
+      let resisted(dmg: float32) = max 1f (0.5f * dmg)
 
       match m.Defs |> AMap.getValue |> Seq.tryHead with
       | Some(KeyValueV(eid, _)) ->
-        let events = Enemies.Enemies.applyDamage eid 10 m
+        let events = Enemies.Enemies.applyDamage eid 10f m
 
         Expect.isEmpty
           events
           "10 dmg − 50 % stays under the fixture hp, no kill"
 
-        (match m.Healths |> CMap.tryGetValue eid with
-         | ValueSome h ->
-           Expect.equal h.Hp (hp0 - resisted 10) "resisted to half"
-         | ValueNone -> failtest "health row must exist")
+        match m.Healths |> CMap.tryGetValue eid with
+        | ValueSome h ->
+          Expect.equal h.Hp (hp0 - resisted 10f) "resisted to half"
+        | ValueNone -> failtest "health row must exist"
 
         // Floor: 1 dmg against 50 % resist still deals 1.
-        Enemies.Enemies.applyDamage eid 1 m |> ignore
+        Enemies.Enemies.applyDamage eid 1f m |> ignore
 
-        (match m.Healths |> CMap.tryGetValue eid with
-         | ValueSome h ->
-           Expect.equal h.Hp (hp0 - resisted 10 - resisted 1) "floored to 1"
-         | ValueNone -> failtest "health row must exist")
+        match m.Healths |> CMap.tryGetValue eid with
+        | ValueSome h ->
+          Expect.equal h.Hp (hp0 - resisted 10f - resisted 1f) "floored to 1"
+        | ValueNone -> failtest "health row must exist"
       | None -> failtest "enemy must exist")
 
-    testCase "WaveScale.apply carries the tier resist onto defs" (fun () ->
+    testCase "WaveScale.apply combines innate and tier resist" (fun () ->
       let scale = Balance.scaleOfWave sat 10
-      let applied = WaveScale.apply scale EnemyDefs.grunt
+      let before = EnemyDefs.grunt
+      let applied = WaveScale.apply scale before
 
-      Expect.equal applied.Resist scale.Resist "resist carried"
-      Expect.isGreaterThan applied.Resist 0f "tier 2 has resistance"
-      Expect.equal EnemyDefs.grunt.Resist 0f "base defs stay clean")
+      Expect.isGreaterThan
+        applied.Resist
+        scale.Resist
+        "innate resist stacks on top of the tier's"
+
+      Expect.equal
+        applied.Resist
+        (1f - (1f - before.Resist) * (1f - scale.Resist))
+        "innate and tier resist multiply, never reaching 1"
+
+      Expect.equal
+        EnemyDefs.grunt
+        before
+        "apply returns a copy, the shared def is untouched")
 
     // ── Bullet-speed tracking (the guns-keep-pace rule) ───────
     testCase "bullet towers track wave speed; loaders do not" (fun () ->
@@ -405,12 +424,12 @@ let tests =
           (Balance.scaleOfWave state.Capacity.Saturation 10).Speed
 
         let expected =
-          if row.Speed > 7.5f then
+          if row.Spawn.Speed > 7.5f then
             TowerDefs.gunpost.ProjectileSpeed * waveSpeed
           else
             TowerDefs.sentry.ProjectileSpeed
 
         Expect.isTrue
-          (abs(row.Speed - expected) < 0.001f)
-          $"spawn speed tracks the wave factor (got %f{row.Speed})")
+          (abs(row.Spawn.Speed - expected) < 0.001f)
+          $"spawn speed tracks the wave factor (got %f{row.Spawn.Speed})")
   ]

@@ -24,8 +24,8 @@ let private enemiesAt
   for i = 0 to ids.Length - 1 do
     d[ids[i]] <- {
       Pos = pos[i]
-      Hp = 100
-      MaxHp = 100
+      Hp = 100f
+      MaxHp = 100f
       Archetype = archetype
       Progress = 0.5f
       Slow = 1f
@@ -44,7 +44,7 @@ let private zoneDef = {
   Radius = 1f
   Seconds = 2f
   Slow = 0.5f
-  TickDamage = 3
+  TickDamage = 3f
   TickInterval = 0.5f
   MaxStacks = 5
   Affects = TargetDomain.Ground
@@ -78,7 +78,7 @@ let tests =
       match applies with
       | [| a |] ->
         Expect.equal a.Enemy eid "enemy inside"
-        Expect.equal a.Damage 3 "DoT applied"
+        Expect.equal a.Damage 3f "DoT applied"
         Expect.equal a.SlowFactor 0.5f "slow applied"
         Expect.isTrue (a.SlowSeconds > 0f) "slow armed with a horizon"
       | _ -> failtest "expected exactly one application"
@@ -112,13 +112,13 @@ let tests =
         // strong slow. MaxStacks = 5 allows both.
         let weak = {
           zoneDef with
-              TickDamage = 2
+              TickDamage = 2f
               Slow = 0.8f
         }
 
         let strong = {
           zoneDef with
-              TickDamage = 3
+              TickDamage = 3f
               Slow = 0.5f
         }
 
@@ -132,7 +132,7 @@ let tests =
 
         match applies with
         | [| a |] ->
-          Expect.equal a.Damage 5 "both zones' damage stacked"
+          Expect.equal a.Damage 5f "both zones' damage stacked"
           Expect.equal a.SlowFactor 0.5f "strongest slow wins"
         | _ -> failtest "expected exactly one application"
 
@@ -147,7 +147,10 @@ let tests =
 
         match applies2 with
         | [| a |] ->
-          Expect.equal a.Damage (5 * zoneDef.TickDamage) "capped at 5 stacks"
+          Expect.equal
+            a.Damage
+            (5f * float32 zoneDef.TickDamage)
+            "capped at 5 stacks"
         | _ -> failtest "expected exactly one application")
 
     testCase "tick interval gates damage ticks between applications" (fun () ->
@@ -203,7 +206,7 @@ let tests =
         Vector2.Zero
         {
           zoneDef with
-              TickDamage = 0
+              TickDamage = 0f
               Affects = TargetDomain.Any
         }
         m
@@ -213,7 +216,7 @@ let tests =
 
       match Zones.tick 0.1f m fliers with
       | [| a |] ->
-        Expect.equal a.Damage 0 "pure-slow zone"
+        Expect.equal a.Damage 0f "pure-slow zone"
         Expect.equal a.SlowFactor zoneDef.Slow "the flier is slowed"
       | _ -> failtest "expected exactly one application")
   ]

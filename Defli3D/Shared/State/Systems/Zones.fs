@@ -27,7 +27,7 @@ open Defli3D.State
 [<Struct>]
 type ZoneApply = {
   Enemy: int<EnemyId>
-  Damage: int
+  Damage: float32
   SlowFactor: float32
   SlowSeconds: float32
 }
@@ -39,7 +39,7 @@ type ZonesModel() =
   /// Tick scratch — the per-enemy stack accumulator, cleared and
   /// reused every tick (steady state allocates nothing).
   member val Scratch =
-    Dictionary<int<EnemyId>, struct (int * int * float32 * float32)>() with get, set
+    Dictionary<int<EnemyId>, struct (int * float32 * float32 * float32)>() with get, set
 
 module Zones =
 
@@ -112,7 +112,7 @@ module Zones =
               let struct (stacks, dmg, slow, slowSecs) =
                 acc
                 |> Dictionary.tryGetValue eid
-                |> ValueOption.defaultValue struct (0, 0, 1f, 0f)
+                |> ValueOption.defaultValue struct (0, 0f, 1f, 0f)
 
               if stacks < row.Def.MaxStacks then
                 let horizon = slowSeconds row.Def

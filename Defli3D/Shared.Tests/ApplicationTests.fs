@@ -325,7 +325,7 @@ let tests =
             else
               None)
 
-        h.Post(fun () -> TestData.damageEnemy h.State bossId 190)
+        h.Post(fun () -> TestData.damageEnemy h.State bossId 190f)
 
         let cleared =
           h.StepUntil(
@@ -384,8 +384,8 @@ let tests =
         match (h.State.Projectiles.Rows |> AMap.getValue) |> Seq.tryHead with
         | Some(KeyValueV(_, row)) ->
           Expect.equal
-            row.Damage
-            (int(float TowerDefs.sentry.Damage * 1.25))
+            row.Spawn.Warhead.Damage
+            (TowerDefs.sentry.Warhead.Damage * 1.25f)
             "scaled damage"
         | None -> failtest "projectile row must exist")
 
@@ -440,7 +440,7 @@ let tests =
           // assertions read, wherever the tuning sits.
           let walker = {
             TestData.Fixtures.grunt with
-                Hp = 500
+                Hp = 500f
           }
 
           TestData.spawnEnemy h.State walker)
@@ -460,10 +460,9 @@ let tests =
 
         match model.Enemies.Motions |> CMap.tryGetValue(0<EnemyId>) with
         | ValueSome mv ->
-          Expect.equal
-            mv.Slow
-            TowerDefs.arrowDeck.Zone.Value.Slow
-            "enemy slowed"
+          match TowerDefs.arrowDeck.Warhead.Zone with
+          | ValueSome zone -> Expect.equal mv.Slow zone.Slow "enemy slowed"
+          | ValueNone -> failtest "arrow deck must carry a zone"
 
           let slowed =
             model.Enemies.SlowTimers |> Dictionary.tryGetValue(0<EnemyId>)
@@ -537,9 +536,9 @@ let tests =
         // Kill the shell's target mid-flight (another tower's kill, say).
         match (h.State.Projectiles.Rows |> AMap.getValue) |> Seq.tryHead with
         | Some(KeyValueV(_, row)) ->
-          row.Target
+          row.Spawn.Target
           |> ValueOption.iter(fun target ->
-            h.Post(fun () -> TestData.damageEnemy h.State target 999))
+            h.Post(fun () -> TestData.damageEnemy h.State target 999f))
         | None -> failtest "shell must exist"
 
         // The shell must NOT vanish: it flies on to the aim point and
@@ -614,7 +613,7 @@ let tests =
         | Some bossId ->
           let aliveBefore = aliveOf h.State
 
-          h.Post(fun () -> TestData.damageEnemy h.State bossId 99999)
+          h.Post(fun () -> TestData.damageEnemy h.State bossId 99999f)
 
           h.StepN(2, TestData.dt)
 

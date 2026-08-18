@@ -133,7 +133,7 @@ module TargetDomain =
 type EnemyDef = {
   Key: string
   Archetype: EnemyArchetype
-  Hp: int
+  Hp: float32
   /// World units per second (1 cell = 1 unit; Defli's px/s ÷ 64).
   Speed: float32
   /// Fraction of incoming damage negated (0.35 = 35 % less). Base
@@ -162,7 +162,7 @@ type EnemyDef = {
 
 /// Per-enemy components (rows in the Enemies sub-system's CMaps).
 [<Struct>]
-type Health = { Hp: int; MaxHp: int }
+type Health = { Hp: float32; MaxHp: float32 }
 
 [<Struct>]
 type Motion = {
@@ -192,8 +192,8 @@ type WaveDef = {
 [<Struct>]
 type EnemyView = {
   Pos: Vector2
-  Hp: int
-  MaxHp: int
+  Hp: float32
+  MaxHp: float32
   /// The enemy's archetype — the air/ground bit (TargetDomain.covers)
   /// for targeting and zone application.
   Archetype: EnemyArchetype
@@ -297,13 +297,32 @@ type ZoneDef = {
   /// Speed factor while inside (0.6 = 40 % slower).
   Slow: float32
   /// Damage per tick while inside.
-  TickDamage: int
+  TickDamage: float32
   /// Seconds between damage ticks.
   TickInterval: float32
   /// How many concurrent zones may affect one enemy.
   MaxStacks: int
   /// Which enemies the zone's effects may touch.
   Affects: TargetDomain
+}
+
+/// The damage payload every weapon carries. This is the one record
+/// shared by every stage of the shot pipeline (TowerDef, TowerShot,
+/// ProjectileSpawn, ProjectileRow, ProjectileImpact). Each stage
+/// embeds it by value and adds its own context, so the type is
+/// declared once and a stat change cannot drift between stages. The
+/// values freeze at fire time: an upgrade while the shot is in the
+/// air does not change the shot.
+[<Struct>]
+type Warhead = {
+  Damage: float32
+  /// Damage radius at the impact point. Every weapon hits an area.
+  ImpactRadius: float32
+  /// Piercing shots fly through enemies, damage each one they pass,
+  /// and only expire on range or lifetime.
+  Piercing: bool
+  /// Lasting ground effect applied at the impact point.
+  Zone: ZoneDef voption
 }
 
 /// One placeable tower preset (a chassis × weapon bundle). Keys 1-0
@@ -316,8 +335,10 @@ type TowerDef = {
   Cost: int
   /// Range in grid cells — 1 cell = 1 world unit, so this is also the
   /// world-space range (Chebyshev ring narrowed by exact distance).
-  Range: int
-  Damage: int
+  Range: float32
+  /// The damage payload (damage, impact radius, pierce, zone).
+  /// Upgrades scale its Damage. The shot pipeline carries it frozen.
+  Warhead: Warhead
   /// Shots per second (bigger guns fire slower — the reload pause IS
   /// the weapon's identity).
   FireRate: float32
@@ -338,16 +359,9 @@ type TowerDef = {
   /// Volley spread radius (world units) around the aim point.
   Spread: float32
   Trajectory: Trajectory
-  /// Damage radius at the impact point — every weapon hits an area.
-  ImpactRadius: float32
-  /// Piercing shot flies THROUGH enemies, damaging each it passes
-  /// (large ballista).
-  Piercing: bool
   /// Rocket: always seeks its target and explodes on impact (large
   /// turret).
   Homing: HomingPolicy
-  /// Lasting ground effect applied at the impact point.
-  Zone: ZoneDef voption
   /// Gun model mounted by gun-carrying chassis (ValueNone for keeps —
   /// they are self-armed; the ammo just comes out of the tower).
   WeaponModel: ModelInfo voption
@@ -394,76 +408,62 @@ type TowerRuntime = {
 // always, loaders never)
 // ─────────────────────────────────────────────────────────────
 
-/// One in-flight shot (a row in Projectiles.Rows). XZ flies a
-/// straight line along Dir toward Aim; Y follows the trajectory
-/// shape (lerp muzzle→target + ArcHeight·4t(1−t), t = Traveled /
-/// TotalLen). Seeking shots (per the firing def's HomingPolicy)
-/// re-aim Dir at the target's live position each tick; dumbfire
-/// shots never correct — they detonate at (Aim, TargetY) whether
-/// or not the enemy is still there, so fast targets genuinely dodge.
+/// Spawn intent for a projectile: the fire-time flight plan with
+/// muzzle, aim, arc, seek, warhead, model, and speed. ProjectileRow
+/// embeds it. The tick advances Pos, Dir, and TotalLen inside it as
+/// the shot flies; the rest stays frozen.
 [<Struct>]
-type ProjectileRow = {
+type ProjectileSpawn = {
   Pos: Vector2
-  /// The shot's current flight height.
-  Y: float32
+  /// World-space Y of the muzzle at fire time (TowerLayout.muzzleY
+  /// via TowerShot.Height). The flight starts here and the arc
+  /// measures from here.
+  Height: float32
+  /// The destination height (target hull center or ground).
+  TargetY: float32
   /// Unit flight direction (XZ).
   Dir: Vector2
-  /// World units per second.
-  Speed: float32
-  /// Distance flown so far (drives the arc's t and dumbfire impact).
-  Traveled: float32
-  /// Muzzle→aim distance, frozen at spawn (dumbfire total length).
+  /// Muzzle to aim distance. Dumbfire shots keep it; seeking shots
+  /// grow it as they chase.
   TotalLen: float32
-  /// The muzzle's world Y at fire time (arc origin).
-  MuzzleY: float32
-  /// The destination height (target hull center / ground).
-  TargetY: float32
   /// Arc apex height above the lerp line (0 = flat).
   ArcHeight: float32
-  /// Level-4+ unlock / rocket: chase the live target.
+  /// Level-4+ unlock and rockets: chase the live target.
   Seek: bool
   Target: int<EnemyId> voption
   /// The predicted impact point this shot flies to.
   Aim: Vector2
-  Damage: int
-  /// Damage radius at impact — every weapon hits an area.
-  ImpactRadius: float32
-  /// Piercing shots damage each enemy they pass through and only
-  /// expire on range/lifetime (HitIds prevents re-hits; null when
-  /// not piercing — structs copy by value, the list is identity).
-  Piercing: bool
-  HitIds: ResizeArray<int<EnemyId>>
-  /// Lasting ground effect applied at the impact point.
-  Zone: ZoneDef voption
-  Lifetime: float32
+  /// The damage payload, frozen at fire time.
+  Warhead: Warhead
   /// Shell model + view scale (volley ammo is small).
   Model: ModelInfo
   Scale: float32
+  /// World units per second.
+  Speed: float32
 }
 
-/// Spawn intent for a projectile — the row minus the id and the
-/// lifetime (both system-owned: the id is assigned at spawn, the
-/// lifetime is a fixed constant).
+/// One in-flight shot (a row in Projectiles.Rows): the spawn plan
+/// plus the live fields (current height, distance flown, remaining
+/// lifetime, pierce hit list). XZ flies a straight line along
+/// Spawn.Dir toward Spawn.Aim. Y follows the trajectory shape (lerp
+/// muzzle to target, plus the ArcHeight parabola at t = Traveled /
+/// TotalLen). Seeking shots (per the firing def's HomingPolicy)
+/// re-aim Dir at the target's live position each tick. Dumbfire
+/// shots never correct; they detonate at (Aim, TargetY) whether or
+/// not the enemy is still there, so fast targets genuinely dodge.
 [<Struct>]
-type ProjectileSpawn = {
-  Pos: Vector2
-  /// World-space Y of the muzzle at fire time — the flight origin
-  /// (TowerLayout.muzzleY via TowerShot.Height).
-  Height: float32
-  TargetY: float32
-  Dir: Vector2
-  TotalLen: float32
-  ArcHeight: float32
-  Seek: bool
-  Target: int<EnemyId> voption
-  Aim: Vector2
-  Damage: int
-  ImpactRadius: float32
-  Piercing: bool
-  Zone: ZoneDef voption
-  Model: ModelInfo
-  Scale: float32
-  Speed: float32
+type ProjectileRow = {
+  /// The fire-time plan. Pos, Dir, and TotalLen inside it are the
+  /// live flight values the tick advances in place.
+  Spawn: ProjectileSpawn
+  /// The shot's current flight height.
+  Y: float32
+  /// Distance flown so far (drives the arc's t and dumbfire impact).
+  Traveled: float32
+  Lifetime: float32
+  /// Pierce pass-through hit list. Prevents re-hits; null when not
+  /// piercing (structs copy by value, the list is identity).
+  HitIds: ResizeArray<int<EnemyId>>
 }
 
 /// Difficulty scaling per wave tier (every 5 waves). The VALUES come
@@ -485,9 +485,11 @@ module WaveScale =
 
   let inline apply (scale: WaveScale) (def: EnemyDef) : EnemyDef = {
     def with
-        Hp = max 1 (int(float def.Hp * float scale.Hp))
+        Hp = max 1f (def.Hp * scale.Hp)
         Speed = def.Speed * scale.Speed
-        Resist = scale.Resist
+        // The def's innate resistance and the tier's resistance
+        // multiply together, so the total always stays under 1.
+        Resist = 1f - (1f - def.Resist) * (1f - scale.Resist)
         GoldReward = max 1 (int(float def.GoldReward * float scale.Reward))
   }
 
@@ -508,16 +510,15 @@ type TowerShot = {
   /// embrasure), so shots and muzzle VFX leave the barrel, not the
   /// tower's middle.
   Muzzle: Vector2
-  Damage: int
-  ImpactRadius: float32
-  Piercing: bool
+  /// The damage payload, resolved from the effective def at fire
+  /// time and frozen for the whole flight.
+  Warhead: Warhead
   /// Level-4+ unlock / rocket, resolved by Towers from the effective
   /// def at fire time.
   Seek: bool
   Volley: int
   Spread: float32
   Trajectory: Trajectory
-  Zone: ZoneDef voption
   ProjectileModel: ModelInfo
   ProjectileScale: float32
   /// World-space Y of the muzzle at fire time (presentation payload —
@@ -528,10 +529,10 @@ type TowerShot = {
 }
 
 /// A projectile impact (ProjectileEvent.Impact payload). An AREA
-/// detonation (Enemy = ValueNone) fans one ApplyDamage per enemy
-/// within ImpactRadius of Pos; a DIRECT hit (Enemy = ValueSome —
-/// pierce pass-throughs) damages exactly that enemy. Both spawn the
-/// lasting Zone when the weapon carries one.
+/// detonation (Enemy = ValueNone) applies damage to every enemy
+/// within Warhead.ImpactRadius of Pos. A DIRECT hit (Enemy =
+/// ValueSome, used by pierce pass-throughs) damages exactly that
+/// enemy. Both spawn the lasting Zone when the warhead carries one.
 [<Struct>]
 type ProjectileImpact = {
   Projectile: int<ProjectileId>
@@ -539,9 +540,9 @@ type ProjectileImpact = {
   Pos: Vector2
   /// The detonation height (the arc's Y at arrival).
   Y: float32
-  Damage: int
-  ImpactRadius: float32
-  Zone: ZoneDef voption
+  /// The damage payload. Pierce pass-throughs strip the radius and
+  /// the zone; their per-enemy hit list is the full effect.
+  Warhead: Warhead
 }
 
 /// A slow application (Enemies.applySlow input) — factor + expiry.

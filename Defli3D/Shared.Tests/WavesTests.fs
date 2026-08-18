@@ -40,12 +40,12 @@ let tests =
 
       Expect.equal
         (hpOf w5)
-        (max 1 (int(float EnemyDefs.grunt.Hp * float (scaleOf 5).Hp)))
+        (max 1f (EnemyDefs.grunt.Hp * (scaleOf 5).Hp))
         "wave 5 tier-scaled"
 
       Expect.equal
         (hpOf w10)
-        (max 1 (int(float EnemyDefs.grunt.Hp * float (scaleOf 10).Hp)))
+        (max 1f (EnemyDefs.grunt.Hp * (scaleOf 10).Hp))
         "wave 10 tier-scaled"
 
       // Rewards follow demand^Beta and never collapse to zero.
@@ -60,10 +60,13 @@ let tests =
           (int(float EnemyDefs.grunt.GoldReward * float (scaleOf 10).Reward)))
         "reward scaled"
 
-      // The tier also writes resistance onto the spawned defs.
+      // The tier's resistance combines with the def's innate one.
       let struct (def5, _) = w5.Table[0]
 
-      Expect.equal def5.Resist (scaleOf 5).Resist "resist carried"
+      Expect.equal
+        def5.Resist
+        (1f - (1f - EnemyDefs.grunt.Resist) * (1f - (scaleOf 5).Resist))
+        "innate and tier resist combined"
 
       // The Scale aval follows WaveNumber (the projection contract).
       let m = Waves.init capacity
@@ -114,9 +117,7 @@ let tests =
       // Expected values come from the same calibrated curve the
       // director uses — the pin verifies wiring, not frozen numbers.
       let expectedHp n =
-        max
-          1
-          (int(float EnemyDefs.boss.Hp * float (Balance.scaleOfWave sat n).Hp))
+        max 1f (EnemyDefs.boss.Hp * (Balance.scaleOfWave sat n).Hp)
 
       Expect.equal bossDef.Hp (expectedHp 5) "tier-scaled hp"
 

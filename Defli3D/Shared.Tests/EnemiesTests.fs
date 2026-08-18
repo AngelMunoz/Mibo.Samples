@@ -84,17 +84,17 @@ let tests =
 
       let eid = 0<EnemyId>
 
-      let events = Enemies.applyDamage eid 10 m'
+      let events = Enemies.applyDamage eid 10f m'
       let m2 = m'
 
       Expect.equal events.Length 0 "not dead yet"
 
       match hpOf m2 eid with
       | ValueSome h ->
-        Expect.equal h.Hp (Fixtures.grunt.Hp - 10) "hp after 10 damage"
+        Expect.equal h.Hp (Fixtures.grunt.Hp - 10f) "hp after 10 damage"
       | ValueNone -> failtest "enemy must exist"
 
-      let events = Enemies.applyDamage eid 100 m2
+      let events = Enemies.applyDamage eid 100f m2
       let m3 = m2
 
       match events with
@@ -106,6 +106,33 @@ let tests =
       // Alive excludes the corpse; Views still joins it (Hp = 0).
       Expect.equal (aliveCount m3) 0 "alive excludes dead"
       Expect.equal (viewsCount m3) 1 "views keeps corpse until despawn")
+
+    testCase
+      "fractional damage: a sub-1 remainder stays alive and the next hit kills"
+      (fun () ->
+        let m = model()
+
+        let _ = Enemies.spawn Fixtures.grunt m map.Path
+        let m' = m
+
+        let eid = 0<EnemyId>
+
+        // Leave half a hit point: the enemy must stay alive, targetable,
+        // and visible (the truncation ghost bug stored 0 here and the
+        // enemy kept walking to the base, untargetable, taking a life).
+        let events = Enemies.applyDamage eid (Fixtures.grunt.Hp - 0.5f) m'
+
+        Expect.equal events.Length 0 "half a hit point is not death"
+
+        match hpOf m' eid with
+        | ValueSome h -> Expect.equal h.Hp 0.5f "fractional hp kept"
+        | ValueNone -> failtest "enemy must exist"
+
+        Expect.equal (aliveCount m') 1 "still alive, still targetable"
+
+        match Enemies.applyDamage eid 1f m' with
+        | [| Killed(dead, _) |] -> Expect.equal dead eid "next hit kills"
+        | _ -> failtest "expected exactly one Killed")
 
     testCase "despawn removes rows everywhere" (fun () ->
       let m = model()

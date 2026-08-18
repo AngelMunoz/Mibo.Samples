@@ -49,11 +49,11 @@ let tests =
       m <- spawn m Fixtures.runner // id 2
 
       // Damage the tank (id 1).
-      let _ = Enemies.applyDamage 1<EnemyId> 50 m
+      let _ = Enemies.applyDamage 1<EnemyId> 50f m
       let m' = m
 
       let expectedHp(eid: int<EnemyId>) =
-        if eid = 1<EnemyId> then Fixtures.tank.Hp - 50
+        if eid = 1<EnemyId> then Fixtures.tank.Hp - 50f
         elif eid = 0<EnemyId> then Fixtures.grunt.Hp
         else Fixtures.runner.Hp
 
@@ -69,7 +69,7 @@ let tests =
       let mutable m = spawn (Enemies.init()) Fixtures.grunt
       m <- spawn m Fixtures.runner
 
-      let _ = Enemies.applyDamage 0<EnemyId> 999 m
+      let _ = Enemies.applyDamage 0<EnemyId> 999f m
       let m' = m
 
       Expect.equal (aliveView m').Count 1 "only runner alive"
@@ -93,7 +93,7 @@ let tests =
     testCase "repeated reads at a settled state are stable" (fun () ->
       let mutable m = spawn (Enemies.init()) Fixtures.tank
 
-      let _ = Enemies.applyDamage 0<EnemyId> 10 m
+      let _ = Enemies.applyDamage 0<EnemyId> 10f m
       let m' = m
 
       let first = viewsView m'

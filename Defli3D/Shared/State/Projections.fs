@@ -52,11 +52,11 @@ type Projections
   member val Homing: amap<int<ProjectileId>, HomingView> =
     projectiles.Rows
     |> AMap.map(fun _ (row: ProjectileRow) -> {
-      Pos = row.Pos
+      Pos = row.Spawn.Pos
       Y = row.Y
-      Dir = row.Dir
-      Model = row.Model
-      Scale = row.Scale
+      Dir = row.Spawn.Dir
+      Model = row.Spawn.Model
+      Scale = row.Spawn.Scale
     })
 
   /// TowerAim — per tower, the sim's current target position

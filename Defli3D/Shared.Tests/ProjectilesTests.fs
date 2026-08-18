@@ -45,12 +45,14 @@ let private spawnShot
       TotalLen = len
       ArcHeight = 0f
       Seek = seek
-      Target = (if seek then ValueSome target else ValueNone)
+      Target = if seek then ValueSome target else ValueNone
       Aim = aim
-      Damage = 5
-      ImpactRadius = 0.25f
-      Piercing = false
-      Zone = ValueNone
+      Warhead = {
+        Damage = 5f
+        ImpactRadius = 0.25f
+        Piercing = false
+        Zone = ValueNone
+      }
       Model = Models.ammoBullet
       Scale = 0.7f
       Speed = 1.5625f // 100 px/s ÷ 64
@@ -69,10 +71,10 @@ let tests =
 
       match m.Rows |> CMap.tryGetValue(0<ProjectileId>) with
       | ValueSome row ->
-        Expect.equal row.Damage 5 "damage"
+        Expect.equal row.Spawn.Warhead.Damage 5f "damage"
         Expect.equal row.Y 0.3f "Y seeded from the spawn height"
-        Expect.equal row.Seek false "dumbfire by default"
-        Expect.equal row.Dir (Vector2(1f, 0f)) "flight direction"
+        Expect.equal row.Spawn.Seek false "dumbfire by default"
+        Expect.equal row.Spawn.Dir (Vector2(1f, 0f)) "flight direction"
       | ValueNone -> failtest "row must exist")
 
     testCase
@@ -87,7 +89,7 @@ let tests =
 
         match m.Rows |> CMap.tryGetValue(0<ProjectileId>) with
         | ValueSome row ->
-          Expect.equal row.Pos.X 0.15625f "step along the fixed line"
+          Expect.equal row.Spawn.Pos.X 0.15625f "step along the fixed line"
           Expect.equal row.Traveled 0.15625f "progress recorded"
         | ValueNone -> failtest "row must exist"
 
@@ -97,8 +99,8 @@ let tests =
         | [| Impact impact |] ->
           Expect.equal impact.Enemy ValueNone "area detonation"
           Expect.equal impact.Pos (Vector2(0.78125f, 0f)) "at the aim point"
-          Expect.equal impact.Damage 5 "damage"
-          Expect.equal impact.ImpactRadius 0.25f "radius"
+          Expect.equal impact.Warhead.Damage 5f "damage"
+          Expect.equal impact.Warhead.ImpactRadius 0.25f "radius"
         | _ -> failtest "expected exactly one Impact"
 
         Expect.equal ((m.Rows |> AMap.getValue).Count) 0 "removed on impact")
@@ -121,10 +123,12 @@ let tests =
           Seek = false
           Target = ValueNone
           Aim = d
-          Damage = 5
-          ImpactRadius = 0.25f
-          Piercing = false
-          Zone = ValueNone
+          Warhead = {
+            Damage = 5f
+            ImpactRadius = 0.25f
+            Piercing = false
+            Zone = ValueNone
+          }
           Model = Models.ammoCannonball
           Scale = 1f
           Speed = 1.5625f
@@ -148,8 +152,8 @@ let tests =
 
       match m.Rows |> CMap.tryGetValue(0<ProjectileId>) with
       | ValueSome row ->
-        Expect.equal row.Pos.X 0.15625f "chases the live position"
-        Expect.isTrue (row.Dir.X > 0.99f) "re-aimed"
+        Expect.equal row.Spawn.Pos.X 0.15625f "chases the live position"
+        Expect.isTrue (row.Spawn.Dir.X > 0.99f) "re-aimed"
       | ValueNone -> failtest "row must exist"
 
       let events = Projectiles.tick 1.0f m (positionsAt(Vector2(0.5f, 0f)))
@@ -192,10 +196,12 @@ let tests =
             Seek = false
             Target = ValueNone
             Aim = d
-            Damage = 7
-            ImpactRadius = 0.4f
-            Piercing = true
-            Zone = ValueNone
+            Warhead = {
+              Damage = 7f
+              ImpactRadius = 0.4f
+              Piercing = true
+              Zone = ValueNone
+            }
             Model = Models.ammoArrow
             Scale = 1.4f
             Speed = 1.5625f
@@ -212,8 +218,12 @@ let tests =
         match events |> Seq.toArray with
         | [| Impact hit |] ->
           Expect.equal hit.Enemy (ValueSome target) "direct pass-through hit"
-          Expect.equal hit.Damage 7 "pierce damage"
-          Expect.equal hit.ImpactRadius 0f "no area fan on pass-through"
+          Expect.equal hit.Warhead.Damage 7f "pierce damage"
+
+          Expect.equal
+            hit.Warhead.ImpactRadius
+            0f
+            "no area fan on pass-through"
         | _ -> failtest "expected exactly one pass-through hit"
 
         Expect.equal ((m.Rows |> AMap.getValue).Count) 1 "still flying"
@@ -242,7 +252,7 @@ let tests =
         Radius = 1.3f
         Seconds = 4f
         Slow = 0.6f
-        TickDamage = 4
+        TickDamage = 4f
         TickInterval = 0.5f
         MaxStacks = 5
         Affects = TargetDomain.Ground
@@ -261,10 +271,12 @@ let tests =
           Seek = false
           Target = ValueNone
           Aim = d
-          Damage = 40
-          ImpactRadius = 1.3f
-          Piercing = false
-          Zone = ValueSome zone
+          Warhead = {
+            Damage = 40f
+            ImpactRadius = 1.3f
+            Piercing = false
+            Zone = ValueSome zone
+          }
           Model = Models.ammoBoulder
           Scale = 1f
           Speed = 1.5625f
@@ -275,8 +287,8 @@ let tests =
 
       match events |> Seq.toArray with
       | [| Impact impact |] ->
-        Expect.equal impact.Zone (ValueSome zone) "zone payload"
-        Expect.equal impact.ImpactRadius 1.3f "big radius"
+        Expect.equal impact.Warhead.Zone (ValueSome zone) "zone payload"
+        Expect.equal impact.Warhead.ImpactRadius 1.3f "big radius"
       | _ -> failtest "expected exactly one Impact")
 
     testCase "lifetime expiry removes the row" (fun () ->

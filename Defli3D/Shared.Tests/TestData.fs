@@ -34,7 +34,7 @@ module Fixtures =
   let grunt = {
     Key = "test_grunt"
     Archetype = EnemyArchetype.Grunt
-    Hp = 30
+    Hp = 30f
     Speed = 0.625f // 40 px/s ÷ 64
     Resist = 0f
     GoldReward = 2
@@ -46,7 +46,7 @@ module Fixtures =
   let runner = {
     Key = "test_runner"
     Archetype = EnemyArchetype.Runner
-    Hp = 10
+    Hp = 10f
     Speed = 1.40625f // 90 px/s ÷ 64
     Resist = 0f
     GoldReward = 3
@@ -58,7 +58,7 @@ module Fixtures =
   let tank = {
     Key = "test_tank"
     Archetype = EnemyArchetype.Tank
-    Hp = 100
+    Hp = 100f
     Speed = 0.3125f // 20 px/s ÷ 64
     Resist = 0f
     GoldReward = 5
@@ -71,7 +71,7 @@ module Fixtures =
   let flier = {
     Key = "test_flier"
     Archetype = EnemyArchetype.Flier
-    Hp = 15
+    Hp = 15f
     Speed = 0.9375f // 60 px/s ÷ 64
     Resist = 0f
     GoldReward = 4
@@ -84,7 +84,7 @@ module Fixtures =
   let boss = {
     Key = "test_boss"
     Archetype = EnemyArchetype.Boss
-    Hp = 200
+    Hp = 200f
     Speed = 0.46875f // 30 px/s ÷ 64
     Resist = 0f
     GoldReward = 20
@@ -147,7 +147,7 @@ let spawnEnemy (state: State) (def: EnemyDef) =
 
 /// Drives damage through the same event translation the sim's enemy
 /// handler uses (kills pay gold, burst, boss split).
-let damageEnemy (state: State) (eid: int<EnemyId>) (amount: int) =
+let damageEnemy (state: State) (eid: int<EnemyId>) (amount: float32) =
   Application.handleEnemyEvents
     state
     (Enemies.applyDamage eid amount state.Enemies)

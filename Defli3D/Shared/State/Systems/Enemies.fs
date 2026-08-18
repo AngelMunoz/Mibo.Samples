@@ -103,7 +103,7 @@ module Enemies =
                           mv.Progress,
                           mv.Slow,
                           mv.PathIndex)
-              | _ -> ValueSome struct (pos, 0, 0, 0f, 1f, 0))
+              | _ -> ValueSome struct (pos, 0f, 0f, 0f, 1f, 0))
             structV
             motionV)
 
@@ -132,7 +132,7 @@ module Enemies =
   let inline private buildAlive
     (m: EnemiesModel)
     : amap<int<EnemyId>, EnemyView> =
-    m.Views |> AMap.filter(fun _ v -> v.Hp > 0)
+    m.Views |> AMap.filter(fun _ v -> v.Hp > 0f)
 
   /// Boss positions: a same-key AMap.joinOn into Defs (the Views-join
   /// shape), kept only when the archetype is Boss — the join's
@@ -235,35 +235,40 @@ module Enemies =
       model.SlowTimers[slow.Enemy] <- slow.Seconds
     | ValueNone -> ()
 
-  /// The one message that emits: applies damage; Killed on a zero
-  /// crossing (Application earns gold and despawns from that event).
-  /// The def's Resist (written by the wave tier at spawn) taxes the
-  /// incoming amount multiplicatively first — the single chokepoint
-  /// every damage source passes through (direct hits, area
-  /// detonations, zone ticks). Event-driven: one Defs read per
-  /// application, never inside a tick body.
+  /// The one message that emits: applies damage; Killed on the
+  /// zero-or-below crossing (Application earns gold and despawns from
+  /// that event). Hp is float32 end to end, so the stored row and the
+  /// kill test can never disagree (the int-truncation ghost bug: a
+  /// stored Hp of 0 with no Killed left an invisible enemy that still
+  /// walked to the base). The def's Resist (written by the wave tier
+  /// at spawn) taxes the incoming amount multiplicatively first. It
+  /// is the single gate every damage source passes through (direct
+  /// hits, area detonations, zone ticks). Event-driven: one Defs read
+  /// per application, never inside a tick body.
   let inline applyDamage
     (eid: int<EnemyId>)
-    (amount: int)
+    (amount: float32)
     (model: EnemiesModel)
     : EnemyEvent[] =
     match model.Healths |> CMap.tryGetValue eid with
-    | ValueSome h when h.Hp > 0 ->
+    | ValueSome h when h.Hp > 0f ->
       let resisted =
         match model.Defs |> CMap.tryGetValue eid with
-        | ValueSome def when def.Resist > 0f && amount > 0 ->
-          // Floor 1: small zone ticks (3-4) stay alive under the cap.
-          max 1 (int(float amount * (1.0 - float def.Resist)))
+        | ValueSome def when def.Resist > 0f && amount > 0f ->
+          // Floor 1: resistance never fully negates a hit.
+          max 1f (amount * (1.0f - def.Resist))
         | _ -> amount
 
-      let hp = max 0 (h.Hp - resisted)
-      model.Healths |> CMap.addOrUpdate eid { h with Hp = hp }
+      let hp = h.Hp - resisted
 
-      if hp = 0 then
+      if hp <= 0f then
+        model.Healths |> CMap.addOrUpdate eid { h with Hp = 0f }
+
         match model.Defs |> CMap.tryGetValue eid with
         | ValueSome def -> [| Killed(eid, def.GoldReward) |]
         | ValueNone -> Array.empty
       else
+        model.Healths |> CMap.addOrUpdate eid { h with Hp = hp }
         Array.empty
     | _ -> Array.empty
 
