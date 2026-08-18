@@ -89,10 +89,8 @@ type State = {
   Diag: WorldDiag
 }
 
-/// The state cell — the composition root and the frame force read the
-/// CURRENT state through this holder. A restart swaps the value in place;
-/// the frame force re-binds to the fresh state on the next force, so
-/// the runner, the window, and the subscriptions all survive the swap.
+/// The holder the composition root, the frame force, and the host
+/// input wiring read the state through.
 [<Sealed>]
 type StateCell(value: State) =
   member val Value = value with get, set
@@ -164,6 +162,56 @@ module State =
       ProjectileCount = projections.Homing |> AMap.count
       Diag = WorldDiag()
     }
+
+  /// Reset the sim to its initial state in place. Each root keeps the
+  /// same instance and only its content changes, so projections and
+  /// subscriptions keep working. Actions, Clock, Map, Capacity, and
+  /// the derived nodes are not touched.
+  let reset(state: State) : unit =
+    state.Enemies.Healths |> CMap.set Map.empty
+    state.Enemies.Motions |> CMap.set Map.empty
+    state.Enemies.Positions |> CMap.set Map.empty
+    state.Enemies.Defs |> CMap.set Map.empty
+    state.Enemies.NextId <- 0<EnemyId>
+    state.Enemies.SlowTimers.Clear()
+    state.Enemies.Velocities.Clear()
+
+    state.Spawning.Queue.Clear()
+    state.Spawning.Rng <- Random state.Config.Seed
+
+    state.Waves.WaveNumber.Set 0
+    state.Waves.WaveActive.Set false
+
+    state.Towers.Statics |> CMap.set Map.empty
+    state.Towers.Runtimes |> CMap.set Map.empty
+    state.Towers.CellIndex |> CMap.set Map.empty
+    state.Towers.Levels |> CMap.set Map.empty
+    state.Towers.NextId <- 0<TowerId>
+
+    state.Projectiles.Rows |> CMap.set Map.empty
+    state.Projectiles.NextId <- 0<ProjectileId>
+
+    state.Zones.Rows |> CMap.set Map.empty
+    state.Zones.NextId <- 0<ZoneId>
+    state.Zones.Scratch.Clear()
+
+    // Retire all live particles: a pool draws only its first Count slots.
+    state.Vfx.Impact.Count <- 0
+    state.Vfx.Explosion.Count <- 0
+    state.Vfx.DeathPoof.Count <- 0
+    state.Vfx.Muzzle.Count <- 0
+    state.Vfx.MuzzleDust.Count <- 0
+    state.Vfx.Placement.Count <- 0
+    state.Vfx.BaseHit.Count <- 0
+
+    state.Economy.Gold.Set state.Config.StartingGold
+    state.Economy.Lives.Set state.Config.StartingLives
+
+    Camera.Camera.reset state.Camera
+
+    state.SelectedTower.Set TowerDefs.sentry
+    state.HoverCell.Set ValueNone
+    state.Paused.Set false
 
   /// The grid's uniform cell size (world geometry — 1 cell = 1 world
   /// unit; Defli's 64 px cells ÷ 64).

@@ -355,8 +355,15 @@ let tests =
       | None -> failtest "enemy must exist")
 
     testCase "WaveScale.apply combines innate and tier resist" (fun () ->
+      // Test-owned def with a distinct innate resist: with a 0 innate
+      // the increase is float-noise-sized, so the fixture carries one
+      // and the assertions read the same wherever the tuning sits.
+      let before = {
+        TestData.Fixtures.grunt with
+            Resist = 0.25f
+      }
+
       let scale = Balance.scaleOfWave sat 10
-      let before = EnemyDefs.grunt
       let applied = WaveScale.apply scale before
 
       Expect.isGreaterThan
@@ -370,9 +377,9 @@ let tests =
         "innate and tier resist multiply, never reaching 1"
 
       Expect.equal
-        EnemyDefs.grunt
-        before
-        "apply returns a copy, the shared def is untouched")
+        applied.Key
+        before.Key
+        "apply returns a scaled copy of the input def")
 
     // ── Bullet-speed tracking (the guns-keep-pace rule) ───────
     testCase "bullet towers track wave speed; loaders do not" (fun () ->

@@ -98,7 +98,7 @@ module Balance =
   /// gunpost 0.75, sentry 1.28), so 2 pays above the defs' own range:
   /// income comes out generous relative to build costs. Lower it
   /// toward 1 and every reward tightens.
-  let GoldPerPower = 1.25f
+  let GoldPerPower = 0.85f
 
   /// How much of a tier's extra build cost is paid back through wave
   /// clear bonuses (1 = the five clears of a tier refund exactly the
@@ -108,11 +108,11 @@ module Balance =
   /// How much of a tier's extra build cost is paid back through kill
   /// gold (1.5 = kills refund 1.5x the tier's bill increase). Kills
   /// that round below 1 gold still pay 1.
-  let KillShare = 1.5f
+  let KillShare = 1f
 
   /// Enemy speed per tier: 1.1 = +10% each tier, compounding, no cap.
   /// This is what keeps long games threatening after HP levels off.
-  let SpeedGrowth = 1.1f
+  let SpeedGrowth = 1.2f
 
   /// Optional: fix the tier-1 (wave 5) HP multiplier to this value and
   /// let the curve's midpoint float. ValueNone = the midpoint is fixed

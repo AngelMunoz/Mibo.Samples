@@ -420,13 +420,16 @@ let tests =
       | ValueNone -> failtest "level must exist")
 
     testCase
-      "arrow-deck volley leaves a slowing zone on the path (sim update)"
+      "tower shots leave a slowing zone on the path (sim update)"
       (fun () ->
         let h = TestData.mkHarness cfg
 
-        // The arrow deck fans a volley; each impact drops a small
-        // slow patch (the ex-frost role, now a zone).
-        h.Post(fun () -> Application.selectTower h.State TowerDefs.arrowDeck)
+        // Test-owned tower: the zone is ground-only with a fixture
+        // slow, so the assertions read the mechanism (a shot impact
+        // drops a zone, the zone slows, the timer runs) and never the
+        // production tuning.
+        h.Post(fun () ->
+          Application.selectTower h.State TestData.Fixtures.zoneTower)
 
         h.Post(fun () ->
           Application.placeTower h.State struct (1, 3) |> ignore)
@@ -434,10 +437,8 @@ let tests =
         h.StepN(2, TestData.dt)
 
         h.Post(fun () ->
-          // Tanky on purpose: the volley's DAMAGE is tuning —
-          // here it must not kill the walker, so the zone
-          // mechanism (drop + slow + timer) is what the
-          // assertions read, wherever the tuning sits.
+          // Tanky on purpose: the walker must survive the assertion
+          // window so only the zone mechanism is measured.
           let walker = {
             TestData.Fixtures.grunt with
                 Hp = 500f
@@ -445,14 +446,14 @@ let tests =
 
           TestData.spawnEnemy h.State walker)
 
-        // 1 s: first volley lands ~0.4 s in; the zone's slow must be
-        // live (zone life 1.5 s, tick 0.5 s — re-applied while the
-        // grunt walks through it).
+        // 1 s: the first shot lands inside it; the zone's slow must be
+        // live (zone life 3 s, re-applied while the grunt walks
+        // through).
         h.StepN(10, TestData.dt)
 
         let model = h.State
 
-        // The volley impacted: a zone row exists.
+        // The shot impacted: a zone row exists.
         Expect.isGreaterThan
           ((model.Zones.Rows |> AMap.getValue).Count)
           0
@@ -460,9 +461,9 @@ let tests =
 
         match model.Enemies.Motions |> CMap.tryGetValue(0<EnemyId>) with
         | ValueSome mv ->
-          match TowerDefs.arrowDeck.Warhead.Zone with
+          match TestData.Fixtures.zoneTower.Warhead.Zone with
           | ValueSome zone -> Expect.equal mv.Slow zone.Slow "enemy slowed"
-          | ValueNone -> failtest "arrow deck must carry a zone"
+          | ValueNone -> failtest "the fixture tower must carry a zone"
 
           let slowed =
             model.Enemies.SlowTimers |> Dictionary.tryGetValue(0<EnemyId>)

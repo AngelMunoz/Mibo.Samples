@@ -112,33 +112,33 @@ module TowerDefs =
   // Zones slow AND tick damage; stacking is capped per enemy by
   // MaxStacks concurrent zones (design: 5).
   let private zoneCatapult = {
-    Radius = 1.5f
-    Seconds = 3f
-    Slow = 0.8f
+    Radius = 1f
+    Seconds = 5f
+    Slow = 0.70f
     TickDamage = 5f
-    TickInterval = 0.5f
+    TickInterval = 0.2f
     MaxStacks = 3
     Affects = TargetDomain.Ground
   }
 
   let private zoneCannon = {
-    Radius = 1f
-    Seconds = 1.5f
-    Slow = 0.4f
-    TickDamage = 5f
-    TickInterval = 0.5f
+    Radius = 0.5f
+    Seconds = 4f
+    Slow = 0.75f
+    TickDamage = 8f
+    TickInterval = 0.35f
     MaxStacks = 2
     Affects = TargetDomain.Ground
   }
 
   let private zoneArrow = {
-    Radius = 0.6f
+    Radius = 0.8f
     Seconds = 1.5f
-    Slow = 0.85f
+    Slow = 0.8f
     TickDamage = 0f
-    TickInterval = 0.5f
+    TickInterval = 0.45f
     MaxStacks = 5
-    Affects = TargetDomain.Any
+    Affects = TargetDomain.Air
   }
 
   let private noZone = ValueNone
@@ -322,17 +322,17 @@ module TowerDefs =
     Cost = 80
     Range = 3f
     Warhead = {
-      Damage = 18f
+      Damage = 20f
       ImpactRadius = 0.3f
       Piercing = false
       Zone = noZone
     }
     FireRate = 0.8f
-    RatePerLevel = 0.45f
+    RatePerLevel = 0.35f
     ProjectileSpeed = 8f
     ProjectileSpeedScales = true
-    Volley = 4
-    Spread = 0.8f
+    Volley = 5
+    Spread = 1.2f
     Trajectory = Trajectory.Flat
     Homing = HomingPolicy.Never
     WeaponModel = ValueNone

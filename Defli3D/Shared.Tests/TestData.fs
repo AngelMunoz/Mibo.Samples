@@ -95,6 +95,49 @@ module Fixtures =
 
   let all = [| grunt; runner; tank; flier; boss |]
 
+  /// Test zone tower — a ground-only slowing zone with distinct
+  /// values, so zone tests read the mechanism and never the
+  /// production tuning.
+  let zoneTower: TowerDef = {
+    Key = "test_zonetower"
+    Name = "Test Zone Tower"
+    Chassis = Chassis.Deck 0
+    Cost = 50
+    Range = 3f
+    Warhead = {
+      Damage = 1f
+      ImpactRadius = 0.35f
+      Piercing = false
+      Zone =
+        ValueSome {
+          Radius = 1f
+          Seconds = 3f
+          Slow = 0.5f
+          TickDamage = 0f
+          TickInterval = 0.5f
+          MaxStacks = 3
+          Affects = TargetDomain.Ground
+        }
+    }
+    FireRate = 2f
+    RatePerLevel = 0f
+    ProjectileSpeed = 7f
+    ProjectileSpeedScales = false
+    Volley = 1
+    Spread = 0f
+    Trajectory = Trajectory.Flat
+    Homing = HomingPolicy.Never
+    WeaponModel = ValueNone
+    GunScale = 1f
+    ProjectileModel = Models.ammoArrow
+    ProjectileScale = 0.35f
+    MuzzleDust = false
+    Targets = TargetDomain.Any
+    TargetPolicy = TargetPolicy.First
+    UpgradeCost = 50
+    MaxLevel = 1
+  }
+
 // ─────────────────────────────────────────────────────────────
 // Headless harness over AdaptiveHeadless — the MVU shell is gone:
 // the state is a composition root (State · Projection · Update ·

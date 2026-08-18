@@ -433,20 +433,17 @@ module Application =
 
     Camera.Camera.setKeyboardPan pan state.Camera
 
-    // Restart stays in the game logic: swap the state in place. The
-    // frame force reads the cell at force time, so the next force
-    // re-binds the graph to the fresh state — no window/runner
-    // re-create. Deferred to the end so the loops above never act on
-    // a swapped-away state.
+    // Restart resets the sim in place, so the frame force and the
+    // subscriptions keep working. It runs last so the loops above
+    // never act on a reset state.
     if restart && AVal.getValue state.Economy.GameOver then
-      cell.Value <- State.init state.Config
+      State.reset state
 
   // ── The adaptive program ─────────────────────────────────────────
 
-  /// Builds the graph: the frame force reads the CURRENT state's
-  /// projections at the end of every Step (a restart swaps the cell and
-  /// the force re-binds on the next force). The force is a pure
-  /// State → RenderFrame mapping — the clock is part of the state (the
+  /// Builds the graph: the frame force reads the state's projections
+  /// at the end of every Step. The force is a pure
+  /// State → RenderFrame mapping. The clock is part of the state (the
   /// Clock root, written below in update).
   let inline init
     (cell: StateCell)
@@ -462,8 +459,7 @@ module Application =
     (gameTime: GameTime)
     : unit =
     // Semantic actions first (they used to run in the pre-step drain):
-    // one-shots, pan edges, restart — restart may swap the cell, so
-    // everything after re-reads it.
+    // one-shots, pan edges, restart.
     handleActions cell
 
     let state = cell.Value

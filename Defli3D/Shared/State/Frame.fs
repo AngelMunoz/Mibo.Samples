@@ -78,9 +78,10 @@ module Frame =
   /// struct. After this, drawing is plain struct reads — O(1), no
   /// graph access. `force` is a pure State → RenderFrame mapping: it
   /// follows the state it is handed at force time, and the count nodes
-  /// live on the State record (created at init), so restarts (cell
-  /// swap) re-bind cleanly with zero per-step allocation. The clock is
-  /// part of the state (the Clock root) — the force needs nothing else.
+  /// live on the State record (created at init), so a restart (in-place
+  /// reset) keeps the force working with zero per-step allocation. The
+  /// clock is part of the state (the Clock root) — the force needs
+  /// nothing else.
   let inline force
     ([<InlineIfLambda>] getState: unit -> State)
     : unit -> RenderFrame =

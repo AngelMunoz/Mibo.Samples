@@ -102,29 +102,26 @@ module Input =
   /// the semantic keyboard mapper (`actionsSub` — the BACKEND builds it,
   /// `InputMapper.subscribeStaticAdaptive Inputs.inputMap state.Actions ctx`;
   /// the factory lives in the backend packages, so Shared stays
-  /// backend-free), the pointer handler, and the F3 diagnostics toggle.
+  /// backend-free), the pointer handler, the F3 diagnostics toggle, and
+  /// the F11 fullscreen toggle.
   ///
-  /// The returned projection caches its map and rebuilds only when the
-  /// cell swaps (restart) so the mapper writes the fresh state's root —
-  /// the runner's version check makes clean steps diff-free.
+  /// The runner requires the same map instance every step, so the map
+  /// is built once on the first call.
   let subscriptions
     (wheelScale: float)
     (actionsSub: GameContext -> AdaptiveSub)
     (cell: StateCell)
     (shell: Shell)
     : AdaptiveFrameContext -> amap<SubId, AdaptiveSub> =
-    let mutable cached: amap<SubId, AdaptiveSub> = Unchecked.defaultof<_>
-    let mutable cachedFor: State = Unchecked.defaultof<_>
+    let mutable cached: amap<SubId, AdaptiveSub> voption = ValueNone
 
     fun frameCtx ->
-      let state = cell.Value
-
-      if not(obj.ReferenceEquals(state, cachedFor)) then
+      match cached with
+      | ValueSome map -> map
+      | ValueNone ->
         let input = frameCtx.Context |> GameContext.getService<IInput>
 
-        cachedFor <- state
-
-        cached <-
+        let map =
           AMap.ofList [
             SubId.ofString "actions", actionsSub frameCtx.Context
 
@@ -157,4 +154,5 @@ module Input =
                   | ValueNone -> ())
           ]
 
-      cached
+        cached <- ValueSome map
+        map

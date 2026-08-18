@@ -23,7 +23,7 @@ type SpawnEvent =
 type SpawningModel(rng: Random) =
   /// Pending spawns: (enemy def, remaining delay in seconds).
   member val Queue = ResizeArray<struct (EnemyDef * float32)>() with get, set
-  member val Rng: Random = rng
+  member val Rng: Random = rng with get, set
 
 module Spawning =
 
