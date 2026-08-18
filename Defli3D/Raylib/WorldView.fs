@@ -298,11 +298,17 @@ type WorldView(shell: Shell, vfx: VfxView) =
     this.TowerLevelTags(ctx, frame, buffer)
 
     if frame.GameOver then
+      let text = "GAME OVER — press R to restart"
+      let size = Raylib.MeasureTextEx(font, text, 40f, 1f)
+
       buffer
         .text(
           font,
-          "GAME OVER — press R to restart",
-          Vector2(430f, 360f),
+          text,
+          Vector2(
+            (float32 ctx.WindowWidth - size.X) / 2f,
+            (float32 ctx.WindowHeight - size.Y) / 2f
+          ),
           40f,
           layer = Layers.Hud
         )

@@ -4,6 +4,7 @@ open System.Numerics
 open Mibo.Adaptive
 open Mibo.Elmish
 open Mibo.Input
+open Mibo.Windowing
 open Defli3D.State
 open Defli3D.State.Systems.Camera
 
@@ -141,6 +142,19 @@ module Input =
               (fun _ d ->
                 if d.Pressed |> Array.contains KeyCode.F3 then
                   shell.Diag.Visible <- not shell.Diag.Visible)
+
+            // F11 fullscreen: frontend state like F3, so a direct
+            // subscription, not a GameAction. The host-registered IWindow
+            // does the native toggle.
+            SubId.ofString "fullscreen",
+            AdaptiveSub.ofObservable
+              (SubId.ofString "fullscreen")
+              input.KeyboardDelta
+              (fun _ d ->
+                if d.Pressed |> Array.contains KeyCode.F11 then
+                  match frameCtx.Context |> Window.tryGetService with
+                  | ValueSome window -> window.ToggleFullscreen()
+                  | ValueNone -> ())
           ]
 
       cached
