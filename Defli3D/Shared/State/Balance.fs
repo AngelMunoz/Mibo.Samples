@@ -98,7 +98,7 @@ module Balance =
   /// gunpost 0.75, sentry 1.28), so 2 pays above the defs' own range:
   /// income comes out generous relative to build costs. Lower it
   /// toward 1 and every reward tightens.
-  let GoldPerPower = 2f
+  let GoldPerPower = 1.25f
 
   /// How much of a tier's extra build cost is paid back through wave
   /// clear bonuses (1 = the five clears of a tier refund exactly the
