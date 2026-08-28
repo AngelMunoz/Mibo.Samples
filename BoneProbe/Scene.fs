@@ -29,6 +29,7 @@ type Mode =
   | Palette
   | Dimensions
   | Emit
+  | Slope
 
 type Verbosity =
   | Full

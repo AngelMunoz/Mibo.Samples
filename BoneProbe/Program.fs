@@ -5,10 +5,10 @@ open BoneProbe.Scene
 
 let private printUsage() =
   eprintfn
-    "Usage: dotnet run --project BoneProbe -- [raw|palette|dimensions] <path> [-v|--verbosity full|summary] [-f|--focus <name>]"
+    "Usage: dotnet run --project BoneProbe -- [raw|palette|dimensions|slope] <path> [-v|--verbosity full|summary] [-f|--focus <name>]"
 
   eprintfn
-    "       dotnet run --project BoneProbe -- emit <models-dir> <output.fs>"
+    "       dotnet run --project BoneProbe -- emit <models-dir> <output.fs> --namespace <ns> [options]"
 
   eprintfn ""
   eprintfn "Commands:"
@@ -23,7 +23,10 @@ let private printUsage() =
     "  dimensions  Batch report: per-model vertex extents + animation count (dir or .glb file)."
 
   eprintfn
-    "  emit        Bake model extents into an F# dataset (Defli3D.State.Models, e.g. Models.fs)."
+    "  slope       Report a slope tile's ramp Y range and high-edge direction."
+
+  eprintfn
+    "  emit        Bake model extents into a project-agnostic F# dataset."
 
   eprintfn ""
   eprintfn "Options:"
@@ -32,6 +35,36 @@ let private printUsage() =
     "  -v, --verbosity <full|summary>  Output detail level (default: full)."
 
   eprintfn "  -f, --focus <name>              Filter records by name substring."
+
+  eprintfn ""
+  eprintfn "Emit options:"
+
+  eprintfn "  --namespace <ns>     Required. Namespace of the generated module."
+
+  eprintfn "  --base-path <p>      Content asset prefix (Path = p/rel)."
+
+  eprintfn
+    "  --root <dir>         Dir rel-paths are computed from (default: models-dir)."
+
+  eprintfn "  --recursive          Scan subdirectories too."
+
+  eprintfn
+    "  --exclude <prefix>   Skip filenames starting with prefix (repeatable)."
+
+  eprintfn "  --type <name>        Record type name (default: ModelInfo)."
+
+  eprintfn
+    "  --define-type        Emit the record in the output (default: assume it exists)."
+
+  eprintfn "  --fsi                Also write <output>.fsi."
+
+  eprintfn
+    "  --dict-helper <fn>   Fully-qualified tryGetValue (default: self-contained)."
+
+  eprintfn
+    "  --curation <file>    Semantic bindings + groups (see Emit.fs header)."
+
+  eprintfn "  --pattern <glob>     File search pattern (default: *.glb)."
 
 let private parseVerbosity(arg: string) : Verbosity option =
   match arg.ToLower() with
@@ -76,6 +109,16 @@ let rec private parseOptions
     }
 
     parseOptions rest (Some opts)
+  | ("slope" :: path :: rest), None ->
+    let opts = {
+      Mode = Slope
+      Path = path
+      OutputPath = ""
+      Verbosity = Full
+      Focus = None
+    }
+
+    parseOptions rest (Some opts)
   | ("emit" :: modelsDir :: output :: rest), None ->
     let opts = {
       Mode = Emit
@@ -98,7 +141,72 @@ let rec private parseOptions
     parseOptions rest (Some { opts with Focus = Some name })
   | ("--focus" :: name :: rest), Some opts ->
     parseOptions rest (Some { opts with Focus = Some name })
+  // Emit flags are parsed separately (parseEmitFlags); stop here so
+  // the catch-all below does not reject them.
+  | (flag :: _), Some { Mode = Emit } when flag.StartsWith "-" -> acc
   | _ -> None
+
+/// Emit-flag state accumulated while walking the tail arguments.
+type private EmitAcc() =
+  member val Namespace = "" with get, set
+  member val BasePath = "" with get, set
+  member val Root = "" with get, set
+  member val Recursive = false with get, set
+  member val Excludes = ResizeArray<string>() with get, set
+  member val TypeName = "ModelInfo" with get, set
+  member val DefineType = false with get, set
+  member val EmitFsi = false with get, set
+  member val DictHelper = "" with get, set
+  member val Curation = "" with get, set
+  member val Pattern = "" with get, set
+  member val Bad = false with get, set
+
+let rec private parseEmitFlags (args: string list) (acc: EmitAcc) : EmitAcc =
+  match args with
+  | [] -> acc
+  | "--namespace" :: v :: rest ->
+    acc.Namespace <- v
+    parseEmitFlags rest acc
+  | "--base-path" :: v :: rest ->
+    acc.BasePath <- v
+    parseEmitFlags rest acc
+  | "--root" :: v :: rest ->
+    acc.Root <- v
+    parseEmitFlags rest acc
+  | "--recursive" :: rest ->
+    acc.Recursive <- true
+    parseEmitFlags rest acc
+  | "--exclude" :: v :: rest ->
+    acc.Excludes.Add v
+    parseEmitFlags rest acc
+  | "--type" :: v :: rest ->
+    acc.TypeName <- v
+    parseEmitFlags rest acc
+  | "--define-type" :: rest ->
+    acc.DefineType <- true
+    parseEmitFlags rest acc
+  | "--fsi" :: rest ->
+    acc.EmitFsi <- true
+    parseEmitFlags rest acc
+  | "--dict-helper" :: v :: rest ->
+    acc.DictHelper <- v
+    parseEmitFlags rest acc
+  | "--curation" :: v :: rest ->
+    acc.Curation <- v
+    parseEmitFlags rest acc
+  | "--pattern" :: v :: rest ->
+    acc.Pattern <- v
+    parseEmitFlags rest acc
+  | other :: _ ->
+    eprintfn $"unknown emit flag: {other}"
+    acc.Bad <- true
+    acc
+
+/// The flag tail after the emit mode's two positional arguments.
+let private emitTail(args: string list) : string list =
+  match args with
+  | "emit" :: _ :: _ :: rest -> rest
+  | _ -> []
 
 [<EntryPoint>]
 let main argv =
@@ -111,4 +219,29 @@ let main argv =
     | Raw -> BoneProbe.RawAssimp.probe opts
     | Palette -> BoneProbe.Palette.probe opts
     | Dimensions -> BoneProbe.Dimensions.probe opts
-    | Emit -> BoneProbe.Emit.run opts.Path opts.OutputPath
+    | Slope -> BoneProbe.Slope.probe opts.Path
+    | Emit ->
+      let acc = parseEmitFlags (emitTail(Array.toList argv)) (EmitAcc())
+
+      if acc.Bad || acc.Namespace = "" then
+        if acc.Namespace = "" then
+          eprintfn "emit: --namespace is required"
+
+        printUsage()
+        1
+      else
+        BoneProbe.Emit.run {
+          ModelsDir = opts.Path
+          OutputPath = opts.OutputPath
+          Namespace = acc.Namespace
+          BasePath = acc.BasePath
+          Root = if acc.Root = "" then opts.Path else acc.Root
+          Recursive = acc.Recursive
+          Excludes = acc.Excludes.ToArray()
+          TypeName = acc.TypeName
+          DefineType = acc.DefineType
+          EmitFsi = acc.EmitFsi
+          DictHelper = acc.DictHelper
+          Curation = acc.Curation
+          Pattern = acc.Pattern
+        }

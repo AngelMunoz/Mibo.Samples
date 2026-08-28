@@ -1,0 +1,118 @@
+# Defli3D model curation for BoneProbe emit.
+# binding <name> = <relative path under assets/kenney_tower_defense_kit/Models, no extension>
+# group <name> = <binding>, <binding>, ...
+
+# Ground tiles
+binding tileGrass = tile
+binding tileDirt = tile-dirt
+binding tileRock = tile-rock
+binding tileBump = tile-bump
+binding tileHill = tile-hill
+binding tileCrystal = tile-crystal
+binding tileSlope = tile-slope
+binding tileTree = tile-tree
+binding tileTreeDouble = tile-tree-double
+binding tileTreeQuad = tile-tree-quad
+# Roads
+binding roadStraight = tile-straight
+binding roadCornerRound = tile-corner-round
+binding roadCornerSquare = tile-corner-square
+binding roadCrossing = tile-crossing
+binding roadEnd = tile-end
+binding roadEndRound = tile-end-round
+binding roadSplit = tile-split
+binding roadTransition = tile-transition
+# Spawn tiles
+binding tileSpawn = tile-spawn
+binding tileSpawnRound = tile-spawn-round
+binding tileSpawnEnd = tile-spawn-end
+binding tileSpawnEndRound = tile-spawn-end-round
+binding spawnRound = spawn-round
+binding spawnSquare = spawn-square
+# Round towers
+binding towerRoundBase = tower-round-base
+binding towerRoundBottomA = tower-round-bottom-a
+binding towerRoundBottomB = tower-round-bottom-b
+binding towerRoundBottomC = tower-round-bottom-c
+binding towerRoundMiddleA = tower-round-middle-a
+binding towerRoundMiddleB = tower-round-middle-b
+binding towerRoundMiddleC = tower-round-middle-c
+binding towerRoundTopA = tower-round-top-a
+binding towerRoundTopB = tower-round-top-b
+binding towerRoundTopC = tower-round-top-c
+binding towerRoundRoofA = tower-round-roof-a
+binding towerRoundRoofB = tower-round-roof-b
+binding towerRoundRoofC = tower-round-roof-c
+binding towerRoundBuildA = tower-round-build-a
+binding towerRoundBuildB = tower-round-build-b
+binding towerRoundBuildC = tower-round-build-c
+binding towerRoundBuildD = tower-round-build-d
+binding towerRoundBuildE = tower-round-build-e
+binding towerRoundBuildF = tower-round-build-f
+# Square towers
+binding towerSquareBottomA = tower-square-bottom-a
+binding towerSquareBottomB = tower-square-bottom-b
+binding towerSquareBottomC = tower-square-bottom-c
+binding towerSquareMiddleA = tower-square-middle-a
+binding towerSquareMiddleB = tower-square-middle-b
+binding towerSquareMiddleC = tower-square-middle-c
+binding towerSquareTopA = tower-square-top-a
+binding towerSquareTopB = tower-square-top-b
+binding towerSquareTopC = tower-square-top-c
+binding towerSquareRoofA = tower-square-roof-a
+binding towerSquareRoofB = tower-square-roof-b
+binding towerSquareRoofC = tower-square-roof-c
+binding towerSquareBuildA = tower-square-build-a
+binding towerSquareBuildB = tower-square-build-b
+binding towerSquareBuildC = tower-square-build-c
+binding towerSquareBuildD = tower-square-build-d
+binding towerSquareBuildE = tower-square-build-e
+binding towerSquareBuildF = tower-square-build-f
+# Weapons
+binding weaponBallista = weapon-ballista
+binding weaponCannon = weapon-cannon
+binding weaponCatapult = weapon-catapult
+binding weaponTurret = weapon-turret
+# Ammo
+binding ammoArrow = weapon-ammo-arrow
+binding ammoBoulder = weapon-ammo-boulder
+binding ammoBullet = weapon-ammo-bullet
+binding ammoCannonball = weapon-ammo-cannonball
+# Enemies
+binding enemyUfoA = enemy-ufo-a
+binding enemyUfoB = enemy-ufo-b
+binding enemyUfoC = enemy-ufo-c
+binding enemyUfoD = enemy-ufo-d
+binding enemyUfoAWeapon = enemy-ufo-a-weapon
+binding enemyUfoBWeapon = enemy-ufo-b-weapon
+binding enemyUfoCWeapon = enemy-ufo-c-weapon
+binding enemyUfoDWeapon = enemy-ufo-d-weapon
+binding enemyUfoBeam = enemy-ufo-beam
+binding enemyUfoBeamBurst = enemy-ufo-beam-burst
+# Decorations
+binding detailCrystal = detail-crystal
+binding detailCrystalLarge = detail-crystal-large
+binding detailDirt = detail-dirt
+binding detailDirtLarge = detail-dirt-large
+binding detailRocks = detail-rocks
+binding detailRocksLarge = detail-rocks-large
+binding detailTree = detail-tree
+binding detailTreeLarge = detail-tree-large
+binding woodStructure = wood-structure
+binding woodStructureHigh = wood-structure-high
+# Selection rings
+binding selectionA = selection-a
+binding selectionB = selection-b
+
+# Groups
+group groundTiles = tileGrass, tileDirt, tileRock, tileBump, tileHill, tileCrystal, tileSlope, tileTree, tileTreeDouble, tileTreeQuad
+group roadTiles = roadStraight, roadCornerRound, roadCornerSquare, roadCrossing, roadEnd, roadEndRound, roadSplit, roadTransition
+group spawnTiles = tileSpawn, tileSpawnRound, tileSpawnEnd, tileSpawnEndRound, spawnRound, spawnSquare
+group towerRoundParts = towerRoundBase, towerRoundBottomA, towerRoundBottomB, towerRoundBottomC, towerRoundMiddleA, towerRoundMiddleB, towerRoundMiddleC, towerRoundTopA, towerRoundTopB, towerRoundTopC, towerRoundRoofA, towerRoundRoofB, towerRoundRoofC, towerRoundBuildA, towerRoundBuildB, towerRoundBuildC, towerRoundBuildD, towerRoundBuildE, towerRoundBuildF
+group towerSquareParts = towerSquareBottomA, towerSquareBottomB, towerSquareBottomC, towerSquareMiddleA, towerSquareMiddleB, towerSquareMiddleC, towerSquareTopA, towerSquareTopB, towerSquareTopC, towerSquareRoofA, towerSquareRoofB, towerSquareRoofC, towerSquareBuildA, towerSquareBuildB, towerSquareBuildC, towerSquareBuildD, towerSquareBuildE, towerSquareBuildF
+group weapons = weaponBallista, weaponCannon, weaponCatapult, weaponTurret
+group ammo = ammoArrow, ammoBoulder, ammoBullet, ammoCannonball
+group enemies = enemyUfoA, enemyUfoB, enemyUfoC, enemyUfoD
+group enemyWeapons = enemyUfoAWeapon, enemyUfoBWeapon, enemyUfoCWeapon, enemyUfoDWeapon
+group decorations = detailCrystal, detailCrystalLarge, detailDirt, detailDirtLarge, detailRocks, detailRocksLarge, detailTree, detailTreeLarge, woodStructure, woodStructureHigh
+group selectionRings = selectionA, selectionB
