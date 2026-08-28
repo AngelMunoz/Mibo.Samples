@@ -26,6 +26,7 @@ let init(ctx: GameContext) =
     |> InputMap.key TierDown KeyCode.Minus
     |> InputMap.key TogglePause KeyCode.Space
     |> InputMap.key ToggleShadows KeyCode.S
+    |> InputMap.key CycleOpacity KeyCode.O
 
   let model = Model()
   model.InputMap <- inputMap
@@ -77,17 +78,19 @@ let init(ctx: GameContext) =
     NativePtr.set mat.Maps (int MaterialMapIndex.Albedo) map
 
   model.Rig <- { Model = rigModel; Clips = clips }
+
+  // Instanced-crowd material: same authored look as the per-material texture
+  // write above, but as a Material3D the View can copy with a varying
+  // Opacity each frame.
+  model.CrowdMaterial <-
+    Material3D.defaults |> Material3D.withAlbedoMap mannequinTex
+
   model.AnimMesh <- AnimatedMesh.fromModel rigModel
 
   match model.AnimMesh with
   | ValueSome animMesh ->
     printfn $"[crowd] skeleton: {animMesh.BoneCount} bones"
   | ValueNone -> printfn "[crowd] no animated mesh (rig has no skeleton?)"
-
-  // Ground slab: unit cube mesh, scaled to the grid at draw time.
-  let mutable groundMesh = Raylib.GenMeshCube(1.0f, 1.0f, 1.0f)
-  Raylib.UploadMesh(&groundMesh, false)
-  model.GroundMesh <- groundMesh
 
   model.DiagFont <- assets.Font("assets/Fonts/monogram.ttf")
 

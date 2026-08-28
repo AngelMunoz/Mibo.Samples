@@ -57,11 +57,12 @@ let init(ctx: GameContext) =
     |> InputMap.key TierDown KeyCode.Minus
     |> InputMap.key TogglePause KeyCode.Space
     |> InputMap.key ToggleShadows KeyCode.S
+    |> InputMap.key CycleOpacity KeyCode.O
+    |> InputMap.key ToggleInstanceColors KeyCode.C
 
   let model = Model()
   model.InputMap <- inputMap
 
-  let gd = MonoGameGameContext.getGraphicsDevice ctx
   let assets = GameContext.getService<IAssets> ctx
   model.DiagFont <- assets.Font "diagnostics"
 
@@ -101,10 +102,6 @@ let init(ctx: GameContext) =
     Mesh = animatedMesh
     Clips = clips
   }
-
-  // Ground slab: unit cube primitive, scaled to the grid at draw time.
-  let primitives = Primitive3D.create gd
-  model.GroundMesh <- primitives.Cylinder
 
   // Start at tier 1 (500 instances).
   model.Crowd <- Crowd.init model.Rig 0

@@ -54,6 +54,11 @@ module CrowdSpec =
   let cameraDistance(count: int) =
     max 60.0f (float32(gridSide count) * spacing)
 
+  /// Material opacity steps cycled with the O key — exercises the three
+  /// instanced-opacity tiers: full (inline + shadows), partial (deferred,
+  /// blended, no shadows), and zero (not drawn).
+  let opacitySteps = [| 1.0f; 0.5f; 0.25f; 0.0f |]
+
 /// Logical actions the InputMap binds keys to (see each backend's Program.fs).
 [<Struct>]
 type GameAction =
@@ -65,3 +70,16 @@ type GameAction =
   | TierDown
   | TogglePause
   | ToggleShadows
+  /// Cycles the instanced crowd's material opacity through
+  /// <c>CrowdSpec.opacitySteps</c> (key O).
+  | CycleOpacity
+  /// Toggles per-instance colors with a semi-transparent subset (key C,
+  /// MonoGame only — raylib has no per-instance colors on this draw).
+  | ToggleInstanceColors
+
+/// Terrain cell kinds for the instanced grid probe: the crowd's floor plus a
+/// few semi-transparent glass cells floating above the first mannequins.
+[<Struct>]
+type TerrainCell =
+  | Ground
+  | Glass

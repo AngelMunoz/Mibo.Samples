@@ -133,6 +133,10 @@ let update (msg: Msg) (model: Model) : struct (Model * Cmd<Msg>) =
     if started.Contains GameAction.ToggleShadows then
       model.ShadowsOn <- not model.ShadowsOn
 
+    if started.Contains GameAction.CycleOpacity then
+      model.OpacityIndex <-
+        (model.OpacityIndex + 1) % CrowdSpec.opacitySteps.Length
+
     model.Crowd <- crowd
     model, Cmd.none
 

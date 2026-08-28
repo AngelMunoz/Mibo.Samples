@@ -3,6 +3,7 @@ module AnimatedInstancing.Raylib.Types
 open System.Numerics
 open Raylib_cs
 open Mibo.Elmish
+open Mibo.Elmish.Graphics3D
 open Mibo.Animation
 open Mibo.Input
 open AnimatedInstancing
@@ -54,11 +55,16 @@ type Model() =
   // Backend-specific state
   member val Rig = Unchecked.defaultof<Rig> with get, set
   member val AnimMesh: AnimatedMesh voption = ValueNone with get, set
-  member val GroundMesh = Unchecked.defaultof<Mesh> with get, set
   member val DiagFont = Raylib.GetFontDefault() with get, set
   /// Whether the directional light casts shadows (S toggles; the shadow pass
   /// is the biggest per-frame cost at high crowd tiers).
   member val ShadowsOn = true with get, set
+  /// Index into CrowdSpec.opacitySteps for the instanced crowd's material
+  /// opacity (O cycles).
+  member val OpacityIndex = 0 with get, set
+  /// Base material for the instanced crowd (authored look + mannequin
+  /// albedo); the View copies it with the current opacity each frame.
+  member val CrowdMaterial = Material3D.defaults with get, set
 
 // -------------------------------------------------------------
 // Root Msg

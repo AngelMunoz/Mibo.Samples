@@ -8,12 +8,82 @@ open Mibo.Elmish
 open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics2D
 open Mibo.Elmish.Graphics3D
+open Mibo.Layout3D
 open Mibo.Animation
 open AnimatedInstancing
 open AnimatedInstancing.Raylib.Types
 
-let private groundMaterial =
+let private groundCellMaterial =
   Material3D.colored(Raylib_cs.Color(110, 112, 120, 255))
+
+let private glassCellMaterial = {
+  Material3D.colored(Raylib_cs.Color(130, 200, 255, 255)) with
+      Opacity = 0.4f
+      Roughness = 0.1f
+}
+
+// ─────────────────────────────────────────────────────────────
+// Instanced terrain probe — the crowd's floor through the grid API
+// ─────────────────────────────────────────────────────────────
+
+// Unit cube mesh, created on the first Draw (the GL context exists then).
+let mutable private cubeMesh: Raylib_cs.Mesh voption = ValueNone
+
+// One context for both cell kinds: the renderer groups by key, so the Ground
+// cells emit one opaque DrawMeshInstanced (inline, casts shadows) and the
+// semi-transparent Glass cells emit their own command — which defers whole to
+// the sorted pass (a transparent material covers every instance of its batch).
+let private terrainCtx =
+  InstancedRenderContext<TerrainCell, TerrainCell>(
+    getKey = id
+    , getMeshesAndMaterial =
+      fun cell ->
+        match cubeMesh with
+        | ValueSome m -> [|
+            struct (m,
+                    (match cell with
+                     | Ground -> groundCellMaterial
+                     | Glass -> glassCellMaterial))
+          |]
+        | ValueNone -> Array.empty
+    , getTransform =
+      fun worldPos _ ->
+        // Unit cube scaled to one cell; -0.5 puts the ground layer's top face at
+        // y = 0 (the mannequins' feet) and floats the glass layer above them.
+        Raymath.MatrixMultiply(
+          Raymath.MatrixScale(CrowdSpec.spacing, 1.0f, CrowdSpec.spacing),
+          Raymath.MatrixTranslate(worldPos.X, worldPos.Y - 0.5f, worldPos.Z)
+        )
+  )
+
+// Rebuilt only when the crowd tier changes the grid's side length.
+let mutable private terrainSide = -1
+let mutable private terrainGrid = Unchecked.defaultof<CellGrid3D<TerrainCell>>
+
+// Cell layer Y of the glass cells (world Y = 3, so the cubes span 2.5..3.5).
+let private glassLayer = 3
+
+let private buildTerrain(side: int) =
+  let center = float32(side - 1) * 0.5f
+
+  let grid =
+    CellGrid3D.create
+      side
+      (glassLayer + 1)
+      side
+      Vector3.One
+      (Vector3(-center * CrowdSpec.spacing, 0.0f, -center * CrowdSpec.spacing))
+
+  for z = 0 to side - 1 do
+    for x = 0 to side - 1 do
+      CellGrid3D.set x 0 z Ground grid
+
+  // Glass cells above the first three mannequins (instances 0, 1, 2 sit at
+  // columns 0..2 of row 0).
+  for i = 0 to 2 do
+    CellGrid3D.set (i % side) glassLayer (i / side) Glass grid
+
+  grid
 
 // ─────────────────────────────────────────────────────────────
 // 3D scene
@@ -59,19 +129,34 @@ let view (_ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
   }
   |> Draw3D.drop
 
-  // Ground slab sized to the current tier's grid, top face at y = 0.
+  // Instanced terrain: the floor is a cell grid rendered through the volume
+  // renderer (the API voxel terrain uses), plus the glass cells above the
+  // first mannequins. Same world as the crowd, so the orbiting camera carries
+  // it around with them.
+  match cubeMesh with
+  | ValueNone ->
+    let mutable m = Raylib.GenMeshCube(1.0f, 1.0f, 1.0f)
+    Raylib.UploadMesh(&m, false)
+    cubeMesh <- ValueSome m
+  | ValueSome _ -> ()
+
   let side = CrowdSpec.gridSide crowd.Count
+
+  if terrainSide <> side then
+    terrainSide <- side
+    terrainGrid <- buildTerrain side
+
   let extent = float32 side * CrowdSpec.spacing + 8.0f
+  let half = extent * 0.5f
 
-  let groundTransform =
-    Raymath.MatrixMultiply(
-      Raymath.MatrixScale(extent, 1.0f, extent),
-      Raymath.MatrixTranslate(0.0f, -0.5f, 0.0f)
-    )
+  let bounds = {
+    Mibo.Layout3D.BoundingBox.Min = Vector3(-half, -1.0f, -half)
+    Max = Vector3(half, 4.0f, half)
+  }
 
-  buffer
-  |> Draw3D.drawMesh model.GroundMesh groundTransform groundMaterial
-  |> Draw3D.drop
+  terrainCtx.ResetFrameBuffers()
+
+  terrainCtx.RenderCellGridVolumeInstanced(buffer, bounds, terrainGrid)
 
   // THE probe: one pose evaluation per instance into the reused pose array,
   // then a single skinned+instanced draw call (one DrawSkinnedMeshInstanced
@@ -97,7 +182,23 @@ let view (_ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
 
     let am = AnimatedModel.create animMesh crowd.States[0]
 
-    buffer.animatedModelInstanced(am, crowd.Transforms, crowd.Poses) |> ignore
+    // Opacity probe: the whole instanced crowd shares one material whose
+    // Opacity cycles through CrowdSpec.opacitySteps (key O).
+    // 1.0  -> inline opaque draw, casts shadows
+    // <1.0 -> deferred to the sorted transparent pass, no shadows
+    // 0.0  -> nothing drawn
+    let crowdMaterial = {
+      model.CrowdMaterial with
+          Opacity = CrowdSpec.opacitySteps[model.OpacityIndex]
+    }
+
+    buffer.animatedModelInstanced(
+      am,
+      crowd.Transforms,
+      crowd.Poses,
+      material = MaterialOverride.All crowdMaterial
+    )
+    |> ignore
   | _ -> ()
 
   buffer |> Draw3D.endCamera |> Draw3D.drop
@@ -140,4 +241,10 @@ let viewHud (_ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
 
   line 60f $"Anim: {paused}  Shadows: {shadows}"
 
-  line 85.0f "1-4 tiers | +/- step | Space pause | S shadows"
+  let opacity = CrowdSpec.opacitySteps[model.OpacityIndex]
+
+  line
+    85.0f
+    $"Opacity: {opacity} (O)  [1.0 opaque+shadows | <1 blended, no shadows | 0 hidden]"
+
+  line 110.0f "1-4 tiers | +/- step | Space pause | S shadows | O opacity"

@@ -56,11 +56,20 @@ type Model() =
   member val InputMap: InputMap<GameAction> = InputMap.empty with get, set
   // Backend-specific state
   member val Rig = Unchecked.defaultof<Rig> with get, set
-  member val GroundMesh = Unchecked.defaultof<PrimitiveMesh> with get, set
   member val DiagFont = Unchecked.defaultof<SpriteFont> with get, set
   /// Whether the directional light casts shadows (S toggles; the shadow pass
   /// is the biggest per-frame cost at high crowd tiers).
   member val ShadowsOn = true with get, set
+  /// Index into CrowdSpec.opacitySteps for the instanced crowd's material
+  /// opacity (O cycles).
+  member val OpacityIndex = 0 with get, set
+  /// Whether per-instance colors ride the instanced draw (C toggles). The
+  /// color set carries a semi-transparent subset, so the draw must defer even
+  /// while the material itself is opaque.
+  member val UseInstanceColors = false with get, set
+  /// Cached per-instance colors, sized to the current tier and rebuilt only
+  /// when the tier changes (never per frame).
+  member val InstanceColors = Array.empty<Color> with get, set
 
 // -------------------------------------------------------------
 // Root Msg
