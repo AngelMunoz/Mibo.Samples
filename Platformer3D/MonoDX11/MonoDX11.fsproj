@@ -58,6 +58,12 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>animations\Rig_Medium_General.glb</Link>
     </Content>
+    <!-- Instanced oozi crowd's rig: skeleton + clips raw-load via AssimpNetter
+         (the renderable Model comes from the .mgcb). -->
+    <Content Include="..\..\assets\kenney_platformer-kit\Models\character-oozi.glb">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>animations\character-oozi.glb</Link>
+    </Content>
     <Content Include="..\..\assets\kaykit_character_animations\Textures\mannequin_texture.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>animations\mannequin_texture.png</Link>

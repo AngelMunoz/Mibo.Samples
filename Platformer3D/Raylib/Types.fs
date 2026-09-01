@@ -28,6 +28,18 @@ type AttachedProp = {
   Material: Material3D
 }
 
+// Instanced oozi crowd (skinned-instancing probe): one shared AnimatedMesh and
+// clip set, one playback state per instance. The View refills Transforms around
+// the player each frame, evaluates one pose per instance into the reused Poses
+// array, and issues a single animatedModelInstanced draw for the whole ring.
+// See Platformer3D.Constants.OoziCrowd for the shared tuning knobs.
+type OoziCrowd = {
+  AnimMesh: AnimatedMesh voption
+  States: Animation3DState[]
+  Transforms: Matrix4x4[]
+  Poses: BonePose[]
+}
+
 // -------------------------------------------------------------
 // Root Model — composes shared sub-system models + backend-specific state
 // -------------------------------------------------------------
@@ -59,14 +71,15 @@ type Model() =
 
   member val PlayerAnim = Unchecked.defaultof<Animation3DState> with get, set
 
-  // Bone-attachment demo: shared GPU-skinning mesh (used by both player
-  // instances), a second playback state for the multi-pose demo, and weapons
+  // Bone-attachment demo: shared GPU-skinning mesh for the player plus weapons
   // parented to the player's handslot sockets (sword right, wand left).
   member val PlayerAnimatedMesh: AnimatedMesh voption = ValueNone with get, set
 
-  member val PlayerAnim2 = Unchecked.defaultof<Animation3DState> with get, set
-
   member val PlayerProps: AttachedProp[] = Array.empty with get, set
+
+  // Skinned-instancing probe: the oozi ring drawn through one
+  // animatedModelInstanced call per frame (ValueNone until init loads it).
+  member val Oozi: OoziCrowd voption = ValueNone with get, set
 
   member val ModelCache = Dictionary<string, Raylib_cs.Model>() with get, set
   member val VisibleLights = ResizeArray<PointLight3D>() with get, set

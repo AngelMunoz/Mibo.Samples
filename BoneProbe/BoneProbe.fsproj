@@ -13,6 +13,7 @@
     <Compile Include="Dimensions.fs" />
     <Compile Include="Slope.fs" />
     <Compile Include="Emit.fs" />
+    <Compile Include="Xnb.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

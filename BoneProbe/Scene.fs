@@ -30,6 +30,7 @@ type Mode =
   | Dimensions
   | Emit
   | Slope
+  | Xbones
 
 type Verbosity =
   | Full

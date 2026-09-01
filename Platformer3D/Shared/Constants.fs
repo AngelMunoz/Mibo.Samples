@@ -77,6 +77,33 @@ let spawnPosition =
 
 let arcRadius = float32 chunkLoadRadius * chunkWorldWidth * 5.0f
 
+// ── Instanced oozi crowd (skinned-instancing probe) ──
+//
+// A ring of character-oozi.glb instances drawn through ONE
+// animatedModelInstanced call per frame (replaces the old second-mannequin
+// multi-pose demo). These constants are shared by both backends; the playback
+// states and the draw call itself are backend-specific.
+
+module OoziCrowd =
+  /// Instances in the ring.
+  [<Literal>]
+  let count = 12
+
+  /// Ring radius around the player, in world units.
+  [<Literal>]
+  let ringRadius = 2.75f
+
+  /// Movement clips the oozi rig ships (character-oozi.glb carries 25 clips:
+  /// static, idle, walk, sprint, jump, fall, crouch, sit, drive, die, ...).
+  let clipNames = [| "static"; "idle"; "walk"; "sprint" |]
+
+  /// Clip instance `i` plays — cycles the movement set.
+  let clipFor(i: int) = clipNames[i % clipNames.Length]
+
+  /// Initial playback frame for instance `i` — desynchronizes the ring so
+  /// neighbours don't run in lockstep.
+  let frameOffsetFor(i: int) = float32(i * 13 % 60)
+
 // ── Bare logical model names (backend composes basePath + extension) ──
 
 module KenneyModels =

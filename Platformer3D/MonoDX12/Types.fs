@@ -29,6 +29,20 @@ type AttachedProp = {
   Material: Material3D
 }
 
+// Instanced oozi crowd (skinned-instancing probe): the content-pipeline Model
+// plus the raw-loaded skeleton, one playback state per instance, and a reused
+// pose array. The View refills Transforms around the player each frame,
+// evaluates one pose per instance, and issues a single
+// animatedModelInstanced draw for the whole ring. See
+// Platformer3D.Constants.OoziCrowd for the shared tuning knobs.
+type OoziCrowd = {
+  Model: Microsoft.Xna.Framework.Graphics.Model
+  AnimMesh: AnimatedMesh voption
+  States: Animation3DState[]
+  Transforms: Matrix[]
+  Poses: BonePose[]
+}
+
 // -------------------------------------------------------------
 // Root Model — composes shared sub-system models + backend-specific state
 // -------------------------------------------------------------
@@ -55,16 +69,16 @@ type Model() =
   // Backend-specific state
   member val PlayerAnim = Unchecked.defaultof<AnimatedModel> with get, set
 
-  // Multi-pose demo: second playback state over the same Model + AnimatedMesh,
-  // rendered alongside the player at a fixed offset (see View.view).
-  member val PlayerAnim2 = Unchecked.defaultof<AnimatedModel> with get, set
-
   // Bone-attachment demo: weapons parented to the player's handslot bones at
   // draw time (sword in handslot.r, wand in handslot.l), raw-loaded via
   // AssimpNetter — see Program.loadWeaponMesh. LocalTransform is a plain grip
   // offset/scale (raw meshes are in model space, no bone-transform bake
   // needed); KayKit weapons snap onto handslots with identity.
   member val PlayerProps: AttachedProp[] = Array.empty with get, set
+
+  // Skinned-instancing probe: the oozi ring drawn through one
+  // animatedModelInstanced call per frame (ValueNone until init loads it).
+  member val Oozi: OoziCrowd voption = ValueNone with get, set
 
   member val ModelCache =
     Dictionary<string, Microsoft.Xna.Framework.Graphics.Model>() with get, set

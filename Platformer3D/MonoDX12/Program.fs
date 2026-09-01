@@ -36,6 +36,16 @@ let private rawGeneralPath =
     "Rig_Medium_General.glb"
   )
 
+// The instanced oozi crowd's rig (fsproj <Content> entry, raw-loaded via
+// AssimpNetter for skeleton + clips). The renderable Model goes through the
+// .mgcb (kenney_platformer-kit/Models/character-oozi, SkinnedEffect).
+let private rawOoziPath =
+  System.IO.Path.Combine(
+    AppContext.BaseDirectory,
+    "animations",
+    "character-oozi.glb"
+  )
+
 // Path to the raw kaykit weapon pack (fsproj <Content> entries, kept out of
 // the .mgcb on purpose — same raw-load pattern as character-oobi.glb).
 let private weaponsDir =
@@ -212,11 +222,6 @@ let init(ctx: GameContext) =
   model.PlayerAnim <-
     AnimatedModel.create playerModel animatedMesh clips "Idle_A" 60.0f
 
-  // Second playback state for the multi-pose demo: one Model + one
-  // AnimatedMesh rendered twice per frame at different poses.
-  model.PlayerAnim2 <-
-    AnimatedModel.create playerModel animatedMesh clips "Walking_A" 60.0f
-
   match animatedMesh with
   | ValueSome animMesh ->
     let boneLabel name =
@@ -296,6 +301,38 @@ let init(ctx: GameContext) =
         Material = weaponMaterial
       }
   |]
+
+  // Skinned-instancing probe: the oozi ring. character-oozi.glb (Kenney
+  // platformer-kit) carries meshes, skeleton (6 bones), and all 25 clips in
+  // ONE file — double-loaded like the player rig: the renderable Model from
+  // the .mgcb, skeleton + clips raw via AssimpNetter. One playback state per
+  // instance; the draw is a single animatedModelInstanced call (see View.view).
+  let ooziModel = assets.Model "kenney_platformer-kit/Models/character-oozi"
+  let ooziMesh = assets.AnimatedMesh rawOoziPath
+  let ooziClips = assets.ModelAnimations rawOoziPath
+
+  model.Oozi <-
+    ValueSome {
+      Model = ooziModel
+      AnimMesh = ooziMesh
+      States =
+        Array.init OoziCrowd.count (fun i ->
+          let state =
+            Animation3DState.create ooziClips (OoziCrowd.clipFor i) 60.0f
+
+          {
+            state with
+                CurrentFrame = OoziCrowd.frameOffsetFor i
+          })
+      Transforms = Array.zeroCreate OoziCrowd.count
+      Poses = Array.init OoziCrowd.count (fun _ -> BonePose.empty)
+    }
+
+  match ooziMesh with
+  | ValueSome animMesh ->
+    printfn
+      $"[oozi] rig: {ooziModel.Meshes.Count} meshes, {ooziClips.Clips.Length} clips, {animMesh.BoneCount} bones, {OoziCrowd.count} instances"
+  | ValueNone -> printfn "[oozi] no animated mesh (rig has no skeleton?)"
 
   let target =
     spawnPosition + System.Numerics.Vector3(0.0f, playerHeight * 0.5f, 0.0f)

@@ -297,15 +297,50 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
     |> Draw3D.drawAnimatedModel model.PlayerAnim playerTransform
     |> Draw3D.drop
 
-  // Second instance of the same Model at a different pose — no attachment.
-  let offsetTransform =
-    Matrix.CreateTranslation(playerPos.X + 2.5f, playerPos.Y, playerPos.Z)
+  // Skinned-instancing probe: the whole oozi ring is ONE draw call. Transforms
+  // are recomposed around the player each frame (the ring follows), each
+  // instance faces inward and plays its own clip, and one pose is evaluated
+  // per instance into the reused pose array (computePoseInto grows each
+  // pose's backing arrays once, then reuses them — no per-frame allocation).
+  match model.Oozi with
+  | ValueSome {
+                Model = ooziModel
+                AnimMesh = ValueSome ooziMesh
+                States = states
+                Transforms = transforms
+                Poses = poses
+              } ->
+    let count = states.Length
+    let angleStep = 2.0f * MathF.PI / float32 count
 
-  match AnimatedModel.computePose model.PlayerAnim2 with
-  | ValueSome pose2 ->
-    buffer
-      .animatedModel(model.PlayerAnim2, offsetTransform, pose = pose2)
-      .drop()
-  | ValueNone -> buffer.animatedModel(model.PlayerAnim2, offsetTransform).drop()
+    for i = 0 to count - 1 do
+      let angle = float32 i * angleStep
+
+      let ox = MathF.Cos angle * OoziCrowd.ringRadius
+
+      let oz = MathF.Sin angle * OoziCrowd.ringRadius
+
+      // The rig faces +Z at yaw 0 (same convention as FPSSample's enemies);
+      // Atan2(-ox, -oz) points it at the ring center.
+      let yaw = MathF.Atan2(-ox, -oz)
+
+      transforms[i] <-
+        Matrix.CreateRotationY(yaw)
+        * Matrix.CreateTranslation(
+          playerPos.X + ox,
+          playerPos.Y,
+          playerPos.Z + oz
+        )
+
+      poses[i] <- Animation3DState.computePoseInto ooziMesh states[i] poses[i]
+
+    let am: AnimatedModel = {
+      Model = ooziModel
+      Mesh = ValueSome ooziMesh
+      State = states[0]
+    }
+
+    buffer.animatedModelInstanced(am, transforms, poses).drop()
+  | _ -> ()
 
   buffer |> Draw3D.endCamera |> Draw3D.drop

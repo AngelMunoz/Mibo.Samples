@@ -132,12 +132,9 @@ let init(ctx: GameContext) =
     map.Color <- Color.White
     NativePtr.set mat.Maps (int MaterialMapIndex.Albedo) map
 
-  // Bone-attachment demo: build the shared GPU-skinning mesh once, plus a
-  // second playback state to prove one Model can render two poses per frame.
+  // Bone-attachment demo: build the shared GPU-skinning mesh once for the
+  // player; weapons attach to its handslot sockets at draw time.
   model.PlayerAnimatedMesh <- AnimatedMesh.fromModel playerModel
-
-  model.PlayerAnim2 <-
-    Animation3DState.create playerModel clips "Walking_A" 60.0f
 
   match model.PlayerAnimatedMesh with
   | ValueSome animMesh ->
@@ -181,6 +178,43 @@ let init(ctx: GameContext) =
           Material = material
         }
       | ValueNone -> None)
+
+  // Skinned-instancing probe: the oozi ring. character-oozi.glb (Kenney
+  // platformer-kit) carries meshes, skeleton (6 bones), and all 25 clips in
+  // ONE file, so clips load straight from it — no cross-file merge / bone-order
+  // remap like the KayKit rigs above need. One Animation3DState per instance;
+  // the draw is a single animatedModelInstanced call (see View.view).
+  let ooziPath = AssetPaths.modelPath KenneyModels.characterOozi
+  let ooziModel = assets.Model(ooziPath)
+
+  let ooziClips =
+    Animation3DClips.fromModelAnimations(assets.ModelAnimations(ooziPath))
+
+  model.Oozi <-
+    ValueSome {
+      AnimMesh = AnimatedMesh.fromModel ooziModel
+      States =
+        Array.init OoziCrowd.count (fun i ->
+          let state =
+            Animation3DState.create
+              ooziModel
+              ooziClips
+              (OoziCrowd.clipFor i)
+              60.0f
+
+          {
+            state with
+                CurrentFrame = OoziCrowd.frameOffsetFor i
+          })
+      Transforms = Array.zeroCreate OoziCrowd.count
+      Poses = Array.init OoziCrowd.count (fun _ -> BonePose.empty)
+    }
+
+  match model.Oozi with
+  | ValueSome { AnimMesh = ValueSome ooziMesh } ->
+    printfn
+      $"[oozi] rig: {ooziModel.MeshCount} meshes, {ooziClips.Clips.Length} clips, {ooziMesh.BoneCount} bones, {OoziCrowd.count} instances"
+  | _ -> printfn "[oozi] no animated mesh (rig has no skeleton?)"
 
   let target = spawnPosition + Vector3(0.0f, playerHeight * 0.5f, 0.0f)
   model.Physics.CameraTarget <- target

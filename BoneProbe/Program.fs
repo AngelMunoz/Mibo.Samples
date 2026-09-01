@@ -8,6 +8,9 @@ let private printUsage() =
     "Usage: dotnet run --project BoneProbe -- [raw|palette|dimensions|slope] <path> [-v|--verbosity full|summary] [-f|--focus <name>]"
 
   eprintfn
+    "       dotnet run --project BoneProbe -- xbones <content-root> <asset-name> [raw-bone-count]"
+
+  eprintfn
     "       dotnet run --project BoneProbe -- emit <models-dir> <output.fs> --namespace <ns> [options]"
 
   eprintfn ""
@@ -99,6 +102,26 @@ let rec private parseOptions
     }
 
     parseOptions rest (Some opts)
+  | ("xbones" :: contentRoot :: asset :: rest), None ->
+    // Optional trailing positional: the raw skeleton's bone count, so used
+    // content bones at/after it get flagged in the dump.
+    let rawBoneCount =
+      match rest with
+      | [ n ] ->
+        match Int32.TryParse n with
+        | true, v -> Some v
+        | false, _ -> None
+      | _ -> None
+
+    let opts = {
+      Mode = Xbones
+      Path = contentRoot
+      OutputPath = asset
+      Verbosity = Full
+      Focus = rawBoneCount |> Option.map string
+    }
+
+    Some opts
   | ("dimensions" :: path :: rest), None ->
     let opts = {
       Mode = Dimensions
@@ -220,6 +243,15 @@ let main argv =
     | Palette -> BoneProbe.Palette.probe opts
     | Dimensions -> BoneProbe.Dimensions.probe opts
     | Slope -> BoneProbe.Slope.probe opts.Path
+    | Xbones ->
+      let rawBoneCount =
+        opts.Focus
+        |> Option.bind(fun f ->
+          match Int32.TryParse f with
+          | true, n -> Some n
+          | false, _ -> None)
+
+      BoneProbe.Xnb.probe opts.Path opts.OutputPath rawBoneCount
     | Emit ->
       let acc = parseEmitFlags (emitTail(Array.toList argv)) (EmitAcc())
 

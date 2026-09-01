@@ -173,8 +173,12 @@ let update (msg: Msg) (model: Model) : struct (Model * Cmd<Msg>) =
 
       model.PlayerAnim <- anim
 
-      // Second pose instance (multi-pose demo) — runs its fixed clip.
-      model.PlayerAnim2 <- Animation3DState.update dt model.PlayerAnim2
+    // Instanced oozi crowd — advance every instance's playback state.
+    match model.Oozi with
+    | ValueSome crowd ->
+      for i = 0 to crowd.States.Length - 1 do
+        crowd.States[i] <- Animation3DState.update dt crowd.States[i]
+    | ValueNone -> ()
 
     // Mushroom lights (periodic collection from chunks)
     mushroomLightFrameCounter <- mushroomLightFrameCounter + 1

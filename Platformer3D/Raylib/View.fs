@@ -444,9 +444,9 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
       buffer
     |> Draw3D.drop
 
-  // GPU skinning path (non-mutating): one AnimatedMesh shared by both player
-  // instances; the pose is evaluated once and shared between the skinned draw
-  // and the weapon attachments on both handslot sockets.
+  // GPU skinning path (non-mutating): the pose is evaluated once and shared
+  // between the skinned draw and the weapon attachments on both handslot
+  // sockets.
   match model.PlayerAnimatedMesh with
   | ValueSome animMesh ->
     let am = AnimatedModel.create animMesh model.PlayerAnim
@@ -465,18 +465,6 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
         pose = pose
       )
       |> ignore
-
-    // Second instance of the same Model at a different pose — no attachment.
-    let am2 = AnimatedModel.create animMesh model.PlayerAnim2
-
-    let offsetTransform =
-      Raymath.MatrixTranslate(
-        model.Physics.Position.X + 2.5f,
-        model.Physics.Position.Y,
-        model.Physics.Position.Z
-      )
-
-    buffer.animatedModel(am2, offsetTransform) |> ignore
   | ValueNone ->
     // Legacy mutating fallback when no AnimatedMesh is available.
     Animation3DState.applyToModel model.PlayerAnim
@@ -484,5 +472,48 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
     buffer
     |> Draw3D.drawModel model.PlayerAnim.Model playerTransform
     |> Draw3D.drop
+
+  // Skinned-instancing probe: the whole oozi ring is ONE draw call. Transforms
+  // are recomposed around the player each frame (the ring follows), each
+  // instance faces inward and plays its own clip, and one pose is evaluated
+  // per instance into the reused pose array (computePoseInto grows each
+  // pose's backing arrays once, then reuses them — no per-frame allocation).
+  match model.Oozi with
+  | ValueSome {
+                AnimMesh = ValueSome ooziMesh
+                States = states
+                Transforms = transforms
+                Poses = poses
+              } ->
+    let count = states.Length
+    let angleStep = 2.0f * MathF.PI / float32 count
+
+    for i = 0 to count - 1 do
+      let angle = float32 i * angleStep
+
+      let ox = MathF.Cos angle * OoziCrowd.ringRadius
+
+      let oz = MathF.Sin angle * OoziCrowd.ringRadius
+
+      // The rig faces +Z at yaw 0 (same convention as FPSSample's enemies);
+      // Atan2(-ox, -oz) points it at the ring center.
+      let yaw = MathF.Atan2(-ox, -oz)
+
+      transforms[i] <-
+        Raymath.MatrixMultiply(
+          Raymath.MatrixRotateY yaw,
+          Raymath.MatrixTranslate(
+            model.Physics.Position.X + ox,
+            model.Physics.Position.Y,
+            model.Physics.Position.Z + oz
+          )
+        )
+
+      poses[i] <- Animation3DState.computePoseInto ooziMesh states[i] poses[i]
+
+    let am = AnimatedModel.create ooziMesh states[0]
+
+    buffer.animatedModelInstanced(am, transforms, poses) |> ignore
+  | _ -> ()
 
   buffer |> Draw3D.endCamera |> Draw3D.drop
