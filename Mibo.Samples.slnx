@@ -79,6 +79,7 @@
     <Project Path="PrimitiveGallery/MonoGL/MonoGL.fsproj" />
     <Project Path="PrimitiveGallery/MonoDX11/MonoDX11.fsproj" />
   </Folder>
+  <Project Path="PlatformerGs/PlatformerGs.gsproj" Type="f1526b4d-c1a8-4b42-b2f7-48da6f9ca033" />
   <Project Path="SpaceBattle/SpaceBattle.fsproj" />
   <Project Path="BoneProbe/BoneProbe.fsproj" />
 </Solution>
