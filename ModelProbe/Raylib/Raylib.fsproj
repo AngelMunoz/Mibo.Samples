@@ -22,7 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Mibo\src\Mibo.Raylib\Mibo.Raylib.fsproj" />
+    <ProjectReference Include="..\..\Mibo\src\Mibo.Raylib.Mvu\Mibo.Raylib.Mvu.fsproj" />
   </ItemGroup>
 
 </Project>

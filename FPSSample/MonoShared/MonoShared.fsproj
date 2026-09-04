@@ -16,7 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Shared\Shared.fsproj" />
-    <ProjectReference Include="..\..\Mibo\src\Mibo.MonoGame\Mibo.MonoGame.fsproj" />
+    <ProjectReference Include="..\..\Mibo\src\Mibo.MonoGame.Mvu\Mibo.MonoGame.Mvu.fsproj" />
   </ItemGroup>
 
   <ItemGroup>

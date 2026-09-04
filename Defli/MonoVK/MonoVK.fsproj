@@ -52,7 +52,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Shared\Shared.fsproj" />
-    <ProjectReference Include="..\..\Mibo\src\Mibo.MonoGame\Mibo.MonoGame.fsproj" />
+    <ProjectReference Include="..\..\Mibo\src\Mibo.MonoGame.Adaptive\Mibo.MonoGame.Adaptive.fsproj" />
     <PackageReference Include="MonoGame.Framework.Native" Version="3.8.5" />
     <PackageReference Include="MonoGame.Runtime.Windows.Vulkan" Version="3.8.5" />
     <PackageReference Include="MonoGame.Runtime.Mac.Vulkan" Version="3.8.5" />
