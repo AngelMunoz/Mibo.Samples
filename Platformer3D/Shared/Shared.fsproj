@@ -17,6 +17,6 @@
     <Compile Include="Animation.fs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\Mibo\src\Mibo.Core\Mibo.Core.fsproj" />
+    <ProjectReference Include="..\..\Mibo\src\Mibo.Mvu\Mibo.Mvu.fsproj" />
   </ItemGroup>
 </Project>
