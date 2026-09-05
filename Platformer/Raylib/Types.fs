@@ -23,7 +23,6 @@ type SpriteAssets = {
   ParticleTexture: Texture2D
   CoinNormalMap: Texture2D
   Font: Font
-  JumpSound: Sound
 }
 
 // -------------------------------------------------------------

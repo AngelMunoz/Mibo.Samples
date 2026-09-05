@@ -247,16 +247,18 @@ module Types =
 
   // ── Audio Messages ────────────────────────────────────────────────────────
 
-  /// Rich one-shot audio event. Carries everything a backend needs to play with
-  /// positional attenuation + pan. Many can fire per tick, so the router batches
-  /// them (Cmd.batch) and the service drains its event buffer each frame.
+  /// One-shot audio event. Carries the bank key to play plus everything the
+  /// backend needs for positional attenuation + pan. Many can fire per tick, so
+  /// the router batches them (Cmd.batch) and the service drains its event
+  /// buffer each frame.
   ///
   /// Loops (footsteps) are NOT events — the audio service computes loop intent
-  /// from the snapshot in Update and idempotently starts/stops against the
-  /// backend's native isPlaying state.
+  /// from the snapshot in Update and re-triggers the key while the intent
+  /// holds. Keys are game vocabulary registered in the sound bank (Assets.Keys);
+  /// an unregistered key is a silent no-op.
   [<Struct; RequireQualifiedAccess>]
   type AudioMsg =
-    | OneShot of path: string * position: Vector3 * isPositional: bool
+    | OneShot of key: string * position: Vector3 * isPositional: bool
 
   // ── Per-system Msg types ───────────────────────────────────────────────────
 
@@ -309,12 +311,12 @@ module Types =
   [<Struct; RequireQualifiedAccess>]
   type WeaponEvent =
     | Fired of
-      path: string *
+      key: string *
       muzzlePos: Vector3 *
       direction: Vector3 *
       hitPos: Vector3 *
       right: Vector3
-    | ReloadStarted of path: string
+    | ReloadStarted of key: string
     | EnemyKilled of enemyPos: Vector3
 
   /// Events emitted by the enemy subsystem. The router translates these into
@@ -324,7 +326,7 @@ module Types =
     | PlayerDamaged of amount: float32
     | EnemyKilled of enemyPos: Vector3
     | AttackBite of enemyPos: Vector3
-    | Robotic of path: string * enemyPos: Vector3
+    | Robotic of key: string * enemyPos: Vector3
     | ChildLaugh of enemyPos: Vector3
 
   /// Events emitted by the pickup subsystem. The router translates these into

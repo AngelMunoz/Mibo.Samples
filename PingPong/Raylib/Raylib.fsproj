@@ -12,6 +12,12 @@
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="..\..\assets\space_music_pack\menu.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\space_music_pack\menu.wav</Link>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\Shared\Shared.fsproj" />
     <ProjectReference Include="..\..\Mibo\src\Mibo.Raylib.Mvu\Mibo.Raylib.Mvu.fsproj" />
   </ItemGroup>

@@ -108,8 +108,8 @@ module EnemyAi =
       enemy.RoboticTimer <- enemy.RoboticTimer - dt
 
       if enemy.RoboticTimer <= 0.0f then
-        let path = Assets.roboticSound rng
-        events.Add(EnemyEvent.Robotic(path, enemy.Position))
+        let key = Assets.Keys.roboticKey rng
+        events.Add(EnemyEvent.Robotic(key, enemy.Position))
 
         enemy.RoboticTimer <-
           randomInterval

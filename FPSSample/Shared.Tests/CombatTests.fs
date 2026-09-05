@@ -159,10 +159,8 @@ let tests =
         Expect.equal events.Length 1 "One Fired event emitted"
 
         match events with
-        | [ WeaponEvent.Fired(path, _, _, _, _) ] ->
-          Expect.isTrue
-            (path.Contains("762x39"))
-            "Fired event carries a gun sound path"
+        | [ WeaponEvent.Fired(key, _, _, _, _) ] ->
+          Expect.equal key Assets.Keys.fire "Fired event carries the fire key"
         | _ -> failwith "Expected exactly one Fired event"
 
       testCase "shooting enemy in line of sight deals damage"
@@ -272,7 +270,7 @@ let tests =
 
         match events with
         | [ WeaponEvent.ReloadStarted path ] ->
-          Expect.isTrue (path.Contains("reload")) "Reload sound path"
+          Expect.isTrue (path.Contains("reload")) "Reload sound key"
         | _ -> failwith "Expected exactly one ReloadStarted event"
 
       testCase "startReload does nothing when full"

@@ -54,6 +54,49 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>assets\shaders\aura.frag</Link>
     </Content>
+    <!-- The sound bank files (Application.AudioKeys' sources, registered in
+         Program.fs; the MonoGame clients build the same files through
+         Content.mgcb instead). -->
+    <Content Include="..\..\assets\gun_sounds\7.62x39\762x39 Single MP3.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\gun_sounds\7.62x39\762x39 Single MP3.mp3</Link>
+    </Content>
+    <Content Include="..\..\assets\explosions\Medium_Explosion_1.ogg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\explosions\Medium_Explosion_1.ogg</Link>
+    </Content>
+    <Content Include="..\..\assets\explosions\Medium_Explosion_2.ogg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\explosions\Medium_Explosion_2.ogg</Link>
+    </Content>
+    <Content Include="..\..\assets\explosions\Small_Explosion.ogg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\explosions\Small_Explosion.ogg</Link>
+    </Content>
+    <Content Include="..\..\assets\horror_sfx\Scream_Robotic.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\horror_sfx\Scream_Robotic.wav</Link>
+    </Content>
+    <Content Include="..\..\assets\space_music_pack\fx\start-level.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\space_music_pack\fx\start-level.wav</Link>
+    </Content>
+    <Content Include="..\..\assets\space_music_pack\menu.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\space_music_pack\menu.wav</Link>
+    </Content>
+    <Content Include="..\..\assets\space_music_pack\battle.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\space_music_pack\battle.wav</Link>
+    </Content>
+    <Content Include="..\..\assets\horror_sfx\Child laugh.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\horror_sfx\Child laugh.wav</Link>
+    </Content>
+    <Content Include="..\..\assets\sfx_jump.ogg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\sfx_jump.ogg</Link>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>

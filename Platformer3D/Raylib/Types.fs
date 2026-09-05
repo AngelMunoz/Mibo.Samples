@@ -83,7 +83,6 @@ type Model() =
 
   member val ModelCache = Dictionary<string, Raylib_cs.Model>() with get, set
   member val VisibleLights = ResizeArray<PointLight3D>() with get, set
-  member val JumpSound = Unchecked.defaultof<Sound> with get, set
   member val ParticleTexture = Unchecked.defaultof<Texture2D> with get, set
   member val MinimapTexture = Unchecked.defaultof<Texture2D> with get, set
 

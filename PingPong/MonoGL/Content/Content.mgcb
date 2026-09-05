@@ -1,0 +1,22 @@
+#----------------------------- Global Properties ----------------------------#
+
+/outputDir:Content
+/intermediateDir:obj
+/platform:DesktopGL
+/config:
+/profile:HiDef
+/compress:False
+
+#-------------------------------- References --------------------------------#
+
+
+#---------------------------------- Content ---------------------------------#
+
+# The menu track, built from the repo-root shared assets dir. SongProcessor
+# converts the WAV to an OGG for DesktopGL (the platform's MediaPlayer decodes
+# OGG only), so PingPong/MonoGL registers it as a Pipeline source.
+
+#begin ../../../assets/space_music_pack/menu.wav
+/importer:WavImporter
+/processor:SongProcessor
+/build:../../../assets/space_music_pack/menu.wav;space_music_pack/menu

@@ -25,7 +25,7 @@ let init ctx : struct (Model * Cmd<_>) =
     Connected = false
     PeerId = 0<peerId>
   },
-  Cmd.none
+  Audio.playMusic ctx "menu"
 
 let update env msg model : struct (Model * Cmd<_>) =
   match msg with
@@ -156,8 +156,15 @@ let main _args =
 
   let env = { Network = transport }
 
+  // The menu track loops from the first frame (the connection wait included).
+  let bank: RaylibProgram.BankEntry list = [
+    RaylibProgram.BankEntry.Music("menu", "assets/space_music_pack/menu.wav")
+  ]
+
   let program =
     Program.mkProgram init (update env)
+    |> Program.withAssetsBasePath AppContext.BaseDirectory
+    |> RaylibProgram.withBank bank
     |> Program.withSubscription(subscribe transport getHandshake)
     |> Program.withInput
     |> Program.withConfig(fun cfg -> {

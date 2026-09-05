@@ -23,7 +23,6 @@ let loadAssets(ctx: GameContext) : SpriteAssets =
   let playerTex = assets.Texture "Spritesheets/Characters"
   let tileTex = assets.Texture "Spritesheets/Tiles"
   let font = assets.Font "Fonts/Monogram"
-  let jumpSound = assets.Sound "Sounds/Jump"
   let coinNormalMap = assets.Texture "NormalMap"
 
   let gd = MonoGameGameContext.getGraphicsDevice ctx
@@ -98,7 +97,6 @@ let loadAssets(ctx: GameContext) : SpriteAssets =
     ParticleTexture = particleTex
     CoinNormalMap = coinNormalMap
     Font = font
-    JumpSound = jumpSound
   }
 
 let inputMap =
@@ -149,15 +147,27 @@ let init(ctx: GameContext) : struct (Model * Cmd<_>) =
       if x >= 0 then
         model.Chunks.Chunks[struct (x, y)] <- WorldGen.generateChunk x y seed
 
-  model, Cmd.none
+  model, Audio.playMusic ctx "slow-travel"
 
 let subscribe (ctx: GameContext) (model: Model) =
   InputMapper.subscribeStatic model.InputMap InputMapped ctx
 
 [<EntryPoint; STAThread>]
 let main _ =
+  // The jump sound rides the framework audio service: the bank loads the
+  // pipeline asset under the "jump" key before init runs, and the update
+  // plays it with the Audio.play command when physics raises the jump event.
+  let bank: MonoGameProgram.BankEntry list = [
+    MonoGameProgram.BankEntry.Sound("jump", Pipeline "Sounds/Jump")
+
+    MonoGameProgram.BankEntry.Music(
+      "slow-travel",
+      Pipeline "space_music_pack/slow-travel"
+    )
+  ]
+
   let program =
-    Program.mkProgram init update
+    Program.mkProgramCtx init update
     |> Program.withConfig(fun cfg -> {
       cfg with
           Width = Constants.viewportWidth
@@ -169,6 +179,7 @@ let main _ =
     |> Program.withTick Msg.Tick
     |> Program.withRenderer(fun () -> Renderer2D.create View.view)
     |> MonoGameProgram.ofProgram
+    |> MonoGameProgram.withBank bank
 
   let game = new MiboGame<Model, Msg>(program)
   game.Content.RootDirectory <- "Content"

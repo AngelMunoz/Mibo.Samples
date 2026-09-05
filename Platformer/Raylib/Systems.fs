@@ -49,7 +49,11 @@ let private uploadMinimapTexture
 // Root Update (router — dispatches to shared sub-systems + backend logic)
 // -------------------------------------------------------------
 
-let update (msg: Msg) (model: Model) : struct (Model * Cmd<Msg>) =
+let update
+  (ctx: GameContext)
+  (msg: Msg)
+  (model: Model)
+  : struct (Model * Cmd<Msg>) =
   match msg with
   | InputMapped actions ->
     model.Actions <- actions
@@ -83,14 +87,17 @@ let update (msg: Msg) (model: Model) : struct (Model * Cmd<Msg>) =
         (Platformer.Particles.ParticleMsg.Tick dt)
         model.ParticleState
 
-    // Handle jump event from physics
+    // Handle jump event from physics. The sound is an MVU command over the
+    // framework audio service (bank key "jump") — no backend audio types here.
+    let mutable jumpCmd = Cmd.none
+
     if model.Physics.JumpTriggered then
       model.ParticleState <-
         Platformer.Particles.update
           (Platformer.Particles.ParticleMsg.SpawnConfetti model.Physics.Position)
           model.ParticleState
 
-      Raylib.PlaySound(model.Assets.JumpSound)
+      jumpCmd <- Audio.play ctx "jump"
       model.Physics.JumpTriggered <- false
 
     // Day/Night
@@ -147,6 +154,7 @@ let update (msg: Msg) (model: Model) : struct (Model * Cmd<Msg>) =
 
     model,
     Cmd.batch [
+      jumpCmd
       ccmd
       |> Cmd.map(fun msg ->
         match msg with

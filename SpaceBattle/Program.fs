@@ -182,7 +182,9 @@ let init(ctx: GameContext) : struct (Model * Cmd<Msg>) =
       VPHeight = vpH
     )
 
-  model, Cmd.none
+  // The menu track loops over the pre-start screen; the StartGame arm
+  // switches to the wreckage track once the match begins.
+  model, Audio.playMusic ctx "menu"
 
 let private disposeOldResources(model: Model) =
   if box model.Effects <> null then
@@ -275,7 +277,11 @@ let private buildRangeQuery(model: Model) =
 // Update
 // ─────────────────────────────────────────────────────────────
 
-let update (msg: Msg) (model: Model) : struct (Model * Cmd<Msg>) =
+let update
+  (ctx: GameContext)
+  (msg: Msg)
+  (model: Model)
+  : struct (Model * Cmd<Msg>) =
   match model.State with
   | PreStartScreen ->
     match msg with
@@ -290,15 +296,25 @@ let update (msg: Msg) (model: Model) : struct (Model * Cmd<Msg>) =
         if enabledCount >= 2 then
           let model = startGame(model.PreStartState, model)
 
+          // The match begins: swap the menu track for the wreckage one.
+          let music = Audio.playMusic ctx "wreckage"
+
           if isAITurn model then
             model,
-            Cmd.ofMsg(
-              AnimationMsg(
-                AnimationMsg.StartTransition(model.Turn.CurrentFaction, 2.0f)
+            Cmd.batch [
+              music
+              Cmd.ofMsg(
+                AnimationMsg(
+                  AnimationMsg.StartTransition(model.Turn.CurrentFaction, 2.0f)
+                )
               )
-            )
+            ]
           else
-            model, executeVisibility model (resolveVisibility model GameStart)
+            model,
+            Cmd.batch [
+              music
+              executeVisibility model (resolveVisibility model GameStart)
+            ]
         else
           model, Cmd.none
       | _ ->
@@ -319,7 +335,7 @@ let update (msg: Msg) (model: Model) : struct (Model * Cmd<Msg>) =
     | ValueSome _ ->
       match inputMsg with
       | InputChanged inputs when inputs.Started.Contains Restart ->
-        resetGameState model, Cmd.none
+        resetGameState model, Cmd.batch [ Audio.playMusic ctx "menu" ]
       | _ -> model, Cmd.none
     | ValueNone ->
 
@@ -776,7 +792,8 @@ let update (msg: Msg) (model: Model) : struct (Model * Cmd<Msg>) =
     model.Cam <- Camera.update cameraMsg model.Cam
     model, Cmd.none
   | PreStartMsg _ -> model, Cmd.none
-  | RestartGame -> resetGameState model, Cmd.none
+  | RestartGame ->
+    resetGameState model, Cmd.batch [ Audio.playMusic ctx "menu" ]
 
 
 module ModelDebugoverlay =
@@ -1151,15 +1168,27 @@ let subscriptions (ctx: GameContext) (model: Model) : Sub<Msg> =
 
 [<EntryPoint>]
 let main _ =
+  // The music channel: menu over the pre-start screen, wreckage once the
+  // match begins (see the update's StartGame / restart paths).
+  let bank: RaylibProgram.BankEntry list = [
+    RaylibProgram.BankEntry.Music("menu", "assets/space_music_pack/menu.wav")
+
+    RaylibProgram.BankEntry.Music(
+      "wreckage",
+      "assets/space_music_pack/in-the-wreckage.wav"
+    )
+  ]
+
   let program =
-    Program.mkProgram init update
+    Program.mkProgramCtx init update
+    |> Program.withAssetsBasePath AppContext.BaseDirectory
+    |> RaylibProgram.withBank bank
     |> Program.withConfig(fun cfg -> {
       cfg with
           Width = int Constants.VPWidth
           Height = int Constants.VPHeight
           Title = "Mibo Raylib 2D Game"
     })
-    |> Program.withAssetsBasePath AppContext.BaseDirectory
     |> Program.withInput
     |> Program.withSubscription subscriptions
     |> Program.withTick Tick

@@ -4,6 +4,7 @@ open System
 open System.Collections.Generic
 open System.Numerics
 open Mibo.Adaptive
+open Mibo.Audio
 open Mibo.Elmish
 open Mibo.Input
 open Mibo.Layout
@@ -38,6 +39,24 @@ open Defli3D.State.Systems.Camera
 // ─────────────────────────────────────────────────────────────
 
 module Application =
+
+  /// The sound bank keys — game vocabulary the windowed frontends register in
+  /// their backend bank (raylib: loose files; MonoGame: pipeline assets).
+  /// Playing a key with no registered sound is a silent no-op, so the headless
+  /// runs and tests need no audio device.
+  module AudioKeys =
+    let shoot = "shoot"
+    let cannonFire = "cannon-fire"
+    let impact = "impact"
+    let enemyDown = "enemy-down"
+    let baseHit = "base-hit"
+    let waveStart = "wave-start"
+    let waveClear = "wave-clear"
+    let place = "place"
+    let upgrade = "upgrade"
+    // The single music channel: calm building phase <-> battle during waves.
+    let musicCalm = "calm"
+    let musicBattle = "battle"
 
   /// The grid cell CONTAINING a world position (floor of world/size) —
   /// the tile under the cursor. Mibo's Grid2DSpatial.worldToCell rounds
@@ -406,14 +425,23 @@ module Application =
   // step from what is held RIGHT NOW — synonym bindings (A and Left
   // both map PanLeft) count once, and no missed edge can leave the pan
   // stuck (edge arithmetic add/subtract could not guarantee that).
-  let private handleActions(cell: StateCell) : unit =
+  let private handleActions (ctx: AdaptiveContext) (cell: StateCell) : unit =
     let state = cell.Value
     let actions = state.Actions |> AVal.getValue
     let mutable restart = false
 
     for a in actions.Started do
       match a with
-      | GameAction.StartNextWave -> startNextWave state
+      // The wave-start sound rides the same drain. The GameOver read
+      // mirrors the Restart action's: the play posts only when the wave
+      // can actually start (startNextWave re-checks internally).
+      | GameAction.StartNextWave ->
+        if not(AVal.getValue state.Economy.GameOver) then
+          startNextWave state
+          ctx.Audio.play(AudioKeys.waveStart)
+          // The music switches to the battle track while the wave runs;
+          // WaveCleared switches back to the calm track.
+          ctx.Audio.playMusic(AudioKeys.musicBattle)
       | GameAction.SelectTower slot ->
         if slot >= 0 && slot < TowerDefs.slots.Length then
           selectTower state TowerDefs.slots[slot]
@@ -439,6 +467,10 @@ module Application =
     if restart && AVal.getValue state.Economy.GameOver then
       State.reset state
 
+      // A game over can leave the battle track playing; the fresh run
+      // starts on the calm track again.
+      ctx.Audio.playMusic(AudioKeys.musicCalm)
+
   // ── The adaptive program ─────────────────────────────────────────
 
   /// Builds the graph: the frame force reads the state's projections
@@ -447,8 +479,12 @@ module Application =
   /// Clock root, written below in update).
   let inline init
     (cell: StateCell)
-    (_ctx: AdaptiveFrameContext)
+    (ctx: AdaptiveFrameContext)
     : AdaptiveInit<Frame.RenderFrame> =
+    // The calm track loops from the startup drain; the wave lifecycle
+    // switches it (battle while a wave runs — see the update event scan).
+    ctx.Audio.playMusic(AudioKeys.musicCalm)
+
     AdaptiveInit.ofFrameBuilder(Frame.force(fun () -> cell.Value))
 
   /// The Update phase entry: runs the sim for the current state and
@@ -460,7 +496,7 @@ module Application =
     : unit =
     // Semantic actions first (they used to run in the pre-step drain):
     // one-shots, pan edges, restart.
-    handleActions cell
+    handleActions ctx cell
 
     let state = cell.Value
     // The draw side's clock — written every step, paused included, so
@@ -526,6 +562,42 @@ module Application =
         handleProjectileEvents ctx.Intents.post state projectileEvents)
 
       ctx.Intents.post(fun () -> handleZoneApplies state zoneApplies)
+
+      // Audio reactions: the same events translated into bank keys. The
+      // adaptive audio intents resolve IAudio at drain time and no-op when
+      // no service is registered (headless runs, tests). The mix is built
+      // around the two sounds that matter — shots and deaths: cannon fire
+      // gets its own launch boom, the death explosion is the loudest hit,
+      // and ordinary impacts are a small, quiet tick.
+      for ev in enemyEvents do
+        match ev with
+        | Enemies.Killed _ ->
+          ctx.Audio.playWith(AudioKeys.enemyDown, Voice.ofVolume 0.8f)
+        | Enemies.ReachedBase _ -> ctx.Audio.play(AudioKeys.baseHit)
+
+      for ev in waveEvents do
+        match ev with
+        | Waves.WaveStarted _ -> ()
+        // WaveStarted plays from the action handler above, where the
+        // player's action starts the wave.
+        | Waves.WaveCleared ->
+          ctx.Audio.play(AudioKeys.waveClear)
+          // Back to the calm building track between waves.
+          ctx.Audio.playMusic(AudioKeys.musicCalm)
+
+      for ev in towerEvents do
+        match ev with
+        | Towers.Fired shot when shot.Warhead.ImpactRadius > 0f ->
+          // A cannon ball leaves the barrel: the launch boom.
+          ctx.Audio.playWith(AudioKeys.cannonFire, Voice.ofVolume 0.5f)
+        | Towers.Fired _ ->
+          ctx.Audio.playWith(AudioKeys.shoot, Voice.ofVolume 0.4f)
+
+      for ev in projectileEvents do
+        match ev with
+        | Projectiles.Impact _ ->
+          // Every hit: a small tick, far quieter than the booms.
+          ctx.Audio.playWith(AudioKeys.impact, Voice.ofVolume 0.3f)
 
   /// The adaptive program: init builds the frame force and the
   /// subscription projection over the current state (boot runs host wiring

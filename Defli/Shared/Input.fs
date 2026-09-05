@@ -2,6 +2,7 @@ namespace Defli
 
 open System.Numerics
 open Mibo.Adaptive
+open Mibo.Audio
 open Mibo.Elmish
 open Mibo.Input
 open Defli.State
@@ -96,16 +97,29 @@ module Input =
 
   let private handleKeyboard
     (post: (unit -> unit) -> unit)
+    (frameCtx: AdaptiveFrameContext)
     (cell: StateCell)
     (shell: Shell)
     (delta: KeyboardDelta)
     : unit =
+    let audio = frameCtx.Audio
+
     for code in delta.Pressed do
       match Inputs.actionOfKey code with
       | ValueSome action ->
         match action with
         | GameAction.StartNextWave ->
-          post(fun () -> Application.startNextWave cell.Value)
+          post(fun () ->
+            // The wave-start sound rides the same drain. The GameOver read
+            // mirrors the Restart action's: the play posts only when the
+            // wave can actually start (startNextWave re-checks internally).
+            // The music switches to the battle track while the wave runs;
+            // WaveCleared switches back to the calm track.
+            if not(AVal.getValue cell.Value.Economy.GameOver) then
+              Application.startNextWave cell.Value
+              audio.play(Application.AudioKeys.waveStart)
+
+              audio.playMusic(Application.AudioKeys.musicBattle))
         | GameAction.ToggleDiagnostics ->
           shell.Diag.Visible <- not shell.Diag.Visible
         | GameAction.SelectArrow ->
@@ -120,11 +134,14 @@ module Input =
           // Restart stays in the game logic: swap the state inside an
           // intent. The frame force reads the cell at force time, so
           // the next force re-binds the graph to the fresh state — no
-          // window/runner re-create.
+          // window/runner re-create. The music returns to the calm track
+          // (a game over can leave the battle track playing).
           if AVal.getValue cell.Value.Economy.GameOver then
             post(fun () ->
               cell.Value <- State.init cell.Value.Config
-              shell.MiddleDown <- false)
+              shell.MiddleDown <- false
+
+              audio.playMusic(Application.AudioKeys.musicCalm))
         | GameAction.PanLeft
         | GameAction.PanRight
         | GameAction.PanUp
@@ -189,16 +206,26 @@ module Input =
       post(fun () ->
         Camera.handle (CameraMsg.Pan delta.PositionDelta) cell.Value.Camera)
 
-    // Clicks → place / upgrade (Application validates everything).
+    // Clicks → place / upgrade (Application validates everything). The
+    // place/upgrade sounds ride the same posted intent — the play runs in the
+    // drain only when the action succeeded (a pop, and a higher-pitched pop
+    // for the upgrade, via the per-play Voice pitch).
     if delta.Buttons.Pressed |> Array.contains MouseButtonCode.Left then
       hoverCell state viewport delta.Position
       |> ValueOption.iter(fun c ->
-        post(fun () -> Application.placeTower cell.Value c |> ignore))
+        post(fun () ->
+          if Application.placeTower cell.Value c then
+            ctx.Audio.play(Application.AudioKeys.place)))
 
     if delta.Buttons.Pressed |> Array.contains MouseButtonCode.Right then
       hoverCell state viewport delta.Position
       |> ValueOption.iter(fun c ->
-        post(fun () -> Application.upgradeTower cell.Value c |> ignore))
+        post(fun () ->
+          if Application.upgradeTower cell.Value c then
+            ctx.Audio.playWith(
+              Application.AudioKeys.upgrade,
+              { Voice.center with Pitch = 1.3f }
+            )))
 
   /// The two input subscriptions (keyboard + mouse) the windowed
   /// frontends wire via
@@ -218,7 +245,7 @@ module Input =
       AdaptiveSub.ofObservable
         (SubId.ofString "keyboard")
         input.KeyboardDelta
-        (fun posting -> handleKeyboard posting.Post cell shell)
+        (fun posting -> handleKeyboard posting.Post frameCtx cell shell)
 
       SubId.ofString "mouse",
       AdaptiveSub.ofObservable

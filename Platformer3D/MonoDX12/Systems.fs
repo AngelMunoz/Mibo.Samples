@@ -89,7 +89,11 @@ let mutable private mushroomLightFrameCounter = 0
 // Root Update (router)
 // -------------------------------------------------------------
 
-let update (msg: Msg) (model: Model) : struct (Model * Cmd<Msg>) =
+let update
+  (ctx: GameContext)
+  (msg: Msg)
+  (model: Model)
+  : struct (Model * Cmd<Msg>) =
   match msg with
   | InputMapped actions ->
     model.Actions <- actions
@@ -124,7 +128,10 @@ let update (msg: Msg) (model: Model) : struct (Model * Cmd<Msg>) =
         (Platformer3D.Particles.ParticleMsg.Tick dt)
         model.Particles
 
-    // Handle jump event
+    // Handle jump event. The sound is an MVU command over the framework
+    // audio service (bank key "jump") — no backend audio types here.
+    let mutable jumpCmd = Cmd.none
+
     if model.Physics.JumpTriggered then
       model.Particles <-
         Platformer3D.Particles.update
@@ -132,9 +139,7 @@ let update (msg: Msg) (model: Model) : struct (Model * Cmd<Msg>) =
             model.Physics.Position)
           model.Particles
 
-      if not(isNull model.JumpSound) then
-        model.JumpSound.Play() |> ignore
-
+      jumpCmd <- Audio.play ctx "jump"
       model.Physics.JumpTriggered <- false
 
     // Chunks
@@ -211,5 +216,5 @@ let update (msg: Msg) (model: Model) : struct (Model * Cmd<Msg>) =
         match msg with
         | Platformer3D.MinimapSystem.MinimapReady(c, w, h) ->
           MinimapReady(c, w, h)),
-      mlightCmd
+      Cmd.batch [| jumpCmd; mlightCmd |]
     )

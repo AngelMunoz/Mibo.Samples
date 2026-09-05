@@ -162,9 +162,9 @@ module Systems =
   /// (audio one-shot, smoke puff spawn, muzzle flash, score).
   let translateWeaponEvent(event: WeaponEvent) : Cmd<Msg> =
     match event with
-    | WeaponEvent.Fired(path, muzzlePos, dir, hitPos, right) ->
+    | WeaponEvent.Fired(key, muzzlePos, dir, hitPos, right) ->
       Cmd.batch [|
-        Cmd.ofMsg(Msg.AudioMsg(AudioMsg.OneShot(path, muzzlePos, false)))
+        Cmd.ofMsg(Msg.AudioMsg(AudioMsg.OneShot(key, muzzlePos, false)))
         Cmd.ofMsg(Msg.EffectMsg(EffectMsg.SpawnSmoke(muzzlePos, dir)))
         Cmd.ofMsg(Msg.EffectMsg EffectMsg.MuzzleFlash)
         Cmd.ofMsg(Msg.EffectMsg(EffectMsg.SpawnBullet(muzzlePos, hitPos, dir)))
@@ -176,13 +176,13 @@ module Systems =
         // sorted alpha-blend pass via a Material3D with Opacity < 1.
         Cmd.ofMsg(Msg.EffectMsg(EffectMsg.SpawnDecal(hitPos, -dir)))
       |]
-    | WeaponEvent.ReloadStarted path ->
+    | WeaponEvent.ReloadStarted key ->
       // Non-positional: backend ignores position, plays at full volume centered.
-      Cmd.ofMsg(Msg.AudioMsg(AudioMsg.OneShot(path, Vector3.Zero, false)))
+      Cmd.ofMsg(Msg.AudioMsg(AudioMsg.OneShot(key, Vector3.Zero, false)))
     | WeaponEvent.EnemyKilled enemyPos ->
       Cmd.batch [|
         Cmd.ofMsg(
-          Msg.AudioMsg(AudioMsg.OneShot(Assets.injured, enemyPos, true))
+          Msg.AudioMsg(AudioMsg.OneShot(Assets.Keys.injured, enemyPos, true))
         )
         Cmd.ofMsg(Msg.PlayerMsg(PlayerMsg.AddScore 100))
       |]
@@ -197,19 +197,23 @@ module Systems =
         Cmd.ofMsg(Msg.PlayerMsg(PlayerMsg.TakeDamage amount))
         // Non-positional: gasp plays at full volume centered (player's own pain).
         Cmd.ofMsg(
-          Msg.AudioMsg(AudioMsg.OneShot(Assets.gasp, Vector3.Zero, false))
+          Msg.AudioMsg(AudioMsg.OneShot(Assets.Keys.gasp, Vector3.Zero, false))
         )
         Cmd.ofMsg(Msg.EffectMsg EffectMsg.TriggerHitFlash)
       |]
     | EnemyEvent.EnemyKilled enemyPos ->
-      Cmd.ofMsg(Msg.AudioMsg(AudioMsg.OneShot(Assets.injured, enemyPos, true)))
+      Cmd.ofMsg(
+        Msg.AudioMsg(AudioMsg.OneShot(Assets.Keys.injured, enemyPos, true))
+      )
     | EnemyEvent.AttackBite enemyPos ->
-      Cmd.ofMsg(Msg.AudioMsg(AudioMsg.OneShot(Assets.bite, enemyPos, true)))
-    | EnemyEvent.Robotic(path, enemyPos) ->
-      Cmd.ofMsg(Msg.AudioMsg(AudioMsg.OneShot(path, enemyPos, true)))
+      Cmd.ofMsg(
+        Msg.AudioMsg(AudioMsg.OneShot(Assets.Keys.bite, enemyPos, true))
+      )
+    | EnemyEvent.Robotic(key, enemyPos) ->
+      Cmd.ofMsg(Msg.AudioMsg(AudioMsg.OneShot(key, enemyPos, true)))
     | EnemyEvent.ChildLaugh enemyPos ->
       Cmd.ofMsg(
-        Msg.AudioMsg(AudioMsg.OneShot(Assets.childLaugh, enemyPos, true))
+        Msg.AudioMsg(AudioMsg.OneShot(Assets.Keys.childLaugh, enemyPos, true))
       )
 
   /// Translates a pickup event into cross-system Cmd (player heal or weapon

@@ -3829,3 +3829,8 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:TextureFormat=Compressed
 /build:../../../assets/kenney_blaster-kit/Models/Textures/colormap.png;assets/kenney_blaster-kit/Models/Textures/colormap_0
+
+#begin ../../../assets/space_music_pack/battle.wav
+/importer:WavImporter
+/processor:SongProcessor
+/build:../../../assets/space_music_pack/battle.wav;space_music_pack/battle

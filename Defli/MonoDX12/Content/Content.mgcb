@@ -66,3 +66,58 @@
 /processor:EffectProcessor
 /processorParam:DebugMode=Auto
 /build:../../../assets/shaders/Aura.fx;Shaders/Aura
+
+# The sound bank, built from the repo-root shared assets dir. The /build
+# asset names are Application.AudioKeys' sources, registered in
+# Defli/MonoDX12/Program.fs through the framework audio service.
+
+#begin ../../../assets/gun_sounds/7.62x39/762x39 Single MP3.mp3
+/importer:Mp3Importer
+/processor:SoundEffectProcessor
+/build:../../../assets/gun_sounds/7.62x39/762x39 Single MP3.mp3;gun_sounds/7.62x39/762x39 Single MP3
+
+#begin ../../../assets/explosions/Medium_Explosion_1.ogg
+/importer:OggImporter
+/processor:SoundEffectProcessor
+/build:../../../assets/explosions/Medium_Explosion_1.ogg;explosions/Medium_Explosion_1
+
+#begin ../../../assets/horror_sfx/Scream_Robotic.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:../../../assets/horror_sfx/Scream_Robotic.wav;horror_sfx/Scream_Robotic
+
+#begin ../../../assets/space_music_pack/fx/start-level.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:../../../assets/space_music_pack/fx/start-level.wav;space_music_pack/fx/start-level
+
+#begin ../../../assets/horror_sfx/Child laugh.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/build:../../../assets/horror_sfx/Child laugh.wav;horror_sfx/Child laugh
+
+#begin ../../../assets/sfx_jump.ogg
+/importer:OggImporter
+/processor:SoundEffectProcessor
+/build:../../../assets/sfx_jump.ogg;sfx_jump
+
+# The music channel: calm building phase ↔ battle during waves (Song assets).
+#begin ../../../assets/space_music_pack/menu.wav
+/importer:WavImporter
+/processor:SongProcessor
+/build:../../../assets/space_music_pack/menu.wav;space_music_pack/menu
+
+#begin ../../../assets/space_music_pack/battle.wav
+/importer:WavImporter
+/processor:SongProcessor
+/build:../../../assets/space_music_pack/battle.wav;space_music_pack/battle
+
+#begin ../../../assets/explosions/Medium_Explosion_2.ogg
+/importer:OggImporter
+/processor:SoundEffectProcessor
+/build:../../../assets/explosions/Medium_Explosion_2.ogg;explosions/Medium_Explosion_2
+
+#begin ../../../assets/explosions/Small_Explosion.ogg
+/importer:OggImporter
+/processor:SoundEffectProcessor
+/build:../../../assets/explosions/Small_Explosion.ogg;explosions/Small_Explosion

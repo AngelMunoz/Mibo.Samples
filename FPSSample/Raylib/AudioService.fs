@@ -2,38 +2,25 @@ namespace FPSSample.Raylib
 
 open System
 open System.Numerics
-open System.Runtime.CompilerServices
-open Raylib_cs
 open Mibo.Elmish
+open Mibo.Audio
 open FPSSample
 open FPSSample.Types
 
-[<Extension>]
-type private CBoolExtensions =
-  [<Extension>]
-  static member inline AsBool(c: CBool) : bool = CBool.op_Implicit c
-
 /// <summary>
-/// Raylib-specific audio service. Manages one-shot sounds (fire, reload, SFX)
-/// via <c>Consume</c> and looping footstep instances via <c>Update</c>.
-/// Raylib has no built-in 3D audio, so positional sounds use manual
-/// inverse-distance attenuation + stereo pan computed from the player's
-/// camera right vector. Loop intent (player/enemy footsteps) is derived from
-/// the snapshot each frame and applied idempotently against
-/// <c>Raylib.IsSoundPlaying</c> — no audio flags in Elmish.
+/// Raylib audio adapter over the framework's <c>Mibo.Audio.IAudio</c> service.
+/// The sound bank (keys → files) is registered by the program builder
+/// (<c>RaylibProgram.withBank</c>); this service translates game intent —
+/// one-shot <c>AudioMsg</c> events and snapshot-derived footstep loops — into
+/// keys and <c>Voice</c> values. Raylib has no listener model, so positional
+/// sounds use manual inverse-distance attenuation + stereo pan from the
+/// player's camera right vector, folded into the per-play voice. Loop intent
+/// (player/enemy footsteps) is derived from the snapshot each frame and
+/// re-triggered on the clip's length — no audio flags in Elmish.
 /// </summary>
 type AudioService() =
   let mutable ctx = Unchecked.defaultof<GameContext>
   let mutable initialized = false
-
-  // Looping footstep state (owned by the service, not the model).
-  let mutable playerFootstep: Sound = Unchecked.defaultof<_>
-  let mutable playerFootstepLoaded = false
-  let mutable playerFootstepPlaying = false
-
-  let mutable enemyFootstep: Sound = Unchecked.defaultof<_>
-  let mutable enemyFootstepLoaded = false
-  let mutable enemyFootstepPlaying = false
 
   // Cached player frame for Consume (positional one-shots). Consume may be
   // called from the Elmish message queue outside of Update; these hold the most
@@ -42,43 +29,52 @@ type AudioService() =
   let mutable cachedPlayerPos = Vector3.Zero
   let mutable cachedRight = Vector3.UnitX
 
-  // Inverse-distance attenuation: full volume at minDist, gentle fade to 0.
-  // This mirrors the curve OpenAL/MonoGame use natively.
-  let distVol(dist: float32) : float32 =
+  // Footstep re-trigger countdowns (0 = fire on the next Update while the
+  // intent holds). The portable IAudio contract has no looping sfx and no
+  // per-key stop, so a "loop" is the clip re-triggered at its own length;
+  // resetting to 0 when the intent drops keeps the next step immediate.
+  let mutable playerStepTimer = 0.0f
+  let mutable enemyStepTimer = 0.0f
+
+  let audioService() : IAudio voption =
+    if initialized then
+      GameContext.tryGetService<IAudio> ctx
+    else
+      ValueNone
+
+  /// Inverse-distance attenuation + camera-relative pan, folded into a Voice:
+  /// full volume at minDist, gentle fade to 0 at maxDist. This mirrors the
+  /// curve OpenAL/MonoGame apply natively on their listener models.
+  let voiceFor(toEmitter: Vector3) : Voice =
+    let dist = toEmitter.Length()
     let minDist = 3.0f
     let maxDist = 30.0f
 
-    if dist <= minDist then 0.85f
-    elif dist >= maxDist then 0.0f
-    else 0.85f * minDist / dist
+    let volume =
+      if dist <= minDist then 0.85f
+      elif dist >= maxDist then 0.0f
+      else 0.85f * minDist / dist
 
-  let panFor (toEmitter: Vector3) (right: Vector3) : float32 =
-    let dist = toEmitter.Length()
+    let pan =
+      if dist > 0.01f then
+        Math.Clamp(
+          Vector3.Dot(Vector3.Normalize(toEmitter), cachedRight),
+          -1.0f,
+          1.0f
+        )
+      else
+        0.0f
 
-    if dist > 0.01f then
-      Math.Clamp(Vector3.Dot(Vector3.Normalize(toEmitter), right), -1.0f, 1.0f)
-    else
-      0.0f
+    Voice.at volume pan
 
   // ── Play a one-shot with optional positional attenuation ──
-  let playOneShot (assets: IAssets) (msg: AudioMsg) =
+  let playOneShot (audio: IAudio) (msg: AudioMsg) =
     match msg with
-    | AudioMsg.OneShot(path, position, isPositional) ->
-      let snd = assets.Sound path
-
+    | AudioMsg.OneShot(key, position, isPositional) ->
       if isPositional then
-        let toEmitter = position - cachedPlayerPos
-        let dist = toEmitter.Length()
-        let vol = distVol dist
-        let pan = panFor toEmitter cachedRight
-
-        Raylib.SetSoundVolume(snd, vol)
-        Raylib.SetSoundPan(snd, (pan + 1.0f) * 0.5f)
-        Raylib.PlaySound(snd)
+        audio.Play(key, voiceFor(position - cachedPlayerPos))
       else
-        Raylib.SetSoundVolume(snd, 1.0f)
-        Raylib.SetSoundPan(snd, 0.5f)
-        Raylib.PlaySound(snd)
+        audio.Play key
 
   interface IAudioService with
     member _.Init(gameCtx: GameContext) : unit =
@@ -86,87 +82,61 @@ type AudioService() =
       initialized <- true
 
     member _.Consume(audioMsg: AudioMsg) : unit =
-      if not initialized then
-        ()
+      match audioService() with
+      | ValueSome audio -> playOneShot audio audioMsg
+      | ValueNone -> ()
 
-      let assets = GameContext.getService<IAssets> ctx
-      playOneShot assets audioMsg
+    member _.Update(dt: float32, snapshot: Snapshot) : unit =
+      match audioService() with
+      | ValueNone -> ()
+      | ValueSome audio ->
+        let playerPos = snapshot.Player.Position
+        let right = ViewMath.cameraRight snapshot.Player.Yaw
 
-    member _.Update(_: float32, snapshot: Snapshot) : unit =
-      if not initialized then
-        ()
+        // Cache for Consume (positional one-shots need this frame's player info).
+        cachedPlayerPos <- playerPos
+        cachedRight <- right
 
-      let assets = GameContext.getService<IAssets> ctx
-      let playerPos = snapshot.Player.Position
-      let right = ViewMath.cameraRight snapshot.Player.Yaw
+        // ── Looping player footsteps (derived from snapshot velocity) ──
+        let horizontalSpeed =
+          MathF.Sqrt(
+            snapshot.Player.Velocity.X * snapshot.Player.Velocity.X
+            + snapshot.Player.Velocity.Z * snapshot.Player.Velocity.Z
+          )
 
-      // Cache for Consume (positional one-shots need this frame's player info).
-      cachedPlayerPos <- playerPos
-      cachedRight <- right
+        let isWalking = snapshot.Player.IsGrounded && horizontalSpeed > 0.5f
 
-      // ── Looping player footsteps (derived from snapshot velocity) ──
-      let horizontalSpeed =
-        MathF.Sqrt(
-          snapshot.Player.Velocity.X * snapshot.Player.Velocity.X
-          + snapshot.Player.Velocity.Z * snapshot.Player.Velocity.Z
-        )
+        if isWalking then
+          playerStepTimer <- playerStepTimer - dt
 
-      let isWalking = snapshot.Player.IsGrounded && horizontalSpeed > 0.5f
+          if playerStepTimer <= 0.0f then
+            audio.Play(Assets.Keys.footstepWalk, Voice.ofVolume 0.5f)
+            playerStepTimer <- Assets.footstepWalkInterval
+        else
+          playerStepTimer <- 0.0f
 
-      if not playerFootstepLoaded then
-        playerFootstep <- assets.Sound(Assets.footstepsWalking)
-        playerFootstepLoaded <- true
+        // ── Looping enemy footsteps (nearest chasing enemy, from snapshot) ──
+        let mutable nearestChaserPos = ValueNone
+        let mutable nearestDist = Single.MaxValue
 
-      if isWalking then
-        if
-          not playerFootstepPlaying
-          || not(Raylib.IsSoundPlaying(playerFootstep).AsBool())
-        then
-          Raylib.SetSoundVolume(playerFootstep, 0.5f)
-          Raylib.SetSoundPan(playerFootstep, 0.5f)
-          Raylib.PlaySound(playerFootstep)
-          playerFootstepPlaying <- true
-      elif playerFootstepPlaying then
-        Raylib.StopSound(playerFootstep)
-        playerFootstepPlaying <- false
+        for e in snapshot.Enemy.Enemies do
+          if e.State <> EnemyState.Dead && e.IsChasing then
+            let d = (e.Position - playerPos).Length()
 
-      // ── Looping enemy footsteps (nearest chasing enemy, from snapshot) ──
-      let mutable nearestChaserPos = ValueNone
-      let mutable nearestDist = Single.MaxValue
+            if d < nearestDist then
+              nearestDist <- d
+              nearestChaserPos <- ValueSome e.Position
 
-      for e in snapshot.Enemy.Enemies do
-        if e.State <> EnemyState.Dead && e.IsChasing then
-          let d = (e.Position - playerPos).Length()
+        match nearestChaserPos with
+        | ValueSome ePos ->
+          let voice = voiceFor(ePos - playerPos)
 
-          if d < nearestDist then
-            nearestDist <- d
-            nearestChaserPos <- ValueSome e.Position
+          if voice.Volume > 0.01f then
+            enemyStepTimer <- enemyStepTimer - dt
 
-      if not enemyFootstepLoaded then
-        enemyFootstep <- assets.Sound(Assets.footstepsRunning)
-        enemyFootstepLoaded <- true
-
-      match nearestChaserPos with
-      | ValueSome ePos ->
-        let toEmitter = ePos - playerPos
-        let dist = toEmitter.Length()
-        let vol = distVol dist
-        let pan = panFor toEmitter right
-
-        if vol > 0.01f then
-          Raylib.SetSoundVolume(enemyFootstep, vol)
-          Raylib.SetSoundPan(enemyFootstep, (pan + 1.0f) * 0.5f)
-
-          if
-            not enemyFootstepPlaying
-            || not(Raylib.IsSoundPlaying(enemyFootstep).AsBool())
-          then
-            Raylib.PlaySound(enemyFootstep)
-            enemyFootstepPlaying <- true
-        elif enemyFootstepPlaying then
-          Raylib.StopSound(enemyFootstep)
-          enemyFootstepPlaying <- false
-      | ValueNone ->
-        if enemyFootstepPlaying then
-          Raylib.StopSound(enemyFootstep)
-          enemyFootstepPlaying <- false
+            if enemyStepTimer <= 0.0f then
+              audio.Play(Assets.Keys.footstepRun, voice)
+              enemyStepTimer <- Assets.footstepRunInterval
+          else
+            enemyStepTimer <- 0.0f
+        | ValueNone -> enemyStepTimer <- 0.0f

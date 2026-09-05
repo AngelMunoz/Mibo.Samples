@@ -37,6 +37,14 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>assets\Fonts\%(RecursiveDir)%(Filename)%(Extension)</Link>
     </Content>
+    <Content Include="..\assets\space_music_pack\menu.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\space_music_pack\menu.wav</Link>
+    </Content>
+    <Content Include="..\assets\space_music_pack\in-the-wreckage.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\space_music_pack\in-the-wreckage.wav</Link>
+    </Content>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Mibo\src\Mibo.Raylib.Mvu\Mibo.Raylib.Mvu.fsproj" />

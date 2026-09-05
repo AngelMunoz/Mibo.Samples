@@ -53,7 +53,8 @@ module Game =
     let level = Level.LevelData.createDefault()
     let model = initModel level
     env.Animation.Init(ctx, model.Enemy.Enemies.Length)
-    struct (model, Cmd.none)
+    // The battle track loops as background music from the first frame.
+    struct (model, Audio.playMusic ctx "battle")
 
   /// Backend-neutral subscription for mouse look (PositionDelta → yaw/pitch).
   /// Each backend client batches this with its InputMapper subscription.

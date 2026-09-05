@@ -49,6 +49,70 @@ let main _ =
   let vfx = VfxView()
   let world = WorldView(shell, vfx)
 
+  // The sound bank: Application.AudioKeys → pipeline assets (built in
+  // Content/Content.mgcb). AdaptiveMonoGameProgram.withBank loads it before
+  // init runs; a missing pipeline asset throws there, where the mistake
+  // belongs.
+  let bank: AdaptiveMonoGameProgram.BankEntry list = [
+    AdaptiveMonoGameProgram.BankEntry.Sound(
+      Application.AudioKeys.shoot,
+      Pipeline "gun_sounds/7.62x39/762x39 Single MP3"
+    )
+
+    AdaptiveMonoGameProgram.BankEntry.Sound(
+      Application.AudioKeys.cannonFire,
+      Pipeline "explosions/Medium_Explosion_2"
+    )
+
+    AdaptiveMonoGameProgram.BankEntry.Sound(
+      Application.AudioKeys.impact,
+      Pipeline "explosions/Small_Explosion"
+    )
+
+    // The death explosion — the loudest hit in the mix.
+    AdaptiveMonoGameProgram.BankEntry.Sound(
+      Application.AudioKeys.enemyDown,
+      Pipeline "explosions/Medium_Explosion_1"
+    )
+
+    AdaptiveMonoGameProgram.BankEntry.Sound(
+      Application.AudioKeys.baseHit,
+      Pipeline "horror_sfx/Scream_Robotic"
+    )
+
+    AdaptiveMonoGameProgram.BankEntry.Sound(
+      Application.AudioKeys.waveStart,
+      Pipeline "space_music_pack/fx/start-level"
+    )
+
+    AdaptiveMonoGameProgram.BankEntry.Sound(
+      Application.AudioKeys.waveClear,
+      Pipeline "horror_sfx/Child laugh"
+    )
+
+    AdaptiveMonoGameProgram.BankEntry.Sound(
+      Application.AudioKeys.place,
+      Pipeline "sfx_jump"
+    )
+
+    AdaptiveMonoGameProgram.BankEntry.Sound(
+      Application.AudioKeys.upgrade,
+      Pipeline "sfx_jump"
+    )
+
+    // The single music channel: calm building phase <-> battle during waves
+    // (switched by the wave lifecycle; see Application).
+    AdaptiveMonoGameProgram.BankEntry.Music(
+      Application.AudioKeys.musicCalm,
+      Pipeline "space_music_pack/menu"
+    )
+
+    AdaptiveMonoGameProgram.BankEntry.Music(
+      Application.AudioKeys.musicBattle,
+      Pipeline "space_music_pack/battle"
+    )
+  ]
+
   let program =
     // Raw XNA wheel is ±120 per notch: the per-notch zoom base keeps
     // one notch = ×1.1, same as the raylib client.
@@ -83,6 +147,7 @@ let main _ =
       Renderer2D.createWith Renderer2DConfig.noClear (fun ctx frame buffer ->
         world.Hud(ctx, frame, buffer)))
     |> AdaptiveMonoGameProgram.ofProgram
+    |> AdaptiveMonoGameProgram.withBank bank
     |> AdaptiveMonoGameProgram.withConfig(fun (game, _) ->
       game.Content.RootDirectory <- "Content")
 

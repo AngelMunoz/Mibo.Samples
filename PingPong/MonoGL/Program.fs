@@ -25,7 +25,8 @@ let init ctx : struct (Model * Cmd<_>) =
     Connected = false
     PeerId = 0<peerId>
   },
-  Cmd.none
+  // The menu track loops from the first frame (the connection wait included).
+  Audio.playMusic ctx "menu"
 
 let update env msg model : struct (Model * Cmd<_>) =
   match msg with
@@ -156,8 +157,16 @@ let main _args =
 
   let env = { Network = transport }
 
+  // The menu track loops from the first frame. The pipeline converts the
+  // WAV to an OGG for DesktopGL (its MediaPlayer decodes OGG only), so the
+  // bank registers a Pipeline source — the guaranteed music path.
+  let bank: MonoGameProgram.BankEntry list = [
+    MonoGameProgram.BankEntry.Music("menu", Pipeline "space_music_pack/menu")
+  ]
+
   let program =
     Program.mkProgram init (update env)
+    |> Program.withAssetsBasePath AppContext.BaseDirectory
     |> Program.withSubscription(subscribe transport getHandshake)
     |> Program.withInput
     |> Program.withConfig(fun cfg -> {
@@ -169,6 +178,9 @@ let main _args =
     |> Program.withRenderer(fun () ->
       Renderer2D.create(fun c m b -> view c m.LocalState b))
     |> MonoGameProgram.ofProgram
+    |> MonoGameProgram.withBank bank
+    |> MonoGameProgram.withConfig(fun (game, _) ->
+      game.Content.RootDirectory <- "Content")
 
   transport.Connect("ws://localhost:5000")
 

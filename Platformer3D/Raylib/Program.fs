@@ -71,7 +71,6 @@ let init(ctx: GameContext) =
   Raylib.UnloadImage(particleImg)
 
   let assets = GameContext.getService<IAssets> ctx
-  model.JumpSound <- assets.Sound("assets/sfx_jump.ogg")
 
   // KayKit mannequin rig: one glb carries the meshes, the skeleton (including
   // the handslot.r/handslot.l attachment sockets), and the movement clips.
@@ -225,7 +224,7 @@ let init(ctx: GameContext) =
       model.Physics.CameraYaw
       model.Physics.CameraPitch
 
-  struct (model, Cmd.none)
+  struct (model, Audio.playMusic ctx "slow-travel")
 
 let subscribe (ctx: GameContext) (model: Model) =
   InputMapper.subscribeStatic model.InputMap InputMapped ctx
@@ -236,9 +235,22 @@ let overlayView (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
 
 [<EntryPoint>]
 let main _ =
+  // The jump sound rides the framework audio service: the bank loads the file
+  // under the "jump" key before init runs, and the update plays it with the
+  // Audio.play command when physics raises the jump event.
+  let bank: RaylibProgram.BankEntry list = [
+    RaylibProgram.BankEntry.Sound("jump", "assets/sfx_jump.ogg")
+
+    RaylibProgram.BankEntry.Music(
+      "slow-travel",
+      "assets/space_music_pack/slow-travel.wav"
+    )
+  ]
+
   let program =
-    Program.mkProgram init update
+    Program.mkProgramCtx init update
     |> Program.withAssetsBasePath AppContext.BaseDirectory
+    |> RaylibProgram.withBank bank
     |> Program.withConfig(fun cfg -> {
       cfg with
           Width = 1280

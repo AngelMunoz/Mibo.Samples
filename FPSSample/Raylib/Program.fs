@@ -13,8 +13,10 @@ open Mibo.Input
 
 // ── Composition Root ──────────────────────────────────────────────────────────
 // Create the env with backend-specific services, then wire init/update/subscribe.
+// Note: qualified names — the framework now registers its own
+// Mibo.Elmish.AudioService, which would shadow the sample's adapter type.
 let animService = View.EnemyAnimationService()
-let audioService = AudioService()
+let audioService = FPSSample.Raylib.AudioService()
 
 let env: Env = {
   Animation = animService
@@ -33,6 +35,32 @@ let subscribe =
   GameLoop.createSubscribe(fun ctx ->
     InputMapper.subscribeStatic Game.inputMap (fun a -> Msg.InputMapped a) ctx)
 
+// The sound bank: keys → loose files, loaded before init runs. Events and
+// audio messages carry only the keys (Assets.Keys); raylib resolves them from
+// disk, relative to the program's asset base path.
+let private bank: RaylibProgram.BankEntry list =
+  let inline sound key path =
+    RaylibProgram.BankEntry.Sound(key, path)
+
+  [
+    sound Assets.Keys.fire Assets.gunSoundSingle
+    sound Assets.Keys.reloadFast Assets.reloadFast
+    sound Assets.Keys.reloadRifle Assets.reloadRifle
+    sound Assets.Keys.reloadHeavy Assets.reloadHeavy
+    sound Assets.Keys.bite Assets.bite
+    sound Assets.Keys.childLaugh Assets.childLaugh
+    sound Assets.Keys.gasp Assets.gasp
+    sound Assets.Keys.injured Assets.injured
+    sound Assets.Keys.footstepWalk Assets.footstepsWalking
+    sound Assets.Keys.footstepRun Assets.footstepsRunning
+    sound Assets.Keys.robotic[0] Assets.roboticSounds[0]
+    sound Assets.Keys.robotic[1] Assets.roboticSounds[1]
+    sound Assets.Keys.robotic[2] Assets.roboticSounds[2]
+    sound Assets.Keys.robotic[3] Assets.roboticSounds[3]
+
+    RaylibProgram.BankEntry.Music("battle", Assets.spaceMusicBattle)
+  ]
+
 [<EntryPoint>]
 let main _ =
   Raylib.SetTraceLogLevel(TraceLogLevel.Warning)
@@ -40,6 +68,7 @@ let main _ =
   let program =
     Program.mkProgram init update
     |> Program.withAssetsBasePath(AppContext.BaseDirectory)
+    |> RaylibProgram.withBank bank
     |> Program.withConfig(fun cfg -> {
       cfg with
           Width = 1280

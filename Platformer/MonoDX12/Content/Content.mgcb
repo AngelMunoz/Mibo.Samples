@@ -45,3 +45,8 @@
 /importer:OggImporter
 /processor:SoundEffectProcessor
 /build:../../../assets/sfx_jump.ogg;Sounds/Jump
+
+#begin ../../../assets/space_music_pack/slow-travel.wav
+/importer:WavImporter
+/processor:SongProcessor
+/build:../../../assets/space_music_pack/slow-travel.wav;space_music_pack/slow-travel

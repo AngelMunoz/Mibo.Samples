@@ -195,7 +195,6 @@ let init(ctx: GameContext) =
   model.ParticleTexture <- particleTex
 
   let assets = GameContext.getService<IAssets> ctx
-  model.JumpSound <- assets.Sound "sfx_jump"
   model.DiagFont <- assets.Font "diagnostics"
 
   // KayKit mannequin rig: the renderable Model comes from the .mgcb content
@@ -345,7 +344,7 @@ let init(ctx: GameContext) =
       model.Physics.CameraYaw
       model.Physics.CameraPitch
 
-  struct (model, Cmd.none)
+  struct (model, Audio.playMusic ctx "slow-travel")
 
 let subscribe (ctx: GameContext) (model: Model) =
   InputMapper.subscribeStatic model.InputMap InputMapped ctx
@@ -356,8 +355,20 @@ let overlayView (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
 
 [<EntryPoint>]
 let main _ =
+  // The jump sound rides the framework audio service: the bank loads the
+  // pipeline asset under the "jump" key before init runs, and the update
+  // plays it with the Audio.play command when physics raises the jump event.
+  let bank: MonoGameProgram.BankEntry list = [
+    MonoGameProgram.BankEntry.Sound("jump", Pipeline "sfx_jump")
+
+    MonoGameProgram.BankEntry.Music(
+      "slow-travel",
+      Pipeline "space_music_pack/slow-travel"
+    )
+  ]
+
   let program =
-    Program.mkProgram init update
+    Program.mkProgramCtx init update
     |> Program.withConfig(fun cfg -> {
       cfg with
           Width = 1280
@@ -385,6 +396,7 @@ let main _ =
     |> Program.withRenderer(fun () ->
       Renderer2D.createWith Renderer2DConfig.noClear overlayView)
     |> MonoGameProgram.ofProgram
+    |> MonoGameProgram.withBank bank
 
   let game = new MiboGame<Model, Msg>(program)
   game.Content.RootDirectory <- "Content"

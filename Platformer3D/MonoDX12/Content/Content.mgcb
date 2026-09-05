@@ -2985,3 +2985,8 @@
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
 /build:../../../assets/kaykit_character_animations/Rig_Medium_MovementBasic.glb;kaykit_character_animations/Rig_Medium_MovementBasic
+
+#begin ../../../assets/space_music_pack/slow-travel.wav
+/importer:WavImporter
+/processor:SongProcessor
+/build:../../../assets/space_music_pack/slow-travel.wav;space_music_pack/slow-travel

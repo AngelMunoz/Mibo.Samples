@@ -20,8 +20,10 @@ open Mibo.Input
 module Program =
 
   // ── Composition Root ────────────────────────────────────────────────────────
+  // Qualified names — the framework now registers its own
+  // Mibo.Elmish.AudioService, which would shadow the sample's adapter type.
   let animService = EnemyAnimationService()
-  let audioService = AudioService()
+  let audioService = FPSSample.MonoShared.AudioService()
 
   let env: Env = {
     Animation = animService
@@ -43,9 +45,39 @@ module Program =
         (fun a -> Msg.InputMapped a)
         ctx)
 
-  /// Creates the full Mibo Program with MonoGame-specific animation wiring
-  /// and renderers. Pass the result to MiboGame.
-  let create() : Program<GameModel, Msg> =
+  /// The sound bank: keys → pipeline assets, loaded before init runs. Events
+  /// and audio messages carry only the keys (Assets.Keys); the MGCB builds
+  /// each sound under the name listed here (MonoShared/Content/Content.mgcb).
+  let private bank: MonoGameProgram.BankEntry list =
+    let inline sound key asset =
+      MonoGameProgram.BankEntry.Sound(key, Pipeline asset)
+
+    [
+      sound Assets.Keys.fire "gun_sounds/7.62x39/762x39 Single MP3"
+      sound Assets.Keys.reloadFast "gun_sounds/reloads/reload-fast"
+      sound Assets.Keys.reloadRifle "gun_sounds/reloads/reload-rifle"
+      sound Assets.Keys.reloadHeavy "gun_sounds/reloads/reload-heavy"
+      sound Assets.Keys.bite "horror_sfx/Bite"
+      sound Assets.Keys.childLaugh "horror_sfx/Child laugh"
+      sound Assets.Keys.gasp "horror_sfx/Gasp_3"
+      sound Assets.Keys.injured "horror_sfx/Injured"
+      sound Assets.Keys.footstepWalk "horror_sfx/Footsteps_walking"
+      sound Assets.Keys.footstepRun "horror_sfx/Footsteps_ running"
+      sound Assets.Keys.robotic[0] "horror_sfx/Robotic_bass"
+      sound Assets.Keys.robotic[1] "horror_sfx/robotic_groan_3"
+      sound Assets.Keys.robotic[2] "horror_sfx/robotic_hiss"
+      sound Assets.Keys.robotic[3] "horror_sfx/Scream_Robotic"
+
+      MonoGameProgram.BankEntry.Music(
+        "battle",
+        Pipeline "space_music_pack/battle"
+      )
+    ]
+
+  /// Creates the full Mibo program (as a MonoGameProgram — the sound bank is
+  /// a MonoGame-side builder) with MonoGame-specific animation wiring and
+  /// renderers. Pass the result to MiboGame.
+  let create() : MonoGameProgram<GameModel, Msg> =
     Program.mkProgram init update
     |> Program.withConfig(fun cfg -> {
       cfg with
@@ -79,3 +111,5 @@ module Program =
           )
 
         view font ctx model buffer))
+    |> MonoGameProgram.ofProgram
+    |> MonoGameProgram.withBank bank

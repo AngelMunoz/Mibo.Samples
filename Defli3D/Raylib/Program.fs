@@ -63,6 +63,69 @@ let main _ =
 
   let boot(_ctx: AdaptiveFrameContext) = ()
 
+  // The sound bank: Application.AudioKeys → loose files (relative to the
+  // assets base path). AdaptiveRaylibProgram.withBank loads it before init
+  // runs; an unregistered key is a silent no-op.
+  let bank: AdaptiveRaylibProgram.BankEntry list = [
+    AdaptiveRaylibProgram.BankEntry.Sound(
+      Application.AudioKeys.shoot,
+      "gun_sounds/7.62x39/762x39 Single MP3.mp3"
+    )
+
+    AdaptiveRaylibProgram.BankEntry.Sound(
+      Application.AudioKeys.cannonFire,
+      "explosions/Medium_Explosion_2.ogg"
+    )
+
+    AdaptiveRaylibProgram.BankEntry.Sound(
+      Application.AudioKeys.impact,
+      "explosions/Small_Explosion.ogg"
+    )
+
+    // The death explosion — the loudest hit in the mix.
+    AdaptiveRaylibProgram.BankEntry.Sound(
+      Application.AudioKeys.enemyDown,
+      "explosions/Medium_Explosion_1.ogg"
+    )
+
+    AdaptiveRaylibProgram.BankEntry.Sound(
+      Application.AudioKeys.baseHit,
+      "horror_sfx/Scream_Robotic.wav"
+    )
+
+    AdaptiveRaylibProgram.BankEntry.Sound(
+      Application.AudioKeys.waveStart,
+      "space_music_pack/fx/start-level.wav"
+    )
+
+    AdaptiveRaylibProgram.BankEntry.Sound(
+      Application.AudioKeys.waveClear,
+      "horror_sfx/Child laugh.wav"
+    )
+
+    AdaptiveRaylibProgram.BankEntry.Sound(
+      Application.AudioKeys.place,
+      "sfx_jump.ogg"
+    )
+
+    AdaptiveRaylibProgram.BankEntry.Sound(
+      Application.AudioKeys.upgrade,
+      "sfx_jump.ogg"
+    )
+
+    // The single music channel: calm building phase <-> battle during waves
+    // (switched by the wave lifecycle; see Application).
+    AdaptiveRaylibProgram.BankEntry.Music(
+      Application.AudioKeys.musicCalm,
+      "space_music_pack/menu.wav"
+    )
+
+    AdaptiveRaylibProgram.BankEntry.Music(
+      Application.AudioKeys.musicBattle,
+      "space_music_pack/battle.wav"
+    )
+  ]
+
   let program =
     Application.program
       boot
@@ -76,6 +139,7 @@ let main _ =
             ctx)
         cell
         shell)
+    |> AdaptiveRaylibProgram.withBank bank
     |> AdaptiveProgram.withProfiler profiler
     |> AdaptiveProgram.withConfig(fun _ -> config)
     |> AdaptiveProgram.withAssetsBasePath assetsBasePath

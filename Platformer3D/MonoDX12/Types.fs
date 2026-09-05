@@ -84,7 +84,6 @@ type Model() =
     Dictionary<string, Microsoft.Xna.Framework.Graphics.Model>() with get, set
 
   member val VisibleLights = ResizeArray<PointLight3D>() with get, set
-  member val JumpSound = Unchecked.defaultof<SoundEffect> with get, set
   member val ParticleTexture = Unchecked.defaultof<Texture2D> with get, set
   member val MinimapTexture = Unchecked.defaultof<Texture2D> with get, set
 

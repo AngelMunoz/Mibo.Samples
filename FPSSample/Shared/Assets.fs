@@ -88,6 +88,49 @@ module Assets =
   // MonoShared/Content/Content.mgcb).
   let decalLaser1 = "assets/prerendered-spaceships/laser1.png"
 
+  // ── Sound bank keys ──────────────────────────────────────────────────────────
+  // Game-vocabulary keys the sound bank registers (RaylibProgram.withBank /
+  // MonoGameProgram.withBank). Events and audio messages carry these keys, not
+  // file paths — the key→source mapping is backend shell surface (loose files
+  // on raylib, pipeline assets on MonoGame), declared in each backend's bank.
+
+  /// <summary>Re-trigger interval (seconds) for the walking footstep loop —
+  /// the clip's own length (4.153 s), minus a hair so the re-trigger overlaps
+  /// the tail instead of leaving a gap.</summary>
+  let footstepWalkInterval = 4.1f
+
+  /// <summary>Re-trigger interval (seconds) for the running footstep loop —
+  /// the clip's own length (2.673 s), minus a hair.</summary>
+  let footstepRunInterval = 2.6f
+
+  // ── Space Music (Goose Ninja pack) ──────────────────────────────────────────
+  let spaceMusic = "assets/space_music_pack/"
+
+  let spaceMusicBattle = spaceMusic + "battle.wav"
+
+  module Keys =
+    let fire = "fire"
+    let reloadFast = "reload-fast"
+    let reloadRifle = "reload-rifle"
+    let reloadHeavy = "reload-heavy"
+    let bite = "bite"
+    let childLaugh = "child-laugh"
+    let gasp = "gasp"
+    let injured = "injured"
+    let footstepWalk = "footstep-walk"
+    let footstepRun = "footstep-run"
+
+    let robotic = [|
+      "robot-bass"
+      "robot-groan"
+      "robot-hiss"
+      "robot-scream"
+    |]
+
+    /// Picks a random robotic sound key from the pool.
+    let inline roboticKey(rng: Random) : string =
+      robotic[rng.Next(robotic.Length)]
+
   // ── Gun Sounds ───────────────────────────────────────────────────────────────
   let gunSounds = "assets/gun_sounds/7.62x39/"
 
@@ -167,18 +210,18 @@ module Assets =
     | WeaponClass.Rifle -> 0.10f
     | WeaponClass.Heavy -> 0.5f
 
-  /// Fire sound profile for each weapon class.
+  /// Fire sound key for each weapon class.
   let gunSound(wc: WeaponClass) : string =
     match wc with
-    | WeaponClass.Pistol -> gunSoundSingle
-    | WeaponClass.Smg -> gunSoundSingle
-    | WeaponClass.Rifle -> gunSoundSingle
-    | WeaponClass.Heavy -> gunSoundSingle
+    | WeaponClass.Pistol -> Keys.fire
+    | WeaponClass.Smg -> Keys.fire
+    | WeaponClass.Rifle -> Keys.fire
+    | WeaponClass.Heavy -> Keys.fire
 
-  /// Reload sound profile for each weapon class.
+  /// Reload sound key for each weapon class.
   let reloadSound(wc: WeaponClass) : string =
     match wc with
-    | WeaponClass.Pistol -> reloadFast
-    | WeaponClass.Smg -> reloadRifle
-    | WeaponClass.Rifle -> reloadRifle
-    | WeaponClass.Heavy -> reloadHeavy
+    | WeaponClass.Pistol -> Keys.reloadFast
+    | WeaponClass.Smg -> Keys.reloadRifle
+    | WeaponClass.Rifle -> Keys.reloadRifle
+    | WeaponClass.Heavy -> Keys.reloadHeavy

@@ -2,6 +2,7 @@ namespace Defli3D
 
 open System.Numerics
 open Mibo.Adaptive
+open Mibo.Audio
 open Mibo.Diagnostics
 open Mibo.Elmish
 open Mibo.Input
@@ -87,16 +88,26 @@ module Input =
           delta.PositionDelta.Y
           cell.Value.Camera)
 
-    // Clicks → place / upgrade (Application validates everything).
+    // Clicks → place / upgrade (Application validates everything). The
+    // place/upgrade sounds ride the same posted intent — the play runs in
+    // the drain only when the action succeeded (a pop, and a
+    // higher-pitched pop for the upgrade, via the per-play Voice pitch).
     if delta.Buttons.Pressed |> Array.contains MouseButtonCode.Left then
       hoverCell state viewport delta.Position
       |> ValueOption.iter(fun c ->
-        post(fun () -> Application.placeTower cell.Value c |> ignore))
+        post(fun () ->
+          if Application.placeTower cell.Value c then
+            ctx.Audio.play(Application.AudioKeys.place)))
 
     if delta.Buttons.Pressed |> Array.contains MouseButtonCode.Right then
       hoverCell state viewport delta.Position
       |> ValueOption.iter(fun c ->
-        post(fun () -> Application.upgradeTower cell.Value c |> ignore))
+        post(fun () ->
+          if Application.upgradeTower cell.Value c then
+            ctx.Audio.playWith(
+              Application.AudioKeys.upgrade,
+              { Voice.center with Pitch = 1.3f }
+            )))
 
   /// The input subscriptions the windowed frontends wire via
   /// `AdaptiveInit.withSubscriptions (Input.subscriptions wheelScale actionsSub cell shell)`:

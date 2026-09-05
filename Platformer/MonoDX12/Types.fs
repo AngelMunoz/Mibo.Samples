@@ -3,7 +3,6 @@ module Platformer.MonoGame.Types
 open System
 open Microsoft.Xna.Framework
 open Microsoft.Xna.Framework.Graphics
-open Microsoft.Xna.Framework.Audio
 open Mibo
 open Mibo.Elmish
 open Mibo.Elmish.Graphics2D.Lighting
@@ -23,7 +22,6 @@ type SpriteAssets = {
   ParticleTexture: Texture2D
   CoinNormalMap: Texture2D
   Font: SpriteFont
-  JumpSound: SoundEffect
 }
 
 // -------------------------------------------------------------

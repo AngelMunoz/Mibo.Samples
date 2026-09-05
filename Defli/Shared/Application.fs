@@ -4,6 +4,7 @@ open System
 open System.Collections.Generic
 open System.Numerics
 open Mibo.Adaptive
+open Mibo.Audio
 open Mibo.Elmish
 open Mibo.Layout
 open Defli.State
@@ -36,6 +37,25 @@ open Defli.State.Systems
 // ─────────────────────────────────────────────────────────────
 
 module Application =
+
+  /// The sound bank keys — game vocabulary the windowed frontends register in
+  /// their backend bank (raylib: loose files; MonoGame: pipeline assets).
+  /// Playing a key with no registered sound is a silent no-op, so the headless
+  /// runs and tests need no audio device.
+  module AudioKeys =
+    let shoot = "shoot"
+    let cannonFire = "cannon-fire"
+    let impact = "impact"
+    let enemyDown = "enemy-down"
+    let baseHit = "base-hit"
+    let waveStart = "wave-start"
+    let waveClear = "wave-clear"
+    let place = "place"
+    let upgrade = "upgrade"
+    let jump = "jump" // the shared sfx_jump.ogg pop, reused for UI actions
+    // The single music channel: calm building phase ↔ battle during waves.
+    let musicCalm = "calm"
+    let musicBattle = "battle"
 
   /// The grid cell CONTAINING a world position (floor of world/size) —
   /// the tile under the cursor. Mibo's Grid2DSpatial.worldToCell rounds
@@ -319,8 +339,12 @@ module Application =
   /// Clock root, written below in update).
   let inline init
     (getState: unit -> State)
-    (_ctx: AdaptiveFrameContext)
+    (ctx: AdaptiveFrameContext)
     : AdaptiveInit<Frame.RenderFrame> =
+    // The calm track loops from the startup drain; the wave lifecycle
+    // switches it (battle while a wave runs — see the update's event scan).
+    ctx.Audio.playMusic(AudioKeys.musicCalm)
+
     AdaptiveInit.ofFrameBuilder(Frame.force getState)
 
   /// The Update phase entry: runs the sim for the current state and
@@ -392,6 +416,43 @@ module Application =
 
       ctx.Intents.post(fun () ->
         handleProjectileEvents ctx.Intents.post state projectileEvents)
+
+      // Audio reactions: the same events translated into bank keys. The
+      // adaptive audio intents resolve IAudio at drain time and no-op when
+      // no service is registered (headless runs, tests). The mix is built
+      // around the two sounds that matter — shots and deaths: cannon fire
+      // gets its own launch boom, the death explosion is the loudest hit,
+      // and ordinary impacts are a small, quiet tick.
+      for ev in enemyEvents do
+        match ev with
+        | Enemies.Killed _ ->
+          ctx.Audio.playWith(AudioKeys.enemyDown, Voice.ofVolume 0.8f)
+        | Enemies.ReachedBase _ -> ctx.Audio.play(AudioKeys.baseHit)
+
+      for ev in waveEvents do
+        match ev with
+        | Waves.WaveStarted _ -> ()
+        // WaveStarted plays from the input layer (cold path), where the
+        // player's action starts the wave; that layer also switches the
+        // music to the battle track.
+        | Waves.WaveCleared ->
+          ctx.Audio.play(AudioKeys.waveClear)
+          // Back to the calm building track between waves.
+          ctx.Audio.playMusic(AudioKeys.musicCalm)
+
+      for ev in towerEvents do
+        match ev with
+        | Towers.Fired shot when shot.SplashRadius > 0f ->
+          // A cannon ball leaves the barrel: the launch boom.
+          ctx.Audio.playWith(AudioKeys.cannonFire, Voice.ofVolume 0.5f)
+        | Towers.Fired _ ->
+          ctx.Audio.playWith(AudioKeys.shoot, Voice.ofVolume 0.4f)
+
+      for ev in projectileEvents do
+        match ev with
+        | Projectiles.Impact _ ->
+          // Every hit: a small tick, far quieter than the booms.
+          ctx.Audio.playWith(AudioKeys.impact, Voice.ofVolume 0.3f)
 
   /// The adaptive program: init builds the frame force and the
   /// subscription projection over the current state (boot runs host wiring

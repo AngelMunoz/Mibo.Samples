@@ -35,6 +35,10 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>assets\horror_sfx\%(RecursiveDir)%(Filename)%(Extension)</Link>
     </Content>
+    <Content Include="..\..\assets\space_music_pack\battle.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\space_music_pack\battle.wav</Link>
+    </Content>
     <Content Include="..\..\assets\kenney_blaster-kit\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>assets\kenney_blaster-kit\%(RecursiveDir)%(Filename)%(Extension)</Link>

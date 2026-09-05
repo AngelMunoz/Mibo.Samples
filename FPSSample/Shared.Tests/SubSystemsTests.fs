@@ -452,7 +452,9 @@ let subSystemTests =
         let hasBiteAudio =
           msgs
           |> List.exists (function
-            | Msg.AudioMsg(AudioMsg.OneShot(p, _, true)) when p = Assets.bite ->
+            | Msg.AudioMsg(AudioMsg.OneShot(p, _, true)) when
+              p = Assets.Keys.bite
+              ->
               true
             | _ -> false)
 
@@ -790,7 +792,7 @@ let msgProcessingTests =
 
         match audio.Consumed[0] with
         | AudioMsg.OneShot(path, p, isPositional) ->
-          Expect.equal path "robot.wav" "Path preserved"
+          Expect.equal path "robot.wav" "Key preserved"
           Expect.equal p pos "Position preserved"
           Expect.isTrue isPositional "Positional flag preserved"
     ]
@@ -914,7 +916,7 @@ let translationTests =
           msgs
           |> List.exists (function
             | Msg.EffectMsg(EffectMsg.SpawnDecal(p, n)) when
-              p = hitPos && n = dir
+              p = hitPos && n = -dir
               ->
               true
             | _ -> false)
@@ -948,7 +950,7 @@ let translationTests =
 
         match msgs with
         | [ Msg.AudioMsg(AudioMsg.OneShot(p, _, isPositional)) ] ->
-          Expect.equal p path "Reload sound path"
+          Expect.equal p path "Reload sound key"
           Expect.isFalse isPositional "Reload is non-positional"
         | _ -> failwith "Expected exactly one AudioMsg"
 
@@ -965,7 +967,7 @@ let translationTests =
           msgs
           |> List.exists (function
             | Msg.AudioMsg(AudioMsg.OneShot(p, enemyPos, true)) when
-              p = Assets.injured && enemyPos = pos
+              p = Assets.Keys.injured && enemyPos = pos
               ->
               true
             | _ -> false)
@@ -999,7 +1001,9 @@ let translationTests =
         let hasGasp =
           msgs
           |> List.exists (function
-            | Msg.AudioMsg(AudioMsg.OneShot(p, _, false)) when p = Assets.gasp ->
+            | Msg.AudioMsg(AudioMsg.OneShot(p, _, false)) when
+              p = Assets.Keys.gasp
+              ->
               true
             | _ -> false)
 
@@ -1024,7 +1028,7 @@ let translationTests =
 
         match msgs with
         | [ Msg.AudioMsg(AudioMsg.OneShot(p, enemyPos, isPositional)) ] ->
-          Expect.equal p Assets.bite "Bite sound path"
+          Expect.equal p Assets.Keys.bite "Bite sound key"
           Expect.equal enemyPos pos "Bite at enemy position"
           Expect.isTrue isPositional "Bite is positional"
         | _ -> failwith "Expected exactly one AudioMsg"
@@ -1041,7 +1045,7 @@ let translationTests =
 
         match msgs with
         | [ Msg.AudioMsg(AudioMsg.OneShot(p, enemyPos, isPositional)) ] ->
-          Expect.equal p path "Robotic sound path"
+          Expect.equal p path "Robotic sound key"
           Expect.equal enemyPos pos "Robotic at enemy position"
           Expect.isTrue isPositional "Robotic is positional"
         | _ -> failwith "Expected exactly one AudioMsg"
@@ -1057,7 +1061,7 @@ let translationTests =
 
         match msgs with
         | [ Msg.AudioMsg(AudioMsg.OneShot(p, enemyPos, isPositional)) ] ->
-          Expect.equal p Assets.childLaugh "Child laugh sound path"
+          Expect.equal p Assets.Keys.childLaugh "Child laugh sound key"
           Expect.equal enemyPos pos "Child laugh at enemy position"
           Expect.isTrue isPositional "Child laugh is positional"
         | _ -> failwith "Expected exactly one AudioMsg"
@@ -1076,7 +1080,7 @@ let translationTests =
 
         match msgs with
         | [ Msg.AudioMsg(AudioMsg.OneShot(p, enemyPos, isPositional)) ] ->
-          Expect.equal p Assets.injured "Injured sound path"
+          Expect.equal p Assets.Keys.injured "Injured sound key"
           Expect.equal enemyPos pos "Injured at enemy position"
           Expect.isTrue isPositional "Injured is positional"
         | _ -> failwith "Expected exactly one AudioMsg"

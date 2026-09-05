@@ -298,7 +298,7 @@ let tests =
 
         match audio.Consumed[0] with
         | AudioMsg.OneShot(path, _, isPositional) ->
-          Expect.equal path firePath "Fire sound path matches"
+          Expect.equal path firePath "Fire sound key matches"
           Expect.isFalse isPositional "Fire is non-positional"
 
       testCase "enemy attack emits gasp AudioMsg + hit-flash"
@@ -326,7 +326,7 @@ let tests =
 
         Systems.update
           env
-          (Msg.AudioMsg(AudioMsg.OneShot(Assets.gasp, Vector3.Zero, false)))
+          (Msg.AudioMsg(AudioMsg.OneShot(Assets.Keys.gasp, Vector3.Zero, false)))
           m
         |> ignore
 

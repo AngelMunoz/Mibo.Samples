@@ -31,7 +31,6 @@ let loadAssets(ctx: GameContext) : SpriteAssets =
     |> Texture.filter TextureFilter.Point
 
   let font = assets.Font "assets/Fonts/monogram.ttf"
-  let jumpSound = assets.Sound "assets/sfx_jump.ogg"
   let coinNormalMap = assets.Texture "assets/NormalMap.png"
 
   let particleImg =
@@ -110,7 +109,6 @@ let loadAssets(ctx: GameContext) : SpriteAssets =
     ParticleTexture = particleTex
     CoinNormalMap = coinNormalMap
     Font = font
-    JumpSound = jumpSound
   }
 
 let inputMap =
@@ -159,16 +157,30 @@ let init(ctx: GameContext) : struct (Model * Cmd<_>) =
       if x >= 0 then
         model.Chunks.Chunks[struct (x, y)] <- generateChunk x y seed
 
-  model, Cmd.none
+  model, Audio.playMusic ctx "slow-travel"
 
 let subscribe (ctx: GameContext) (model: Model) =
   InputMapper.subscribeStatic model.InputMap InputMapped ctx
 
 [<EntryPoint>]
 let main _ =
+  // The jump sound rides the framework audio service: the bank loads the file
+  // under the "jump" key before init runs, and the update plays it with the
+  // Audio.play command when physics raises the jump event. The slow-travel
+  // track loops as background music from the first frame.
+  let bank: RaylibProgram.BankEntry list = [
+    RaylibProgram.BankEntry.Sound("jump", "assets/sfx_jump.ogg")
+
+    RaylibProgram.BankEntry.Music(
+      "slow-travel",
+      "assets/space_music_pack/slow-travel.wav"
+    )
+  ]
+
   let program =
-    Program.mkProgram init update
+    Program.mkProgramCtx init update
     |> Program.withAssetsBasePath AppContext.BaseDirectory
+    |> RaylibProgram.withBank bank
     |> Program.withConfig(fun cfg -> {
       cfg with
           Width = Constants.viewportWidth
