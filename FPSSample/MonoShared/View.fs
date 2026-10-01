@@ -33,8 +33,17 @@ let mgAssetPath(path: string) =
     .Replace(".mp3", "")
     .Replace(".wav", "")
 
-let private meshMaterialCache =
-  Dictionary<string, struct (PrimitiveMesh * Material3D)[]>()
+/// One content-pipeline mesh part: the part wrapped as a PrimitiveMesh, its
+/// material, and the part's slice of the shared vertex/index buffers.
+[<Struct>]
+type private MeshPartSlice = {
+  Mesh: PrimitiveMesh
+  Material: Material3D
+  VertexOffset: int
+  StartIndex: int
+}
+
+let private meshMaterialCache = Dictionary<string, MeshPartSlice[]>()
 
 let mutable private currentGameContext = Unchecked.defaultof<GameContext>
 
@@ -64,7 +73,12 @@ let private resolveMeshesAndMaterial(path: string) =
                     Metallic = 0.1f
               }
 
-              struct (wrapPartAsPrimitive part, mat)
+              {
+                Mesh = wrapPartAsPrimitive part
+                Material = mat
+                VertexOffset = part.VertexOffset
+                StartIndex = part.StartIndex
+              }
         |]
       else
         Array.empty
@@ -392,13 +406,15 @@ let view
     bakedLevel <- ValueSome model.Level
 
   for group in bakedGroups do
-    for struct (mesh, material) in resolveMeshesAndMaterial group.Path do
-      buffer.AddDrawInstanced(
-        mesh,
+    for slice in resolveMeshesAndMaterial group.Path do
+      buffer.AddDrawInstancedSlice(
+        slice.Mesh,
         group.Transforms,
-        material,
+        slice.Material,
         group.Transforms.Length,
-        ValueNone
+        ValueNone,
+        slice.VertexOffset,
+        slice.StartIndex
       )
 
   // ── Enemies (animated models) ─────────────────────────────────────────────
@@ -529,7 +545,7 @@ let view
             Vector3.op_Implicit decal.Normal
           )
 
-        buffer.mesh(plane, tf, mat).drop()
+        buffer.meshSlice(plane, tf, mat).drop()
   | _ -> ()
 
   buffer.endCamera().drop()

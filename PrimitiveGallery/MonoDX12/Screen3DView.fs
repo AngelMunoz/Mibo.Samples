@@ -101,26 +101,46 @@ module Screen3DView =
 
     match shape with
     | Shape3D.Cube(_, p, s, c) ->
-      buffer.mesh(prims.Cube, transform p s spins layFlat elapsed, material c)
+      buffer.meshSlice(
+        prims.Cube,
+        transform p s spins layFlat elapsed,
+        material c
+      )
       |> ignore
     | Shape3D.Sphere(_, p, s, c) ->
-      buffer.mesh(prims.Sphere, transform p s spins layFlat elapsed, material c)
+      buffer.meshSlice(
+        prims.Sphere,
+        transform p s spins layFlat elapsed,
+        material c
+      )
       |> ignore
     | Shape3D.Cylinder(_, p, s, c) ->
-      buffer.mesh(
+      buffer.meshSlice(
         prims.Cylinder,
         transform p s spins layFlat elapsed,
         material c
       )
       |> ignore
     | Shape3D.Plane(_, p, s, c) ->
-      buffer.mesh(prims.Plane, transform p s spins layFlat elapsed, material c)
+      buffer.meshSlice(
+        prims.Plane,
+        transform p s spins layFlat elapsed,
+        material c
+      )
       |> ignore
     | Shape3D.Torus(_, p, s, c) ->
-      buffer.mesh(prims.Torus, transform p s spins layFlat elapsed, material c)
+      buffer.meshSlice(
+        prims.Torus,
+        transform p s spins layFlat elapsed,
+        material c
+      )
       |> ignore
     | Shape3D.Cone(_, p, s, c) ->
-      buffer.mesh(prims.Cone, transform p s spins layFlat elapsed, material c)
+      buffer.meshSlice(
+        prims.Cone,
+        transform p s spins layFlat elapsed,
+        material c
+      )
       |> ignore
 
   /// The 3D pass: full-screen for Shapes3D, split-right for Split, and a

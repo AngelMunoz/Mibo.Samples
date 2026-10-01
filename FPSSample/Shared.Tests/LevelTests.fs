@@ -15,7 +15,14 @@ let tests =
         let level = LevelData.createDefault()
         Expect.isGreaterThan level.Grid.Width 0 "Grid width > 0"
         Expect.isGreaterThan level.Grid.Height 0 "Grid height > 0"
-        Expect.isGreaterThan level.Grid.Depth 0 "Grid depth > 0"
+
+        let populated =
+          level.Grid.Cells
+          |> Array.exists (function
+            | ValueSome column -> column.Height > 0
+            | ValueNone -> false)
+
+        Expect.isTrue populated "Grid has at least one populated column"
 
       testCase "default level has enemy spawns"
       <| fun _ ->

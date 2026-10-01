@@ -3,6 +3,7 @@ namespace SpaceBattle
 open System
 open System.Numerics
 open Mibo.Elmish
+open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics2D
 open Mibo.Layout
 open Mibo.Input
@@ -120,10 +121,9 @@ module Camera =
       { Camera = c }
 
   let inline beginView (model: CameraModel) (buffer: RenderBuffer2D) =
-    Draw.beginCamera 0<RenderLayer> model.Camera buffer
+    buffer.beginCamera(model.Camera, 0<RenderLayer>)
 
-  let inline endView(buffer: RenderBuffer2D) =
-    Draw.endCamera 0<RenderLayer> buffer
+  let inline endView(buffer: RenderBuffer2D) = buffer.endCamera(0<RenderLayer>)
 
   module Debug =
 

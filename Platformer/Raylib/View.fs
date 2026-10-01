@@ -5,6 +5,7 @@ open System.Numerics
 open Raylib_cs
 open Mibo
 open Mibo.Elmish
+open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics2D.Lighting
 open Mibo.Elmish.Graphics2D
 open Mibo.Layout
@@ -48,22 +49,18 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
       (float32 ctx.WindowHeight)
 
   buffer
-  |> Draw.rectGradientV
-    (-1000<RenderLayer>)
-    (0,
-     0,
-     ctx.WindowWidth,
-     ctx.WindowHeight,
-     RaylibColor.toRaylibColor skyTop,
-     RaylibColor.toRaylibColor skyBot)
-  |> Draw.beginCamera 0<RenderLayer> camera
-  |> LightDraw.setAmbient
-    model.Lighting
-    (5<RenderLayer>,
-     {
-       Color = RaylibColor.toRaylibColor ambient
-     })
-  |> Draw.drop
+    .rectGradientV(
+      0,
+      0,
+      ctx.WindowWidth,
+      ctx.WindowHeight,
+      skyTop,
+      skyBot,
+      -1000<RenderLayer>
+    )
+    .beginCamera(camera, 0<RenderLayer>)
+    .setAmbient(model.Lighting, ambient, 5<RenderLayer>)
+    .drop()
 
   // Sun
   if sunIntensity > 0.0f then
@@ -71,13 +68,17 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
       Vector2.Normalize(Vector2(playerCenterX, groundLevel - 200.0f) - sunPos)
 
     buffer
-    |> LightDraw.addDirectionalLight model.Lighting 6<RenderLayer> {
-      Direction = sunDir
-      Color = Color(255uy, 245uy, 220uy)
-      Intensity = sunIntensity * 1.5f
-      CastsShadows = true
-    }
-    |> Draw.drop
+      .addDirectionalLight(
+        model.Lighting,
+        {
+          Direction = sunDir
+          Color = Raylib_cs.Color(255uy, 245uy, 220uy)
+          Intensity = sunIntensity * 1.5f
+          CastsShadows = true
+        },
+        6<RenderLayer>
+      )
+      .drop()
 
   // Moon
   if moonIntensity > 0.0f then
@@ -85,13 +86,17 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
       Vector2.Normalize(Vector2(playerCenterX, groundLevel - 200.0f) - moonPos)
 
     buffer
-    |> LightDraw.addDirectionalLight model.Lighting 6<RenderLayer> {
-      Direction = moonDir
-      Color = Color(180uy, 200uy, 255uy)
-      Intensity = moonIntensity * 0.8f
-      CastsShadows = true
-    }
-    |> Draw.drop
+      .addDirectionalLight(
+        model.Lighting,
+        {
+          Direction = moonDir
+          Color = Raylib_cs.Color(180uy, 200uy, 255uy)
+          Intensity = moonIntensity * 0.8f
+          CastsShadows = true
+        },
+        6<RenderLayer>
+      )
+      .drop()
 
   // Collect occluders and torches
   let pcx =
@@ -159,25 +164,24 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
   for i = 0 to torchCount - 1 do
     let torch = nearbyTorches[i]
 
-    buffer
-    |> LightDraw.addPointLight model.Lighting 7<RenderLayer> torch
-    |> Draw.drop
+    buffer.addPointLight(model.Lighting, torch, 7<RenderLayer>).drop()
 
     let torchDest =
       Rectangle(torch.Position.X - 16f, torch.Position.Y - 32f, 32f, 32f)
 
     buffer
-    |> LightDraw.litSprite
-      model.Lighting
-      (SpriteState.create(model.Assets.TorchSheet.Texture, torchDest, torchSrc)
-       |> SpriteState.withLayer 7<RenderLayer>)
-    |> Draw.drop
+      .litSprite(
+        model.Lighting,
+        SpriteState.create(model.Assets.TorchSheet.Texture, torchDest, torchSrc)
+        |> SpriteState.withLayer 7<RenderLayer>
+      )
+      .drop()
 
   // Occluders
   for i = 0 to ocCount - 1 do
     buffer
-    |> LightDraw.addOccluder model.Lighting 8<RenderLayer> nearbyOccluders[i]
-    |> Draw.drop
+      .addOccluder(model.Lighting, nearbyOccluders[i], 8<RenderLayer>)
+      .drop()
 
   // Tiles
   for KeyValue(key, chunk) in model.Chunks.Chunks do
@@ -209,7 +213,7 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
                 SpriteState.create(model.Assets.TileTexture, dest, srcRect)
                 |> SpriteState.withLayer 10<RenderLayer>
 
-              buffer |> LightDraw.litSprite model.Lighting sprite |> Draw.drop)
+              buffer.litSprite(model.Lighting, sprite).drop())
           terrainGrid
 
         // Animated collectibles (litAnimatedSprite for per-frame animation)
@@ -217,35 +221,38 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
           let dest = Rectangle(coin.X, coin.Y, coin.Width, coin.Height)
 
           buffer
-          |> LightDraw.litAnimatedSprite
-            model.Lighting
-            10<RenderLayer>
-            dest
-            model.CoinSprite
-          |> Draw.drop
+            .litAnimatedSprite(
+              model.Lighting,
+              dest,
+              model.CoinSprite,
+              10<RenderLayer>
+            )
+            .drop()
 
         for flag in chunk.Flags do
           let dest = Rectangle(flag.X, flag.Y, flag.Width, flag.Height)
 
           buffer
-          |> LightDraw.litAnimatedSprite
-            model.Lighting
-            10<RenderLayer>
-            dest
-            model.FlagSprite
-          |> Draw.drop
+            .litAnimatedSprite(
+              model.Lighting,
+              dest,
+              model.FlagSprite,
+              10<RenderLayer>
+            )
+            .drop()
 
   // Player
   let playerDrawY = model.Physics.Position.Y + playerHeight - 64.0f
   let playerDest = Rectangle(model.Physics.Position.X, playerDrawY, 64f, 64f)
 
   buffer
-  |> LightDraw.litAnimatedSprite
-    model.Lighting
-    20<RenderLayer>
-    playerDest
-    model.PlayerSprite
-  |> Draw.drop
+    .litAnimatedSprite(
+      model.Lighting,
+      playerDest,
+      model.PlayerSprite,
+      20<RenderLayer>
+    )
+    .drop()
 
   // Particles
   let particleCount = model.ParticleState.Count
@@ -253,37 +260,36 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
   for i = 0 to particleCount - 1 do
     model.ParticleBuffer[i] <- toParticle model.ParticleState.Particles[i]
 
-  buffer
-  |> ParticleDraw.particles
-    model.Assets.ParticleTexture
-    model.ParticleBuffer
-    particleCount
-    3<RenderLayer>
-
-  // End lighting + camera
-  |> LightDraw.endLighting model.Lighting 999<RenderLayer>
-  |> Draw.endCamera 1000<RenderLayer>
-  // UI
-  |> Draw.text(
-    TextState.create(
-      model.Assets.Font,
-      $"Day/Night Cycle | Time: {model.DayNight.Time.TimeOfDay:F1}h | Chunks: {model.Chunks.Chunks.Count} | Score: {model.Physics.Score} | WASD/Arrows: Move | Space: Jump | S/Down: Drop | R: Respawn",
-      Vector2(10.0f, 10.0f)
+  // End lighting + camera, then the UI texts and the minimap
+  (buffer
+    .particles(
+      model.Assets.ParticleTexture,
+      model.ParticleBuffer,
+      particleCount,
+      3<RenderLayer>
     )
-    |> TextState.withFontSize 20.0f
-    |> TextState.withSpacing 1.0f
-    |> TextState.withColor Raylib_cs.Color.White
-    |> TextState.withLayer 1001<RenderLayer>
-  )
-  |> Draw.text(
-    TextState.create(
-      model.Assets.Font,
-      $"FPS: {model.Diag.Fps} | Frame Time: {model.Diag.FrameTime * 1000.0f:F1}ms",
-      Vector2(10.0f, 32.0f)
+    .endLighting(model.Lighting, 999<RenderLayer>)
+    .endCamera(1000<RenderLayer>)
+    .text(
+      TextState.create(
+        model.Assets.Font,
+        $"Day/Night Cycle | Time: {model.DayNight.Time.TimeOfDay:F1}h | Chunks: {model.Chunks.Chunks.Count} | Score: {model.Physics.Score} | WASD/Arrows: Move | Space: Jump | S/Down: Drop | R: Respawn",
+        Vector2(10.0f, 10.0f)
+      )
+      |> TextState.withFontSize 20.0f
+      |> TextState.withSpacing 1.0f
+      |> TextState.withColor Raylib_cs.Color.White
+      |> TextState.withLayer 1001<RenderLayer>
     )
-    |> TextState.withFontSize 20.0f
-    |> TextState.withSpacing 1.0f
-    |> TextState.withColor Raylib_cs.Color.White
-    |> TextState.withLayer 1001<RenderLayer>
-  )
+    .text(
+      TextState.create(
+        model.Assets.Font,
+        $"FPS: {model.Diag.Fps} | Frame Time: {model.Diag.FrameTime * 1000.0f:F1}ms",
+        Vector2(10.0f, 32.0f)
+      )
+      |> TextState.withFontSize 20.0f
+      |> TextState.withSpacing 1.0f
+      |> TextState.withColor Raylib_cs.Color.White
+      |> TextState.withLayer 1001<RenderLayer>
+    ))
   |> MinimapView.view ctx model

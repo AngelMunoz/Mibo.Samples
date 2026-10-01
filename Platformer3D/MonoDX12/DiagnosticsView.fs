@@ -2,6 +2,7 @@ module Platformer3D.MonoGame.DiagnosticsView
 
 open Microsoft.Xna.Framework
 open Mibo.Elmish
+open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics2D
 open Platformer3D.MonoGame.Types
 
@@ -13,13 +14,13 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
 
   let inline writeLine (yPos: float32) (text: string) =
     buffer
-    |> Draw.text(
-      TextState.create(model.DiagFont, text, Vector2(10.0f, yPos))
-      |> TextState.withScale 1f
-      |> TextState.withColor Microsoft.Xna.Framework.Color.Yellow
-      |> TextState.withLayer 0<RenderLayer>
-    )
-    |> Draw.drop
+      .text(
+        TextState.create(model.DiagFont, text, Vector2(10.0f, yPos))
+        |> TextState.withScale 1f
+        |> TextState.withColor Microsoft.Xna.Framework.Color.Yellow
+        |> TextState.withLayer 0<RenderLayer>
+      )
+      .drop()
 
   writeLine
     30.0f

@@ -368,21 +368,25 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
     )
 
   buffer
-  |> Draw3D.beginCameraWith(
-    Camera3D.render camera
-    |> Camera3D.withClear(Mibo.Color.op_Implicit(l.SkyColor))
-  )
-  |> Draw3D.setAmbientLight {
-    Color = l.AmbientColor
-    Intensity = l.AmbientIntensity
-  }
-  |> Draw3D.addDirectionalLight {
-    Direction = l.LightDirection
-    Color = l.LightColor
-    Intensity = l.LightIntensity
-    CastsShadows = true
-  }
-  |> Draw3D.drop
+    .beginCameraWith(
+      Camera3D.render camera
+      |> Camera3D.withClear(Mibo.Color.op_Implicit(l.SkyColor))
+    )
+    .setAmbientLight(
+      {
+        Color = l.AmbientColor
+        Intensity = l.AmbientIntensity
+      }
+    )
+    .addDirectionalLight(
+      {
+        Direction = l.LightDirection
+        Color = l.LightColor
+        Intensity = l.LightIntensity
+        CastsShadows = true
+      }
+    )
+    .drop()
 
   currentModelCache <- model.ModelCache
   currentGameContext <- ctx
@@ -397,7 +401,7 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
   | _ -> ()
 
   for light in model.VisibleLights do
-    Draw3D.addPointLight light buffer |> Draw3D.drop
+    buffer.addPointLight(light) |> ignore
 
   let camPos = model.Physics.CameraPosition
   let maxChunkDistSq = 3000.0f
@@ -414,10 +418,20 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
       let struct (terrainGrid, _) =
         LayeredMap3D.getOrAddLayer Layer.Terrain chunk.Grids
 
+      // The untouched instanced volume path still consumes the retired
+      // framework grid; VoxelGrid shares its exact shape, so the bridge is a
+      // struct copy over the same cells array.
       CellGridRenderer3D.renderVolumeInstancedWithEffect
         instancedCtx
         chunk.Bounds
-        terrainGrid
+        {
+          Origin = terrainGrid.Origin
+          CellSize = terrainGrid.CellSize
+          Width = terrainGrid.Width
+          Height = terrainGrid.Height
+          Depth = terrainGrid.Depth
+          Cells = terrainGrid.Cells
+        }
         shaderForKey
         buffer
 
@@ -436,13 +450,9 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
   let p = model.Particles
 
   for i = 0 to p.Count - 1 do
-    Draw3D.drawBillboard
-      model.ParticleTexture
-      p.Positions[i]
-      p.Sizes[i]
-      (Mibo.Color.op_Implicit(p.Colors[i]))
-      buffer
-    |> Draw3D.drop
+    buffer
+      .billboard(model.ParticleTexture, p.Positions[i], p.Sizes[i], p.Colors[i])
+      .drop()
 
   // GPU skinning path (non-mutating): the pose is evaluated once and shared
   // between the skinned draw and the weapon attachments on both handslot
@@ -469,9 +479,7 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
     // Legacy mutating fallback when no AnimatedMesh is available.
     Animation3DState.applyToModel model.PlayerAnim
 
-    buffer
-    |> Draw3D.drawModel model.PlayerAnim.Model playerTransform
-    |> Draw3D.drop
+    buffer.model(model.PlayerAnim.Model, playerTransform) |> ignore
 
   // Skinned-instancing probe: the whole oozi ring is ONE draw call. Transforms
   // are recomposed around the player each frame (the ring follows), each
@@ -516,4 +524,4 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
     buffer.animatedModelInstanced(am, transforms, poses) |> ignore
   | _ -> ()
 
-  buffer |> Draw3D.endCamera |> Draw3D.drop
+  buffer.endCamera().drop()

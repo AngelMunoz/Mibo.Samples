@@ -1,6 +1,8 @@
 module SpaceBattle.DebugUtils
 
 open System.Numerics
+open Mibo
+open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics2D
 open Raylib_cs
 
@@ -21,27 +23,27 @@ let TextLayer = 1<RenderLayer>
 
 [<Struct>]
 type DebugStyle = {
-  TextColor: Color
-  SectionColor: Color
-  BgColor: Color
+  TextColor: Mibo.Color
+  SectionColor: Mibo.Color
+  BgColor: Mibo.Color
 }
 
 let defaultStyle = {
-  TextColor = Color(200uy, 200uy, 200uy, 255uy)
-  SectionColor = Color(100uy, 200uy, 255uy, 255uy)
-  BgColor = Color(0uy, 0uy, 0uy, 180uy)
+  TextColor = Color.rgb 200uy 200uy 200uy
+  SectionColor = Color.rgb 100uy 200uy 255uy
+  BgColor = Color.create 0uy 0uy 0uy 180uy
 }
 
 let inline private textState
   (font: Raylib_cs.Font)
-  (color: Color)
+  (color: Mibo.Color)
   (x: int)
   (y: int)
   (msg: string)
   =
   TextState.create(font, msg, Vector2(float32 x, float32 y))
   |> TextState.withFontSize FontSize
-  |> TextState.withColor color
+  |> TextState.withColor(RaylibColor.toRaylibColor color)
   |> TextState.withLayer TextLayer
 
 let inline drawText
@@ -52,7 +54,7 @@ let inline drawText
   (msg: string)
   (buffer: RenderBuffer2D)
   : struct (int * RenderBuffer2D) =
-  buffer |> Draw.text(textState font style.TextColor x y msg) |> ignore
+  buffer.text(textState font style.TextColor x y msg) |> ignore
 
   struct (y + LineHeight, buffer)
 
@@ -85,10 +87,14 @@ let inline background
   (style: DebugStyle)
   (buffer: RenderBuffer2D)
   : RenderBuffer2D =
-  buffer
-  |> Draw.fillRect
-    (BgLayer, style.BgColor)
-    (Rectangle(float32 x, float32 y, float32 w, float32 h))
+  buffer.fillRect(
+    float32 x,
+    float32 y,
+    float32 w,
+    float32 h,
+    style.BgColor,
+    BgLayer
+  )
 
 let inline formatCell(struct (col, row): struct (int * int)) = $"({col},{row})"
 

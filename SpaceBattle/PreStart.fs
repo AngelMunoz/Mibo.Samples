@@ -1,7 +1,9 @@
 namespace SpaceBattle
 
 open System.Numerics
+open Mibo
 open Mibo.Elmish
+open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics2D
 open Raylib_cs
 open SpaceBattle.Types
@@ -331,26 +333,26 @@ module PreStart =
     let cx = vpWidth / 2.0f
 
     buffer
-    |> Draw.text(
-      TextState.create(font, "Space Battle", Vector2(cx - 120.0f, titleY))
-      |> TextState.withFontSize 48.0f
-      |> TextState.withSpacing 2.0f
-      |> TextState.withColor Color.White
-    )
-    |> Draw.drop
+      .text(
+        TextState.create(font, "Space Battle", Vector2(cx - 120.0f, titleY))
+        |> TextState.withFontSize 48.0f
+        |> TextState.withSpacing 2.0f
+        |> TextState.withColor Raylib_cs.Color.White
+      )
+      .drop()
 
     buffer
-    |> Draw.text(
-      TextState.create(
-        font,
-        "Configure Players",
-        Vector2(cx - 100.0f, titleY + 50.0f)
+      .text(
+        TextState.create(
+          font,
+          "Configure Players",
+          Vector2(cx - 100.0f, titleY + 50.0f)
+        )
+        |> TextState.withFontSize 24.0f
+        |> TextState.withSpacing 1.0f
+        |> TextState.withColor Raylib_cs.Color.Gray
       )
-      |> TextState.withFontSize 24.0f
-      |> TextState.withSpacing 1.0f
-      |> TextState.withColor Color.Gray
-    )
-    |> Draw.drop
+      .drop()
 
     for i in 0 .. state.Slots.Length - 1 do
       let slot = state.Slots[i]
@@ -359,105 +361,118 @@ module PreStart =
 
       let bgColor =
         if isSelected then
-          Color(50uy, 50uy, 70uy, 200uy)
+          Color.create 50uy 50uy 70uy 200uy
         else
-          Color(30uy, 30uy, 40uy, 150uy)
+          Color.create 30uy 30uy 40uy 150uy
+
+      buffer.fillRect(cx - 250.0f, y, 500.0f, slotHeight - 8.0f, bgColor).drop()
 
       buffer
-      |> Draw.fillRect
-        (0<RenderLayer>, bgColor)
-        (Rectangle(cx - 250.0f, y, 500.0f, slotHeight - 8.0f))
-      |> Draw.drop
-
-      buffer
-      |> Draw.text(
-        TextState.create(font, $"P{i + 1}", Vector2(cx - 240.0f, y + 16.0f))
-        |> TextState.withFontSize 20.0f
-        |> TextState.withSpacing 1.0f
-        |> TextState.withColor Color.White
-      )
-      |> Draw.drop
+        .text(
+          TextState.create(font, $"P{i + 1}", Vector2(cx - 240.0f, y + 16.0f))
+          |> TextState.withFontSize 20.0f
+          |> TextState.withSpacing 1.0f
+          |> TextState.withColor Raylib_cs.Color.White
+        )
+        .drop()
 
       let enabledText = if slot.Enabled then "ON" else "OFF"
 
       let enabledColor =
         if slot.Enabled then
-          Color(100uy, 255uy, 100uy, 255uy)
+          Raylib_cs.Color(100uy, 255uy, 100uy, 255uy)
         else
-          Color(150uy, 150uy, 150uy, 255uy)
+          Raylib_cs.Color(150uy, 150uy, 150uy, 255uy)
 
       let enabledX = cx - 180.0f
       let isField0Selected = isSelected && state.SelectedField = 0
 
       if isField0Selected then
         buffer
-        |> Draw.fillRect
-          (0<RenderLayer>, Color(80uy, 80uy, 120uy, 255uy))
-          (Rectangle(enabledX - 4.0f, y + 10.0f, 60.0f, 30.0f))
-        |> Draw.drop
+          .fillRect(
+            enabledX - 4.0f,
+            y + 10.0f,
+            60.0f,
+            30.0f,
+            Color.rgb 80uy 80uy 120uy
+          )
+          .drop()
 
       buffer
-      |> Draw.text(
-        TextState.create(font, enabledText, Vector2(enabledX, y + 16.0f))
-        |> TextState.withFontSize 20.0f
-        |> TextState.withSpacing 1.0f
-        |> TextState.withColor enabledColor
-      )
-      |> Draw.drop
+        .text(
+          TextState.create(font, enabledText, Vector2(enabledX, y + 16.0f))
+          |> TextState.withFontSize 20.0f
+          |> TextState.withSpacing 1.0f
+          |> TextState.withColor enabledColor
+        )
+        .drop()
 
       let factionX = cx - 80.0f
       let isField1Selected = isSelected && state.SelectedField = 1
 
       if isField1Selected then
         buffer
-        |> Draw.fillRect
-          (0<RenderLayer>, Color(80uy, 80uy, 120uy, 255uy))
-          (Rectangle(factionX - 4.0f, y + 10.0f, 160.0f, 30.0f))
-        |> Draw.drop
+          .fillRect(
+            factionX - 4.0f,
+            y + 10.0f,
+            160.0f,
+            30.0f,
+            Color.rgb 80uy 80uy 120uy
+          )
+          .drop()
 
       if slot.Enabled then
         buffer
-        |> Draw.text(
-          TextState.create(
-            font,
-            factionName slot.Faction,
-            Vector2(factionX, y + 16.0f)
+          .text(
+            TextState.create(
+              font,
+              factionName slot.Faction,
+              Vector2(factionX, y + 16.0f)
+            )
+            |> TextState.withFontSize 20.0f
+            |> TextState.withSpacing 1.0f
+            |> TextState.withColor(factionColor slot.Faction)
           )
-          |> TextState.withFontSize 20.0f
-          |> TextState.withSpacing 1.0f
-          |> TextState.withColor(factionColor slot.Faction)
-        )
-        |> Draw.drop
+          .drop()
 
       let controlX = cx + 100.0f
       let isField2Selected = isSelected && state.SelectedField = 2
 
       if isField2Selected then
         buffer
-        |> Draw.fillRect
-          (0<RenderLayer>, Color(80uy, 80uy, 120uy, 255uy))
-          (Rectangle(controlX - 4.0f, y + 10.0f, 80.0f, 30.0f))
-        |> Draw.drop
+          .fillRect(
+            controlX - 4.0f,
+            y + 10.0f,
+            80.0f,
+            30.0f,
+            Color.rgb 80uy 80uy 120uy
+          )
+          .drop()
 
       if slot.Enabled then
         buffer
-        |> Draw.text(
-          TextState.create(
-            font,
-            controlName slot.Control,
-            Vector2(controlX, y + 16.0f)
+          .text(
+            TextState.create(
+              font,
+              controlName slot.Control,
+              Vector2(controlX, y + 16.0f)
+            )
+            |> TextState.withFontSize 20.0f
+            |> TextState.withSpacing 1.0f
+            |> TextState.withColor(controlColor slot.Control)
           )
-          |> TextState.withFontSize 20.0f
-          |> TextState.withSpacing 1.0f
-          |> TextState.withColor(controlColor slot.Control)
-        )
-        |> Draw.drop
+          .drop()
 
     let enabledCount =
       state.Slots |> Array.filter(fun s -> s.Enabled) |> Array.length
 
     let canStart = enabledCount >= 2
-    let startColor = if canStart then Color.White else Color.Gray
+
+    let startColor =
+      if canStart then
+        Raylib_cs.Color.White
+      else
+        Raylib_cs.Color.Gray
 
     let startText =
       if canStart then
@@ -468,25 +483,29 @@ module PreStart =
     let textWidth = Raylib.MeasureTextEx(font, startText, 28.0f, 1.0f).X
 
     buffer
-    |> Draw.text(
-      TextState.create(font, startText, Vector2(cx - textWidth / 2.0f, buttonY))
-      |> TextState.withFontSize 28.0f
-      |> TextState.withSpacing 1.0f
-      |> TextState.withColor startColor
-    )
-    |> Draw.drop
+      .text(
+        TextState.create(
+          font,
+          startText,
+          Vector2(cx - textWidth / 2.0f, buttonY)
+        )
+        |> TextState.withFontSize 28.0f
+        |> TextState.withSpacing 1.0f
+        |> TextState.withColor startColor
+      )
+      .drop()
 
     buffer
-    |> Draw.text(
-      TextState.create(
-        font,
-        "Arrows: Navigate  |  Enter: Select/Toggle  |  Tab: Start",
-        Vector2(cx - 200.0f, vpHeight - 40.0f)
+      .text(
+        TextState.create(
+          font,
+          "Arrows: Navigate  |  Enter: Select/Toggle  |  Tab: Start",
+          Vector2(cx - 200.0f, vpHeight - 40.0f)
+        )
+        |> TextState.withFontSize 16.0f
+        |> TextState.withSpacing 1.0f
+        |> TextState.withColor Raylib_cs.Color.DarkGray
       )
-      |> TextState.withFontSize 16.0f
-      |> TextState.withSpacing 1.0f
-      |> TextState.withColor Color.DarkGray
-    )
-    |> Draw.drop
+      .drop()
 
     buffer

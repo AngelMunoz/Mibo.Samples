@@ -237,206 +237,209 @@ let generateChunk (cx: int) (cz: int) (worldSeed: int) : Chunk =
 
   let rng = Random(chunkSeed cx cz worldSeed)
 
-  LayeredMap3D.runLayer
-    Layer.Terrain
-    (fun section ->
-      let grid = section.BackingGrid
+  let struct (grid, _) = LayeredMap3D.getOrAddLayer Layer.Terrain grids
 
-      // ── Elevation field (W×D, no border — full fill doesn't need neighbors) ──
-      let elevField = Array.create (section.Width * section.Depth) 0
+  // Local section writers over the sample-owned VoxelGrid — the retired
+  // Layout3D section helpers took the same shape.
+  let inline setLocal x y z (content: BlockType) (g: VoxelGrid<BlockType>) =
+    VoxelGrid.set x y z content g
 
-      for lz in 0 .. section.Depth - 1 do
-        for lx in 0 .. section.Width - 1 do
-          elevField[lz * section.Width + lx] <-
-            elevationAt
-              (originTileX + lx)
-              (originTileZ + lz)
-              worldSeed
-              config.Terrain.ElevationScale
-              config.Terrain.ElevationAmplitude
-              config.Terrain.SpawnProtectedRadius
+  let inline clearLocal x y z (g: VoxelGrid<BlockType>) =
+    VoxelGrid.clear x y z g
 
-      let elevAt (lx: int) (lz: int) = elevField[lz * section.Width + lx]
+  let paint(section: VoxelGrid<BlockType>) =
+    let grid = section
 
-      let biomeAt' (lx: int) (lz: int) =
-        biomeAt
-          (originTileX + lx)
-          (originTileZ + lz)
-          worldSeed
-          config.Terrain.BiomeColumnScale
+    // ── Elevation field (W×D, no border — full fill doesn't need neighbors) ──
+    let elevField = Array.create (section.Width * section.Depth) 0
 
-      let inSpawn (lx: int) (lz: int) =
-        let wx = float32(originTileX + lx) - spawnPosition.X
-        let wz = float32(originTileZ + lz) - spawnPosition.Z
-        let r = float32 config.Terrain.SpawnProtectedRadius
-        wx * wx + wz * wz <= r * r
+    for lz in 0 .. section.Depth - 1 do
+      for lx in 0 .. section.Width - 1 do
+        elevField[lz * section.Width + lx] <-
+          elevationAt
+            (originTileX + lx)
+            (originTileZ + lz)
+            worldSeed
+            config.Terrain.ElevationScale
+            config.Terrain.ElevationAmplitude
+            config.Terrain.SpawnProtectedRadius
 
-      // ── 1. Full volume fill ──
-      // Solid columns from y=0 to surface. The framework shadow instancing fix
-      // (ForwardPbrPipeline) renders these as single DrawMeshInstanced calls,
-      // so the full volume no longer incurs per-cell shadow cost.
-      for lz in 0 .. section.Depth - 1 do
-        for lx in 0 .. section.Width - 1 do
-          let surfaceY = min (elevAt lx lz) (section.Height - 1)
-          let biome = biomeAt' lx lz
+    let elevAt (lx: int) (lz: int) = elevField[lz * section.Width + lx]
 
-          for y in 0..surfaceY do
-            setLocal lx y lz (Block biome) section
+    let biomeAt' (lx: int) (lz: int) =
+      biomeAt
+        (originTileX + lx)
+        (originTileZ + lz)
+        worldSeed
+        config.Terrain.BiomeColumnScale
 
-      // ── 2. Multi-cell surface variety (2×2 flat regions) ──
-      // Replace flat 2×2 surface areas with LargeBlock or TallBlock.
-      if config.Terrain.MultiCellChance > 0.0f then
-        let mutable lz = 0
+    let inSpawn (lx: int) (lz: int) =
+      let wx = float32(originTileX + lx) - spawnPosition.X
+      let wz = float32(originTileZ + lz) - spawnPosition.Z
+      let r = float32 config.Terrain.SpawnProtectedRadius
+      wx * wx + wz * wz <= r * r
 
-        while lz < section.Depth - 1 do
-          let mutable lx = 0
+    // ── 1. Full volume fill ──
+    // Solid columns from y=0 to surface. The framework shadow instancing fix
+    // (ForwardPbrPipeline) renders these as single DrawMeshInstanced calls,
+    // so the full volume no longer incurs per-cell shadow cost.
+    for lz in 0 .. section.Depth - 1 do
+      for lx in 0 .. section.Width - 1 do
+        let surfaceY = min (elevAt lx lz) (section.Height - 1)
+        let biome = biomeAt' lx lz
 
-          while lx < section.Width - 1 do
-            let h00 = elevAt lx lz
-            let h10 = elevAt (lx + 1) lz
-            let h01 = elevAt lx (lz + 1)
-            let h11 = elevAt (lx + 1) (lz + 1)
+        for y in 0..surfaceY do
+          setLocal lx y lz (Block biome) section
 
-            if h00 = h10 && h00 = h01 && h00 = h11 then
-              let b00 = biomeAt' lx lz
-              let b10 = biomeAt' (lx + 1) lz
-              let b01 = biomeAt' lx (lz + 1)
-              let b11 = biomeAt' (lx + 1) (lz + 1)
+    // ── 2. Multi-cell surface variety (2×2 flat regions) ──
+    // Replace flat 2×2 surface areas with LargeBlock or TallBlock.
+    if config.Terrain.MultiCellChance > 0.0f then
+      let mutable lz = 0
 
-              if b00 = b10 && b00 = b01 && b00 = b11 then
-                if
-                  float32(rng.NextDouble()) < config.Terrain.MultiCellChance
-                then
-                  let y = min h00 (section.Height - 1)
+      while lz < section.Depth - 1 do
+        let mutable lx = 0
 
-                  clearLocal lx y lz section
-                  clearLocal (lx + 1) y lz section
-                  clearLocal lx y (lz + 1) section
-                  clearLocal (lx + 1) y (lz + 1) section
+        while lx < section.Width - 1 do
+          let h00 = elevAt lx lz
+          let h10 = elevAt (lx + 1) lz
+          let h01 = elevAt lx (lz + 1)
+          let h11 = elevAt (lx + 1) (lz + 1)
 
-                  let blockType =
-                    if
-                      float32(rng.NextDouble()) < config.Terrain.TallBlockChance
-                    then
-                      TallBlock b00
-                    else
-                      LargeBlock b00
+          if h00 = h10 && h00 = h01 && h00 = h11 then
+            let b00 = biomeAt' lx lz
+            let b10 = biomeAt' (lx + 1) lz
+            let b01 = biomeAt' lx (lz + 1)
+            let b11 = biomeAt' (lx + 1) (lz + 1)
 
-                  setLocal lx y lz blockType section
-                  lx <- lx + 2
-                else
-                  lx <- lx + 2
+            if b00 = b10 && b00 = b01 && b00 = b11 then
+              if float32(rng.NextDouble()) < config.Terrain.MultiCellChance then
+                let y = min h00 (section.Height - 1)
+
+                clearLocal lx y lz section
+                clearLocal (lx + 1) y lz section
+                clearLocal lx y (lz + 1) section
+                clearLocal (lx + 1) y (lz + 1) section
+
+                let blockType =
+                  if
+                    float32(rng.NextDouble()) < config.Terrain.TallBlockChance
+                  then
+                    TallBlock b00
+                  else
+                    LargeBlock b00
+
+                setLocal lx y lz blockType section
+                lx <- lx + 2
               else
                 lx <- lx + 2
             else
-              lx <- lx + 1
+              lx <- lx + 2
+          else
+            lx <- lx + 1
 
-          lz <- lz + 2
+        lz <- lz + 2
 
-      // ── 3. Individual surface variety (LowBlock, NarrowBlock) ──
-      // For surface cells still containing a plain Block, roll for sub-cell
-      // variants. These are single-cell blocks — no multi-cell scan needed.
-      if
-        config.Terrain.LowBlockChance > 0.0f
-        || config.Terrain.NarrowBlockChance > 0.0f
-      then
-        let lowThreshold = config.Terrain.LowBlockChance
-        let narrowThreshold = lowThreshold + config.Terrain.NarrowBlockChance
+    // ── 3. Individual surface variety (LowBlock, NarrowBlock) ──
+    // For surface cells still containing a plain Block, roll for sub-cell
+    // variants. These are single-cell blocks — no multi-cell scan needed.
+    if
+      config.Terrain.LowBlockChance > 0.0f
+      || config.Terrain.NarrowBlockChance > 0.0f
+    then
+      let lowThreshold = config.Terrain.LowBlockChance
+      let narrowThreshold = lowThreshold + config.Terrain.NarrowBlockChance
 
-        for lz in 0 .. section.Depth - 1 do
-          for lx in 0 .. section.Width - 1 do
-            let y = min (elevAt lx lz) (section.Height - 1)
+      for lz in 0 .. section.Depth - 1 do
+        for lx in 0 .. section.Width - 1 do
+          let y = min (elevAt lx lz) (section.Height - 1)
 
-            match CellGrid3D.get lx y lz grid with
-            | ValueSome(Block biome) ->
-              let roll = float32(rng.NextDouble())
+          match VoxelGrid.get lx y lz grid with
+          | ValueSome(Block biome) ->
+            let roll = float32(rng.NextDouble())
 
-              if roll < lowThreshold then
-                setLocal lx y lz (LowBlock biome) section
-              elif roll < narrowThreshold then
-                setLocal lx y lz (NarrowBlock biome) section
-            | _ -> ()
+            if roll < lowThreshold then
+              setLocal lx y lz (LowBlock biome) section
+            elif roll < narrowThreshold then
+              setLocal lx y lz (NarrowBlock biome) section
+          | _ -> ()
 
-      // ── 4. Gaps — carve circular pits through the terrain ──
-      // Removes all cells in a column within a small radius, creating pits
-      // the player must jump across. Gaps are kept small (radius 1-2) so they
-      // are easily jumpable (max Euclidean gap ~4 cells, well within budget).
-      if config.Gap.MaxCount > 0 then
-        let gapCount = rng.Next(config.Gap.MinCount, config.Gap.MaxCount + 1)
+    // ── 4. Gaps — carve circular pits through the terrain ──
+    // Removes all cells in a column within a small radius, creating pits
+    // the player must jump across. Gaps are kept small (radius 1-2) so they
+    // are easily jumpable (max Euclidean gap ~4 cells, well within budget).
+    if config.Gap.MaxCount > 0 then
+      let gapCount = rng.Next(config.Gap.MinCount, config.Gap.MaxCount + 1)
 
-        for _ in 1..gapCount do
-          let gcx =
-            rng.Next(
-              config.Terrain.SpawnProtectedRadius,
-              section.Width - config.Terrain.SpawnProtectedRadius
-            )
+      for _ in 1..gapCount do
+        let gcx =
+          rng.Next(
+            config.Terrain.SpawnProtectedRadius,
+            section.Width - config.Terrain.SpawnProtectedRadius
+          )
 
-          let gcz =
-            rng.Next(
-              config.Terrain.SpawnProtectedRadius,
-              section.Depth - config.Terrain.SpawnProtectedRadius
-            )
+        let gcz =
+          rng.Next(
+            config.Terrain.SpawnProtectedRadius,
+            section.Depth - config.Terrain.SpawnProtectedRadius
+          )
 
-          let radius = rng.Next(config.Gap.MinRadius, config.Gap.MaxRadius + 1)
+        let radius = rng.Next(config.Gap.MinRadius, config.Gap.MaxRadius + 1)
 
-          for dz in -radius .. radius do
-            for dx in -radius .. radius do
-              if dx * dx + dz * dz <= radius * radius then
-                let gx = gcx + dx
-                let gz = gcz + dz
+        for dz in -radius .. radius do
+          for dx in -radius .. radius do
+            if dx * dx + dz * dz <= radius * radius then
+              let gx = gcx + dx
+              let gz = gcz + dz
 
-                if
-                  gx >= 0
-                  && gx < section.Width
-                  && gz >= 0
-                  && gz < section.Depth
-                  && not(inSpawn gx gz)
-                then
-                  let h = min (elevAt gx gz) (section.Height - 1)
+              if
+                gx >= 0
+                && gx < section.Width
+                && gz >= 0
+                && gz < section.Depth
+                && not(inSpawn gx gz)
+              then
+                let h = min (elevAt gx gz) (section.Height - 1)
 
-                  for y in 0..h do
-                    clearLocal gx y gz section
+                for y in 0..h do
+                  clearLocal gx y gz section
 
-      // ── 5. Floating platforms ──
-      // Place Platform blocks above the terrain surface at jumpable heights.
-      // Each platform is a single Platform cell; adjacent platforms form wider
-      // surfaces the player can land on. Height is 2-4 cells above the surface,
-      // within the jump budget (MaxVerticalCells = 3).
-      if config.Platform.MaxCount > 0 then
-        let targetCount =
-          rng.Next(config.Platform.MinCount, config.Platform.MaxCount + 1)
+    // ── 5. Floating platforms ──
+    // Place Platform blocks above the terrain surface at jumpable heights.
+    // Each platform is a single Platform cell; adjacent platforms form wider
+    // surfaces the player can land on. Height is 2-4 cells above the surface,
+    // within the jump budget (MaxVerticalCells = 3).
+    if config.Platform.MaxCount > 0 then
+      let targetCount =
+        rng.Next(config.Platform.MinCount, config.Platform.MaxCount + 1)
 
-        let mutable placed = 0
-        let mutable tries = 0
-        let maxTries = targetCount * 4
+      let mutable placed = 0
+      let mutable tries = 0
+      let maxTries = targetCount * 4
 
-        while placed < targetCount && tries < maxTries do
-          tries <- tries + 1
+      while placed < targetCount && tries < maxTries do
+        tries <- tries + 1
 
-          let px = rng.Next(1, section.Width - 1)
-          let pz = rng.Next(1, section.Depth - 1)
+        let px = rng.Next(1, section.Width - 1)
+        let pz = rng.Next(1, section.Depth - 1)
 
-          if not(inSpawn px pz) then
-            let surfH = min (elevAt px pz) (section.Height - 1)
+        if not(inSpawn px pz) then
+          let surfH = min (elevAt px pz) (section.Height - 1)
 
-            let heightOffset =
-              rng.Next(
-                config.Platform.MinHeight,
-                config.Platform.MaxHeight + 1
-              )
+          let heightOffset =
+            rng.Next(config.Platform.MinHeight, config.Platform.MaxHeight + 1)
 
-            let py = min (surfH + heightOffset) (section.Height - 1)
+          let py = min (surfH + heightOffset) (section.Height - 1)
 
-            // Only place if the cell is empty (no overlap with terrain or existing platform).
-            match CellGrid3D.get px py pz grid with
-            | ValueNone ->
-              setLocal px py pz Platform section
-              placed <- placed + 1
-            | _ -> ()
+          // Only place if the cell is empty (no overlap with terrain or existing platform).
+          match VoxelGrid.get px py pz grid with
+          | ValueNone ->
+            setLocal px py pz Platform section
+            placed <- placed + 1
+          | _ -> ()
 
-      section)
-    grids
-  |> ignore
+    section
+
+  paint grid |> ignore
 
   {
     Grids = grids

@@ -12,8 +12,8 @@ open FPSSample
 
 /// Procedural starry skybox for MonoGame. Renders a sphere from the inside
 /// with a custom HLSL effect that generates multi-layer twinkling stars +
-/// nebula clouds. Uses Draw3D.drawImmediate for custom render states
-/// (no backface culling, no depth write).
+/// nebula clouds. Uses the Draw DSL drawImmediate member for custom render
+/// states (no backface culling, no depth write).
 module Skybox =
 
   type private SkyboxState = {

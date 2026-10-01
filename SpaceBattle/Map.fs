@@ -2,7 +2,9 @@ namespace SpaceBattle
 
 open System
 open Mibo.Animation
+open Mibo
 open Mibo.Elmish
+open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics2D.Lighting
 open Mibo.Layout
 open Mibo.Elmish.Graphics2D
@@ -116,7 +118,23 @@ module Map =
   let private pathGradientColor (pathLen: int) (idx: int) =
     let t = float32 idx / float32(pathLen - 1)
     let alpha = 80uy + byte(t * 160f)
-    Color(100uy, 200uy, 255uy, alpha)
+    Color.create 100uy 200uy 255uy alpha
+
+  // Exact raylib palette bytes — the retired pipe module took raylib colors,
+  // and Mibo.Color's presets (Green, Blue, ...) carry different bytes.
+  let private rlRed = Color.rgb 230uy 41uy 55uy
+
+  let private rlViolet = Color.rgb 135uy 60uy 190uy
+
+  let private rlBlue = Color.rgb 0uy 121uy 241uy
+
+  let private rlDarkBlue = Color.rgb 0uy 82uy 172uy
+
+  let private rlGreen = Color.rgb 0uy 228uy 48uy
+
+  let private rlDarkGray = Color.rgb 80uy 80uy 80uy
+
+  let private rlYellow = Color.rgb 253uy 249uy 0uy
 
   let computeVisibleUnits
     (units: Map<struct (int * int), SBUnit>)
@@ -243,7 +261,7 @@ module Map =
     (camera: Camera2D)
     (mapModel: MapModel)
     (lightCtx: LightContext2D)
-    buffer
+    (buffer: RenderBuffer2D)
     =
     let model = mapModel.Grid
     let topLeft = Raylib.GetScreenToWorld2D(Vector2.Zero, camera)
@@ -267,12 +285,12 @@ module Map =
 
         let color =
           match tile with
-          | Asteroid1 -> Color.Red
-          | Asteroid2 -> Color.Violet
-          | Crate1 -> Color.Blue
-          | Crate2 -> Color.DarkBlue
-          | Station -> Color.Green
-          | DeepSpace -> Color.DarkGray
+          | Asteroid1 -> rlRed
+          | Asteroid2 -> rlViolet
+          | Crate1 -> rlBlue
+          | Crate2 -> rlDarkBlue
+          | Station -> rlGreen
+          | DeepSpace -> rlDarkGray
 
         match sprites |> Map.tryFind struct (col, row) with
         | Some animated ->
@@ -280,16 +298,22 @@ module Map =
           let texture = animated.Sheet.Texture
 
           buffer
-          |> LightDraw.litSprite
-            lightCtx
-            (SpriteState.create(texture, targetRect, source))
-          |> Draw.drop
+            .litSprite(
+              lightCtx,
+              SpriteState.create(texture, targetRect, source)
+            )
+            .drop()
         | None ->
           buffer
-          |> Draw.polyOutline
-            (0<RenderLayer>, color, 1f)
-            (Vector2(worldPos.X, worldPos.Y), 6, Constants.CellSize, 0f)
-          |> Draw.drop)
+            .polyOutline(
+              Vector2(worldPos.X, worldPos.Y),
+              6,
+              Constants.CellSize,
+              0f,
+              color,
+              thickness = 1f
+            )
+            .drop())
 
     buffer
 
@@ -299,7 +323,7 @@ module Map =
     (camera: Camera2D)
     (mapModel: MapModel)
     (hoveredOver: struct (int * int) voption)
-    buffer
+    (buffer: RenderBuffer2D)
     =
     let model = mapModel.Grid
     let reachable = mapModel.Reachable
@@ -323,25 +347,37 @@ module Map =
 
         if attackTargets.Contains(struct (col, row)) then
           buffer
-          |> Draw.fillPoly
-            (0<RenderLayer>, Color(255uy, 80uy, 80uy, 120uy))
-            (Vector2(worldPos.X, worldPos.Y), 6, Constants.CellSize, 0f)
-          |> Draw.drop
+            .fillPoly(
+              Vector2(worldPos.X, worldPos.Y),
+              6,
+              Constants.CellSize,
+              0f,
+              Color.create 255uy 80uy 80uy 120uy
+            )
+            .drop()
 
         if reachable.Contains(struct (col, row)) then
           buffer
-          |> Draw.fillPoly
-            (0<RenderLayer>, Color(100uy, 180uy, 255uy, 100uy))
-            (Vector2(worldPos.X, worldPos.Y), 6, Constants.CellSize, 0f)
-          |> Draw.drop
+            .fillPoly(
+              Vector2(worldPos.X, worldPos.Y),
+              6,
+              Constants.CellSize,
+              0f,
+              Color.create 100uy 180uy 255uy 100uy
+            )
+            .drop()
 
         match pathIdx |> Map.tryFind struct (col, row) with
         | Some idx when path.Length > 1 ->
           buffer
-          |> Draw.fillPoly
-            (0<RenderLayer>, pathGradientColor path.Length idx)
-            (Vector2(worldPos.X, worldPos.Y), 6, Constants.CellSize, 0f)
-          |> Draw.drop
+            .fillPoly(
+              Vector2(worldPos.X, worldPos.Y),
+              6,
+              Constants.CellSize,
+              0f,
+              pathGradientColor path.Length idx
+            )
+            .drop()
         | Some _
         | None -> ()
 
@@ -350,10 +386,15 @@ module Map =
           let hWorldPos = model |> CellGrid2D.getWorldPos hCol hRow
 
           buffer
-          |> Draw.polyOutline
-            (0<RenderLayer>, Color.Yellow, 2.5f)
-            (Vector2(hWorldPos.X, hWorldPos.Y), 6, Constants.CellSize, 0f)
-          |> Draw.drop
+            .polyOutline(
+              Vector2(hWorldPos.X, hWorldPos.Y),
+              6,
+              Constants.CellSize,
+              0f,
+              rlYellow,
+              thickness = 2.5f
+            )
+            .drop()
         | ValueNone -> ())
 
     buffer

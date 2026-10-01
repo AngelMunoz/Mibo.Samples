@@ -3,6 +3,7 @@ namespace SpaceBattle
 open System.Numerics
 open Mibo.Animation
 open Mibo.Elmish
+open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics2D.Lighting
 open Mibo.Layout
 open Mibo.Elmish.Graphics2D
@@ -225,7 +226,7 @@ module Units =
     (visibleCells: Set<struct (int * int)>)
     (lightCtx: LightContext2D)
     camera
-    buffer
+    (buffer: RenderBuffer2D)
     =
     let topLeft = Raylib.GetScreenToWorld2D(Vector2.Zero, camera)
 
@@ -281,10 +282,11 @@ module Units =
               )
 
             buffer
-            |> LightDraw.litSprite
-              lightCtx
-              (SpriteState.create(sheet.Texture, targetRect, source))
-            |> Draw.drop
+              .litSprite(
+                lightCtx,
+                SpriteState.create(sheet.Texture, targetRect, source)
+              )
+              .drop()
           | None -> ()
         | None -> ())
 

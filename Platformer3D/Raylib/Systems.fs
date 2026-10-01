@@ -61,25 +61,25 @@ let private collectMushroomLights
       let struct (terrainGrid, _) =
         LayeredMap3D.getOrAddLayer Layer.Terrain chunk.Grids
 
-      CellGridRenderer3D.renderVolume
-        chunk.Bounds
-        terrainGrid
-        (fun worldPos blockType ->
-          if
-            blockType = BlockType.MushroomLight
-            && lights.Count < 8
-            && (worldPos - camPos).LengthSquared() <= 1600.0f
-          then
-            lights.Add {
-              Position = worldPos + Numerics.Vector3(0.0f, 0.5f, 0.0f)
-              Color = Color.rgb 255uy 200uy 120uy
-              Intensity = 1.2f
-              Radius = 8.0f
-              Falloff = 1.2f
-              CastsShadows = false
-              ShadowDirection = ValueNone
-              ShadowBias = ValueNone
-            })
+      terrainGrid
+      |> VoxelGrid.iterVolume chunk.Bounds (fun x y z blockType ->
+        let worldPos = VoxelGrid.getWorldPos x y z terrainGrid
+
+        if
+          blockType = BlockType.MushroomLight
+          && lights.Count < 8
+          && (worldPos - camPos).LengthSquared() <= 1600.0f
+        then
+          lights.Add {
+            Position = worldPos + Numerics.Vector3(0.0f, 0.5f, 0.0f)
+            Color = Color.rgb 255uy 200uy 120uy
+            Intensity = 1.2f
+            Radius = 8.0f
+            Falloff = 1.2f
+            CastsShadows = false
+            ShadowDirection = ValueNone
+            ShadowBias = ValueNone
+          })
 
   lights.ToArray()
 

@@ -3,7 +3,9 @@ module SpaceBattle.Shaders
 open System.Diagnostics
 open System.Numerics
 open Microsoft.FSharp.NativeInterop
+open Mibo
 open Mibo.Elmish
+open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics2D
 open Raylib_cs
 
@@ -200,8 +202,6 @@ module Skybox =
     Uniform.setVec2 sky.Shader sky.ResLoc (Vector2(vpWidth, vpHeight))
 
     buffer
-    |> Draw.beginShader -1000<RenderLayer> sky.Shader
-    |> Draw.fillRect
-      (-1000<RenderLayer>, Color.White)
-      (Rectangle(0f, 0f, vpWidth, vpHeight))
-    |> Draw.endShader -1000<RenderLayer>
+      .beginShader(sky.Shader, -1000<RenderLayer>)
+      .fillRect(0f, 0f, vpWidth, vpHeight, Color.White, -1000<RenderLayer>)
+      .endShader(-1000<RenderLayer>)

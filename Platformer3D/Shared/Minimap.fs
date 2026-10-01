@@ -82,7 +82,7 @@ module Minimap =
         let struct (terrainGrid, _) =
           LayeredMap3D.getOrAddLayer Layer.Terrain chunk.Grids
 
-        CellGrid3D.iterVolume
+        VoxelGrid.iterVolume
           bounds
           (fun x y z blockType ->
             if blockType <> Empty then

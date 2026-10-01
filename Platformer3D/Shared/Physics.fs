@@ -206,7 +206,7 @@ let resolveCollision
               && gz >= 0
               && gz < chunkDepth
             then
-              match CellGrid3D.get gx gy gz terrainGrid with
+              match VoxelGrid.get gx gy gz terrainGrid with
               | ValueSome blockType when BlockData.isSolid blockType ->
                 let worldX = origin.X + float32 gx * cellSize
                 let worldY = origin.Y + float32 gy * cellSize
@@ -310,7 +310,7 @@ let resolveCollision
               && gz >= 0
               && gz < chunkDepth
             then
-              match CellGrid3D.get gx gy gz terrainGrid with
+              match VoxelGrid.get gx gy gz terrainGrid with
               | ValueSome blockType when BlockData.isSolid blockType ->
                 let worldX = origin.X + float32 gx * cellSize
                 let worldY = origin.Y + float32 gy * cellSize
@@ -404,7 +404,7 @@ let resolveCollision
               && gz >= 0
               && gz < chunkDepth
             then
-              match CellGrid3D.get gx gy gz terrainGrid with
+              match VoxelGrid.get gx gy gz terrainGrid with
               | ValueSome blockType when BlockData.isCollectible blockType ->
                 let worldX = origin.X + float32 gx * cellSize + cellSize * 0.5f
                 let worldY = origin.Y + float32 gy * cellSize + cellSize * 0.5f
@@ -417,7 +417,7 @@ let resolveCollision
                 let distSq = dx' * dx' + dy' * dy' + dz' * dz'
 
                 if distSq < (playerRadius + 0.5f) * (playerRadius + 0.5f) then
-                  CellGrid3D.clear gx gy gz terrainGrid |> ignore
+                  VoxelGrid.clear gx gy gz terrainGrid |> ignore
                   scoreDelta <- scoreDelta + 1
 
               | _ -> ()

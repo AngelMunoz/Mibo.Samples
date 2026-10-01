@@ -22,7 +22,7 @@ let tests =
 
       let mutable count = 0
 
-      CellGrid3D.iterVolume
+      VoxelGrid.iterVolume
         chunk.Bounds
         (fun _ _ _ bt ->
           if bt <> BlockType.Empty then
@@ -203,7 +203,7 @@ let tests =
         for z in 0 .. chunkDepth - 1 do
           for y in chunkHeight - 1 .. -1 .. 0 do
             if not startFound then
-              match CellGrid3D.get x y z terrainGrid with
+              match VoxelGrid.get x y z terrainGrid with
               | ValueSome bt when isSolid bt ->
                 startFound <- true
                 startX <- x
@@ -215,12 +215,12 @@ let tests =
 
       // Flood fill over 6-connected solid surface cells
       let filled =
-        Grid3DSpatial.floodFill
+        VoxelGrid.floodFill
           startX
           startY
           startZ
           (fun x y z ->
-            match CellGrid3D.get x y z terrainGrid with
+            match VoxelGrid.get x y z terrainGrid with
             | ValueSome bt -> isSolid bt
             | ValueNone -> false)
           terrainGrid
@@ -228,7 +228,7 @@ let tests =
       // Count total solid cells
       let mutable total = 0
 
-      CellGrid3D.iter
+      VoxelGrid.iter
         (fun _ _ _ bt ->
           if bt <> BlockType.Empty then
             total <- total + 1)
@@ -262,13 +262,13 @@ let tests =
 
             for y in chunkHeight - 1 .. -1 .. 0 do
               if surfaceY < 0 then
-                match CellGrid3D.get x y z terrainGrid with
+                match VoxelGrid.get x y z terrainGrid with
                 | ValueSome bt when isSolid bt -> surfaceY <- y
                 | _ -> ()
 
             // If surface is above y=0, check interior cell exists
             if surfaceY > 1 then
-              match CellGrid3D.get x 0 z terrainGrid with
+              match VoxelGrid.get x 0 z terrainGrid with
               | ValueSome bt -> foundInterior <- bt <> BlockType.Empty
               | ValueNone -> ()
 
@@ -287,7 +287,7 @@ let tests =
           let struct (terrainGrid, _) =
             LayeredMap3D.getOrAddLayer Layer.Terrain chunk.Grids
 
-          CellGrid3D.iter
+          VoxelGrid.iter
             (fun _ _ _ bt ->
               if not hasVariety then
                 match bt with
@@ -313,7 +313,7 @@ let tests =
           let struct (terrainGrid, _) =
             LayeredMap3D.getOrAddLayer Layer.Terrain chunk.Grids
 
-          CellGrid3D.iter
+          VoxelGrid.iter
             (fun _ _ _ bt ->
               if bt = Platform then
                 hasPlatform <- true)
@@ -340,7 +340,7 @@ let tests =
 
           for y in 0 .. chunkHeight - 1 do
             if not hasSolid then
-              match CellGrid3D.get x y z terrainGrid with
+              match VoxelGrid.get x y z terrainGrid with
               | ValueSome bt when isSolid bt -> hasSolid <- true
               | _ -> ()
 

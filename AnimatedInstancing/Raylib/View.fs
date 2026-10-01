@@ -123,21 +123,27 @@ let view (_ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
     )
 
   buffer
-  |> Draw3D.beginCameraWith(
-    Camera3D.render camera
-    |> Camera3D.withClear(Mibo.Color.op_Implicit(Mibo.Color.rgb 30uy 34uy 40uy))
-  )
-  |> Draw3D.setAmbientLight {
-    Color = Mibo.Color.White
-    Intensity = 0.35f
-  }
-  |> Draw3D.addDirectionalLight {
-    Direction = Vector3(0.6f, -1.0f, 0.35f)
-    Color = Mibo.Color.White
-    Intensity = 1.0f
-    CastsShadows = model.ShadowsOn
-  }
-  |> Draw3D.drop
+    .beginCameraWith(
+      Camera3D.render camera
+      |> Camera3D.withClear(
+        Mibo.Color.op_Implicit(Mibo.Color.rgb 30uy 34uy 40uy)
+      )
+    )
+    .setAmbientLight(
+      {
+        Color = Mibo.Color.White
+        Intensity = 0.35f
+      }
+    )
+    .addDirectionalLight(
+      {
+        Direction = Vector3(0.6f, -1.0f, 0.35f)
+        Color = Mibo.Color.White
+        Intensity = 1.0f
+        CastsShadows = model.ShadowsOn
+      }
+    )
+    .drop()
 
   // Instanced terrain: the floor is a cell grid rendered through the volume
   // renderer (the API voxel terrain uses), plus the glass cells above the
@@ -215,7 +221,7 @@ let view (_ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
     |> ignore
   | _ -> ()
 
-  buffer |> Draw3D.endCamera |> Draw3D.drop
+  buffer.endCamera().drop()
 
 // ─────────────────────────────────────────────────────────────
 // HUD (Renderer2D overlay)
@@ -230,18 +236,20 @@ let viewHud (_ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
   let paused = if crowd.Paused then "PAUSED" else "running"
 
   let inline line (yPos: float32) (text: string) =
-    Draw.text
-      {
-        Font = model.DiagFont
-        Text = text
-        Position = Vector2(10.0f, yPos)
-        FontSize = 20.0f
-        Spacing = 1.0f
-        Color = Color.Yellow
-        Layer = 0<RenderLayer>
-      }
-      buffer
-    |> Draw.drop
+    buffer
+      .text(
+        {
+          Font = model.DiagFont
+          Text = text
+          Position = Vector2(10.0f, yPos)
+          FontSize = 20.0f
+          Spacing = 1.0f
+          Color = Color.Yellow
+          Layer = 0<RenderLayer>
+        }
+        : Command2D.TextState
+      )
+      .drop()
 
   line
     10.0f
