@@ -16,7 +16,7 @@ open Platformer.WorldGen
 open Platformer.Raylib.Types
 open Platformer.Raylib.Camera
 open Platformer.Raylib.Systems
-open Platformer
+open global.Platformer
 
 let loadAssets(ctx: GameContext) : SpriteAssets =
   let assets = GameContext.getService<IAssets> ctx

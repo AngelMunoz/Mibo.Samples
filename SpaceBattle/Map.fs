@@ -11,7 +11,7 @@ open SpaceBattle.Types
 open SpaceBattle.Units
 
 type MapModel = {
-  Grid: HexGrid<Tile>
+  Grid: CellGrid2D<Tile>
   Seed: int
   Reachable: Set<struct (int * int)>
   Visible: Set<struct (int * int)>
@@ -39,32 +39,43 @@ type MapMsg =
 module Map =
   open System.Numerics
 
-  let inline createMap origin width height : HexGrid<Tile> =
-    HexGrid.create width height Constants.CellSize origin FlatTop
+  let inline createMap origin width height : CellGrid2D<Tile> =
+    CellGrid2D.createHex {
+      Orientation = HexOrientation.FlatTop
+      Width = width
+      Height = height
+      Radius = Constants.CellSize
+      Origin = origin
+    }
 
-  let inline asteroidSection (rng: Random) col row =
-    HexLayout.section col row (fun section ->
+  /// The asteroid belt: crates along the rim, asteroids scattered inside.
+  /// One Flow canvas painted in order — the deep-space floor first, the
+  /// scatter styles over it. The seed draws consume the rng in the same
+  /// order the retired HexLayout pipeline did, so a given seed builds the
+  /// same board.
+  let fillMap (rng: Random) (map: CellGrid2D<Tile>) : CellGrid2D<Tile> =
+    let belt =
+      Flow.canvas [
+        Flow.fill DeepSpace
+        Flow.scatterBorder { Count = 5; Seed = rng.Next() } Crate1
 
-      section
-      |> HexLayout.scatterBorder
-        0
-        0
-        section.Width
-        section.Height
-        5
-        (rng.Next())
-        Crate1
-      |> HexLayout.scatter (rng.Next(10)) (rng.Next()) Asteroid1
-      |> HexLayout.scatter (rng.Next(5)) (rng.Next()) Asteroid2)
+        Flow.noise
+          {
+            Count = rng.Next(10)
+            Seed = rng.Next()
+          }
+          Asteroid1
+        Flow.noise
+          {
+            Count = rng.Next(5)
+            Seed = rng.Next()
+          }
+          Asteroid2
+      ]
 
-  let fillMap (rng: Random) (map: HexGrid<Tile>) : HexGrid<Tile> =
-    let asteroids = asteroidSection rng
+    let struct (grid, _) = map |> Flow.run belt
 
-    let filledMap =
-      HexLayout.fill 0 0 map.Width map.Height DeepSpace
-      >> HexLayout.center map.Width map.Height (asteroids 0 0)
-
-    map |> HexLayout.run filledMap
+    grid
 
   let init(seed: int, width: int, height: int) : MapModel =
     let grid = createMap Vector2.Zero width height |> fillMap(Random seed)
@@ -86,7 +97,7 @@ module Map =
     |]
 
     for struct (c, r) in corners do
-      HexGrid.set c r DeepSpace grid
+      CellGrid2D.set c r DeepSpace grid
 
     {
       Grid = grid
@@ -110,7 +121,7 @@ module Map =
   let computeVisibleUnits
     (units: Map<struct (int * int), SBUnit>)
     (playerIndex: int)
-    (grid: HexGrid<Tile>)
+    (grid: CellGrid2D<Tile>)
     : Set<struct (int * int)> =
     let mutable visible = Set.empty
 
@@ -241,13 +252,13 @@ module Map =
       Raylib.GetScreenToWorld2D(Vector2(vpWidth, vpHeight), camera)
 
     model
-    |> HexGrid.iterVisible
-      topLeft.X
-      topLeft.Y
-      bottomRight.X
-      bottomRight.Y
+    |> CellGrid2D.iterVisible
+      (int topLeft.X)
+      (int topLeft.Y)
+      (int bottomRight.X)
+      (int bottomRight.Y)
       (fun col row tile ->
-        let worldPos = model |> HexGrid.getWorldPos col row
+        let worldPos = model |> CellGrid2D.getWorldPos col row
         let hexW = Constants.CellSize * 2.0f
         let hexH = Constants.CellSize * sqrt 3.0f
 
@@ -302,13 +313,13 @@ module Map =
     let pathIdx = pathIndexMap path
 
     model
-    |> HexGrid.iterVisible
-      topLeft.X
-      topLeft.Y
-      bottomRight.X
-      bottomRight.Y
+    |> CellGrid2D.iterVisible
+      (int topLeft.X)
+      (int topLeft.Y)
+      (int bottomRight.X)
+      (int bottomRight.Y)
       (fun col row tile ->
-        let worldPos = model |> HexGrid.getWorldPos col row
+        let worldPos = model |> CellGrid2D.getWorldPos col row
 
         if attackTargets.Contains(struct (col, row)) then
           buffer
@@ -336,7 +347,7 @@ module Map =
 
         match hoveredOver with
         | ValueSome struct (hCol, hRow) ->
-          let hWorldPos = model |> HexGrid.getWorldPos hCol hRow
+          let hWorldPos = model |> CellGrid2D.getWorldPos hCol hRow
 
           buffer
           |> Draw.polyOutline

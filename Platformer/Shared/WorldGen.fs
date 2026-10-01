@@ -583,6 +583,9 @@ module Ground =
   /// world-tile-X of column 0 of the region (chunk or island).
   /// All tile-selection logic (BlockTopLeft/Right, BlockBottomLeft/Right,
   /// BlockCenter fill) is handled by Stamps — WorldGen only positions.
+  /// Placement goes through the Flow bridge: the existing Stamps pipeline is
+  /// wrapped by `Stamp.sized` (any section-transforming stamp is an element)
+  /// and positioned with `Stamp.offset` + `Flow.paint`.
   let stamp
     (biomeAt: int -> Biome)
     (originX: int)
@@ -592,7 +595,11 @@ module Ground =
     let biome = biomeAt(originX + spec.X)
 
     section
-    |> Layout.section spec.X spec.Y (Stamps.ground biome spec.W spec.H)
+    |> Flow.paint(
+      Stamps.ground biome spec.W spec.H
+      |> Stamp.sized spec.W spec.H
+      |> Stamp.offset spec.X spec.Y
+    )
     |> ignore
 
 // ==============================================================
@@ -631,27 +638,25 @@ module Platform =
     =
     let biome = biomeAt(originX + spec.X)
 
+    let paint(pipeline: GridSection2D<Tile> -> GridSection2D<Tile>) =
+      section
+      |> Flow.paint(
+        pipeline |> Stamp.sized spec.W 1 |> Stamp.offset spec.X spec.Y
+      )
+      |> ignore
+
     match spec.Kind with
-    | Cloud ->
-      section
-      |> Layout.section spec.X spec.Y (Stamps.floatingPlatform biome spec.W)
-      |> ignore
-    | Ledge ->
-      section
-      |> Layout.section spec.X spec.Y (Stamps.ledge biome spec.W)
-      |> ignore
+    | Cloud -> paint(Stamps.floatingPlatform biome spec.W)
+    | Ledge -> paint(Stamps.ledge biome spec.W)
     | Overhang ->
-      section
-      |> Layout.section
-        spec.X
-        spec.Y
-        (Stamps.hRow
+      paint(
+        Stamps.hRow
           spec.W
           (HorizontalOverhangLeft biome)
           (Horizontal biome)
           (HorizontalOverhangRight biome)
-          (Horizontal biome))
-      |> ignore
+          (Horizontal biome)
+      )
 
   // --- Planning ---
 
@@ -943,13 +948,13 @@ let generateChunk (cx: int) (cy: int) (worldSeed: int) : Chunk =
     |> fun specs -> Ground.clampCrossSeam specs chunkCells nextChunkFirstSlabY
 
   let grid =
-    LayeredGrid2D.create
+    LayeredMap.create
       chunkCells
       chunkCells
       (Vector2(tileSize, tileSize))
       (Vector2(float32 cx * chunkWorldSize, float32 cy * chunkWorldSize))
 
-  LayeredLayout.layer
+  LayeredMap.runLayer
     Layer.Terrain
     (fun section ->
       groundSpecs
@@ -961,7 +966,7 @@ let generateChunk (cx: int) (cy: int) (worldSeed: int) : Chunk =
 
   // 3. Plan + stamp platforms (reads grid for spatial validation,
   //    stamps as each platform is validated)
-  let struct (terrainGrid, _) = LayeredGrid2D.getOrAddLayer Layer.Terrain grid
+  let struct (terrainGrid, _) = LayeredMap.getOrAddLayer Layer.Terrain grid
 
   terrainGrid
   |> Layout.run(

@@ -1,10 +1,62 @@
 module Platformer.Types
 
+open System.Collections.Generic
 open System.Numerics
 open Mibo.Layout
 
+/// The chunk's parallel tile layers — a dictionary of grids the
+/// sample owns. This is exactly what the retired framework
+/// `LayeredGrid2D` was: dims plus a lazily filled layer dictionary.
+type LayeredMap<'T> = {
+  Width: int
+  Height: int
+  CellSize: Vector2
+  Origin: Vector2
+  Layers: Dictionary<int, CellGrid2D<'T>>
+}
+
+module LayeredMap =
+
+  let create
+    width
+    height
+    (cellSize: Vector2)
+    (origin: Vector2)
+    : LayeredMap<'T> =
+    {
+      Width = width
+      Height = height
+      CellSize = cellSize
+      Origin = origin
+      Layers = Dictionary()
+    }
+
+  let getOrAddLayer
+    index
+    (m: LayeredMap<'T>)
+    : struct (CellGrid2D<'T> * LayeredMap<'T>) =
+    let mutable existing = Unchecked.defaultof<CellGrid2D<'T>>
+
+    if m.Layers.TryGetValue(index, &existing) then
+      struct (existing, m)
+    else
+      let grid = CellGrid2D.create m.Width m.Height m.CellSize m.Origin
+      m.Layers.Add(index, grid)
+      struct (grid, m)
+
+  /// Runs a `Layout` paint pipeline over one layer (the retired
+  /// `LayeredLayout.layer`).
+  let runLayer
+    index
+    (paint: GridSection2D<'T> -> GridSection2D<'T>)
+    (m: LayeredMap<'T>)
+    : LayeredMap<'T> =
+    let struct (grid, m) = getOrAddLayer index m
+    Layout.run paint grid |> ignore
+    m
+
 /// Logical layer indices for the layered chunk grid.
-/// Each category maps to a separate CellGrid2D inside the LayeredGrid2D,
+/// Each category maps to a separate CellGrid2D inside the LayeredMap,
 /// so consumers only scan the layers they care about (physics reads terrain
 /// + hazards; rendering walks all visible layers in z-order; collectible
 /// pickup scans the collectibles layer).
@@ -137,7 +189,7 @@ type TileInfo = {
 
 /// Flat tile type stored in the layered grid. Biome carried as a field to avoid nesting.
 /// Collider/sprite data is resolved via TileData.lookup — never stored per-cell.
-/// Use `tileLayer` to determine which LayeredGrid2D layer a tile belongs to.
+/// Use `tileLayer` to determine which LayeredMap layer a tile belongs to.
 [<Struct>]
 type Tile =
   | Empty
@@ -186,7 +238,7 @@ type Tile =
   | Flag
 
 /// Which layered-grid layer a tile belongs to.
-/// Used when stamping tiles onto the correct CellGrid2D inside a LayeredGrid2D.
+/// Used when stamping tiles onto the correct CellGrid2D inside a LayeredMap.
 let tileLayer(tile: Tile) : int =
   match tile with
   | Empty -> Layer.Terrain
@@ -241,7 +293,7 @@ type TorchLight = {
 
 [<Struct>]
 type Chunk = {
-  Grids: LayeredGrid2D<Tile>
+  Grids: LayeredMap<Tile>
   Platforms: Rect[]
   OneWayPlatforms: Rect[]
   Spikes: Rect[]

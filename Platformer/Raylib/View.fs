@@ -13,7 +13,7 @@ open Platformer.Constants
 open Platformer.Types
 open Platformer.Raylib
 open Platformer.Raylib.Types
-open Platformer
+open global.Platformer
 
 type Model = Types.Model
 
@@ -188,7 +188,7 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
 
       if Culling.isVisible2D viewBounds chunkBounds then
         let struct (terrainGrid, _) =
-          LayeredGrid2D.getOrAddLayer Layer.Terrain chunk.Grids
+          LayeredMap.getOrAddLayer Layer.Terrain chunk.Grids
 
         CellGrid2D.iterVisible
           (int viewBounds.X)

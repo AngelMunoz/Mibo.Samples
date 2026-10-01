@@ -3,6 +3,7 @@ namespace Defli3D.MonoGame
 open Microsoft.Xna.Framework
 open Mibo.Elmish
 open Mibo.Elmish.Graphics3D
+open Mibo.Layout
 open Mibo.Layout3D
 open Defli3D
 open Defli3D.State
@@ -52,25 +53,34 @@ module MapView =
   /// render-volume bounds.
   type MapBake = {
     Map: MapModel
-    Ground: CellGrid3D<CellBake>
-    Decorations: CellGrid3D<CellBake>
-    Bounds: BoundingBox
+    Ground: CellGrid2D<CellBake>
+    Decorations: CellGrid2D<CellBake>
   }
 
-  /// Builds the two 3D grids from the 2D map layers. Pure data — no
-  /// assets touched. The 2D (x, y) cell maps to 3D (x, 0, y) with the
-  /// world position at the cell CENTER (+0.5). The content selection
-  /// (model + rotation + offset) is the Shared MapModel.cellPieces:
-  /// every cell gets its ground piece, decorated cells additionally
-  /// a sparse cell on the decorations grid one layer above.
+  /// Builds the two footprint grids from the 2D map layers. Pure
+  /// data — no assets touched. The 2D (x, y) cell maps to 3D
+  /// (x, 0, y) with the world position at the cell CENTER (+0.5).
+  /// The content selection (model + rotation + offset) is the Shared
+  /// MapModel.cellPieces: every cell gets its ground piece, decorated
+  /// cells additionally a sparse cell on the decorations grid.
   let bake(map: MapModel) : MapBake =
     let terrain = MapModel.terrain map
     let w = terrain.Width
     let h = terrain.Height
 
-    let ground = CellGrid3D.create w 1 h (V3(1f, 1f, 1f)) V3.Zero
+    let ground =
+      CellGrid2D.create
+        w
+        h
+        (System.Numerics.Vector2(1f, 1f))
+        System.Numerics.Vector2.Zero
 
-    let decorations = CellGrid3D.create w 1 h (V3(1f, 1f, 1f)) V3.Zero
+    let decorations =
+      CellGrid2D.create
+        w
+        h
+        (System.Numerics.Vector2(1f, 1f))
+        System.Numerics.Vector2.Zero
 
     for y = 0 to h - 1 do
       for x = 0 to w - 1 do
@@ -93,7 +103,7 @@ module MapView =
           rotation * translation
 
         ground
-        |> CellGrid3D.set x 0 y {
+        |> CellGrid2D.set x y {
           Name = groundPiece.Model.Path
           Matrix = matrixOf groundPiece
         }
@@ -101,7 +111,7 @@ module MapView =
         decoPiece
         |> ValueOption.iter(fun piece ->
           decorations
-          |> CellGrid3D.set x 0 y {
+          |> CellGrid2D.set x y {
             Name = piece.Model.Path
             Matrix = matrixOf piece
           })
@@ -110,10 +120,6 @@ module MapView =
       Map = map
       Ground = ground
       Decorations = decorations
-      Bounds = {
-        Min = V3.Zero
-        Max = V3(float32 w, 1f, float32 h)
-      }
     }
 
 /// The map presenter: owns the lazily baked grids and the instanced
@@ -164,19 +170,15 @@ type MapView() =
       bake
 
   /// The map pass: ground + decorations, one instanced draw per
-  /// distinct baked model per layer.
+  /// distinct baked model per layer. The window is the whole map —
+  /// the fixed camera always sees it all.
   member _.View(ctx: GameContext, frame: RenderFrame, buffer: RenderBuffer3D) =
     let bake = ensureBake frame
     instancedCtx.ResetFrameBuffers()
 
-    CellGridRenderer3D.renderVolumeInstanced
-      instancedCtx
-      bake.Bounds
-      bake.Ground
-      buffer
+    let w = bake.Ground.Width
+    let h = bake.Ground.Height
 
-    CellGridRenderer3D.renderVolumeInstanced
-      instancedCtx
-      bake.Bounds
-      bake.Decorations
-      buffer
+    instancedCtx.RenderWindowInstanced(buffer, 0, 0, w, h, bake.Ground)
+
+    instancedCtx.RenderWindowInstanced(buffer, 0, 0, w, h, bake.Decorations)

@@ -8,6 +8,7 @@ open Mibo.Elmish
 open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics2D
 open Mibo.Elmish.Graphics3D
+open Mibo.Layout
 open Mibo.Layout3D
 open Mibo.Animation
 open AnimatedInstancing
@@ -29,10 +30,15 @@ let private glassCellMaterial = {
 // Unit cube mesh, created on the first Draw (the GL context exists then).
 let mutable private cubeMesh: Raylib_cs.Mesh voption = ValueNone
 
+// World Y of the glass cells (the cubes span 2.5..3.5).
+let private glassLayer = 3
+
 // One context for both cell kinds: the renderer groups by key, so the Ground
 // cells emit one opaque DrawMeshInstanced (inline, casts shadows) and the
 // semi-transparent Glass cells emit their own command — which defers whole to
 // the sorted pass (a transparent material covers every instance of its batch).
+// The vertical position rides in the cell: ground cubes sit at the
+// mannequins' feet, glass cubes float at the glass layer's world Y.
 let private terrainCtx =
   InstancedRenderContext<TerrainCell, TerrainCell>(
     getKey = id
@@ -47,41 +53,45 @@ let private terrainCtx =
           |]
         | ValueNone -> Array.empty
     , getTransform =
-      fun worldPos _ ->
-        // Unit cube scaled to one cell; -0.5 puts the ground layer's top face at
-        // y = 0 (the mannequins' feet) and floats the glass layer above them.
+      fun basePos cell ->
+        // Unit cube scaled to one cell; ground tops land at y = 0 (the
+        // mannequins' feet) and the glass floats at layer 3 (spanning
+        // 2.5..3.5). The vertical is data in the cell kind.
+        let y =
+          match cell with
+          | Ground -> -0.5f
+          | Glass -> float32 glassLayer - 0.5f
+
         Raymath.MatrixMultiply(
           Raymath.MatrixScale(CrowdSpec.spacing, 1.0f, CrowdSpec.spacing),
-          Raymath.MatrixTranslate(worldPos.X, worldPos.Y - 0.5f, worldPos.Z)
+          Raymath.MatrixTranslate(basePos.X, y, basePos.Z)
         )
   )
 
 // Rebuilt only when the crowd tier changes the grid's side length.
 let mutable private terrainSide = -1
-let mutable private terrainGrid = Unchecked.defaultof<CellGrid3D<TerrainCell>>
-
-// Cell layer Y of the glass cells (world Y = 3, so the cubes span 2.5..3.5).
-let private glassLayer = 3
+let mutable private terrainGrid = Unchecked.defaultof<CellGrid2D<TerrainCell>>
 
 let private buildTerrain(side: int) =
   let center = float32(side - 1) * 0.5f
 
+  // Cell size stays 1: the transform scales a unit cube by the crowd
+  // spacing, exactly as the retired voxel grid did.
   let grid =
-    CellGrid3D.create
+    CellGrid2D.create
       side
-      (glassLayer + 1)
       side
-      Vector3.One
-      (Vector3(-center * CrowdSpec.spacing, 0.0f, -center * CrowdSpec.spacing))
+      (Vector2(1f, 1f))
+      (Vector2(-center * CrowdSpec.spacing, -center * CrowdSpec.spacing))
 
   for z = 0 to side - 1 do
     for x = 0 to side - 1 do
-      CellGrid3D.set x 0 z Ground grid
+      CellGrid2D.set x z Ground grid
 
   // Glass cells above the first three mannequins (instances 0, 1, 2 sit at
   // columns 0..2 of row 0).
   for i = 0 to 2 do
-    CellGrid3D.set (i % side) glassLayer (i / side) Glass grid
+    CellGrid2D.set (i % side) (i / side) Glass grid
 
   grid
 
@@ -149,14 +159,18 @@ let view (_ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
   let extent = float32 side * CrowdSpec.spacing + 8.0f
   let half = extent * 0.5f
 
-  let bounds = {
-    Mibo.Layout3D.BoundingBox.Min = Vector3(-half, -1.0f, -half)
-    Max = Vector3(half, 4.0f, half)
-  }
-
   terrainCtx.ResetFrameBuffers()
 
-  terrainCtx.RenderCellGridVolumeInstanced(buffer, bounds, terrainGrid)
+  // The old volume's XZ extent becomes the window, in world units; the
+  // vertical (ground vs glass) is data in the cells now.
+  terrainCtx.RenderWindowInstanced(
+    buffer,
+    int -half,
+    int -half,
+    int half,
+    int half,
+    terrainGrid
+  )
 
   // THE probe: one pose evaluation per instance into the reused pose array,
   // then a single skinned+instanced draw call (one DrawSkinnedMeshInstanced

@@ -1,10 +1,11 @@
 module Platformer3D.Types
 
+open System.Collections.Generic
 open System.Numerics
 open Mibo.Layout3D
 
 /// Logical layer indices for the layered chunk grid. Each category maps to a
-/// separate CellGrid3D inside the LayeredGrid3D, so consumers only scan the
+/// separate CellGrid3D inside the LayeredMap3D, so consumers only scan the
 /// layers they care about (physics reads terrain; rendering walks all visible
 /// layers). Mirrors the 2D sample's Layer module.
 module Layer =
@@ -19,6 +20,60 @@ module Layer =
 
   [<Literal>]
   let Decorations = 3
+
+/// The chunk's parallel voxel layers — a dictionary of grids the sample
+/// owns. This is exactly what the retired framework `LayeredGrid3D` was:
+/// dims plus a lazily filled layer dictionary.
+type LayeredMap3D<'T> = {
+  Width: int
+  Height: int
+  Depth: int
+  CellSize: Vector3
+  Origin: Vector3
+  Layers: Dictionary<int, CellGrid3D<'T>>
+}
+
+module LayeredMap3D =
+
+  let create
+    width
+    height
+    depth
+    (cellSize: Vector3)
+    (origin: Vector3)
+    : LayeredMap3D<'T> =
+    {
+      Width = width
+      Height = height
+      Depth = depth
+      CellSize = cellSize
+      Origin = origin
+      Layers = Dictionary()
+    }
+
+  let getOrAddLayer
+    index
+    (m: LayeredMap3D<'T>)
+    : struct (CellGrid3D<'T> * LayeredMap3D<'T>) =
+    let mutable existing = Unchecked.defaultof<CellGrid3D<'T>>
+
+    if m.Layers.TryGetValue(index, &existing) then
+      struct (existing, m)
+    else
+      let grid = CellGrid3D.create m.Width m.Height m.Depth m.CellSize m.Origin
+      m.Layers.Add(index, grid)
+      struct (grid, m)
+
+  /// Runs a `Layout3D` paint pipeline over one layer (the retired
+  /// `LayeredLayout3D.layer`).
+  let runLayer
+    index
+    (paint: GridSection3D<'T> -> GridSection3D<'T>)
+    (m: LayeredMap3D<'T>)
+    : LayeredMap3D<'T> =
+    let struct (grid, m) = getOrAddLayer index m
+    Layout3D.run paint grid |> ignore
+    m
 
 [<Struct>]
 type GameAction =
@@ -88,7 +143,7 @@ type BlockType =
 
 [<Struct>]
 type Chunk = {
-  Grids: LayeredGrid3D<BlockType>
+  Grids: LayeredMap3D<BlockType>
   Bounds: BoundingBox
   OriginX: int
   OriginZ: int

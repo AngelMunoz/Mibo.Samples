@@ -36,7 +36,7 @@ module UI =
     (vpWidth: float32)
     (vpHeight: float32)
     (units: Map<struct (int * int), SBUnit>)
-    (grid: HexGrid<Tile>)
+    (grid: CellGrid2D<Tile>)
     (visible: Set<struct (int * int)>)
     (movingUnit: struct (int * int * Vector2) voption)
     (turn: Turn)
@@ -51,11 +51,11 @@ module UI =
     let hexH = Constants.CellSize * sqrt 3.0f
 
     grid
-    |> HexGrid.iterVisible
-      topLeft.X
-      topLeft.Y
-      bottomRight.X
-      bottomRight.Y
+    |> CellGrid2D.iterVisible
+      (int topLeft.X)
+      (int topLeft.Y)
+      (int bottomRight.X)
+      (int bottomRight.Y)
       (fun col row _tile ->
         if not(visible.Contains(struct (col, row))) then
           ()
@@ -65,7 +65,7 @@ module UI =
             let worldPos =
               match movingUnit with
               | ValueSome struct (mc, mr, pos) when mc = col && mr = row -> pos
-              | _ -> grid |> HexGrid.getWorldPos col row
+              | _ -> grid |> CellGrid2D.getWorldPos col row
 
             let hexW = Constants.CellSize * 2.0f
             let barWidth = hexW * 0.8f
@@ -119,7 +119,7 @@ module UI =
     (vpWidth: float32)
     (vpHeight: float32)
     (units: Map<struct (int * int), SBUnit>)
-    (grid: HexGrid<Tile>)
+    (grid: CellGrid2D<Tile>)
     (visible: Set<struct (int * int)>)
     (hoveredOver: struct (int * int) voption)
     (camera: Camera2D)
@@ -152,13 +152,13 @@ module UI =
         let visRing = Hex2DSpatial.ring hCol hRow hoveredUnit.VisualRange grid
 
         grid
-        |> HexGrid.iterVisible
-          topLeft.X
-          topLeft.Y
-          bottomRight.X
-          bottomRight.Y
+        |> CellGrid2D.iterVisible
+          (int topLeft.X)
+          (int topLeft.Y)
+          (int bottomRight.X)
+          (int bottomRight.Y)
           (fun col row _tile ->
-            let worldPos = grid |> HexGrid.getWorldPos col row
+            let worldPos = grid |> CellGrid2D.getWorldPos col row
 
             // Move range (blue filled)
             if moveRange.Contains(struct (col, row)) then

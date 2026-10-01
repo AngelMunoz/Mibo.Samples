@@ -15,7 +15,7 @@ type CameraModel = { Camera: Camera2D }
 type CameraMsg =
   | ApplyZoom of zoom: float32
   | ApplyMovement of held: Set<GameAction> * dt: float32
-  | ClampToMap of grid: HexGrid<Tile> * vpWidth: float32 * vpHeight: float32
+  | ClampToMap of grid: CellGrid2D<Tile> * vpWidth: float32 * vpHeight: float32
 
 module Camera =
 
@@ -34,7 +34,7 @@ module Camera =
     { Camera = camera }
 
   let clampToMapBounds
-    (map: HexGrid<Tile>)
+    (map: CellGrid2D<Tile>)
     (vpWidth: float32)
     (vpHeight: float32)
     (camera: byref<Camera2D>)

@@ -48,6 +48,9 @@ type TerrainKind =
   | Dirt
   | Stone
   | Sand
+  /// The river band — non-buildable; road cells over it render as the
+  /// river bridge.
+  | Water
 
 [<Struct>]
 type MapTile = {
@@ -91,7 +94,7 @@ module WorldConfig =
     WaveClearBonus = 25
     GridCols = 20
     GridRows = 20
-    MapVariant = MapVariant.Procedural
+    MapVariant = MapVariant.HandAuthored
   }
 
 // ─────────────────────────────────────────────────────────────

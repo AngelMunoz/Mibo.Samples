@@ -10,6 +10,7 @@
     <Compile Include="Constants.fs" />
     <Compile Include="Assets.fs" />
     <Compile Include="Level.fs" />
+    <Compile Include="LevelBake.fs" />
     <Compile Include="Types.fs" />
     <Compile Include="IEnemyAnimationService.fs" />
     <Compile Include="ViewMath.fs" />

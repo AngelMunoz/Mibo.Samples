@@ -47,9 +47,7 @@ let inline private wrapPartAsPrimitive(part: ModelMeshPart) : PrimitiveMesh = {
   Bounds = blockBounds
 }
 
-let private resolveMeshesAndMaterial(cell: Level.Cell) =
-  let path = Level.Cell.modelPath cell
-
+let private resolveMeshesAndMaterial(path: string) =
   match meshMaterialCache.TryGetValue path with
   | true, cached -> cached
   | false, _ ->
@@ -74,13 +72,13 @@ let private resolveMeshesAndMaterial(cell: Level.Cell) =
     meshMaterialCache[path] <- result
     result
 
-// Persistent instanced context for level geometry.
-let private instancedCtx =
-  InstancedRenderContext<Level.Cell, string>(
-    getKey = Level.Cell.modelPath,
-    getMeshesAndMaterial = resolveMeshesAndMaterial,
-    getTransform = fun worldPos _cell -> Matrix.CreateTranslation(worldPos)
-  )
+// Level geometry: the footprint grid baked into per-path instance
+// groups — one native-size instance per stack level, translate-only
+// (Matrix.CreateTranslation, exactly the retired context's transform;
+// no scaling). Rebuilt only when the level instance changes (restart).
+let mutable private bakedLevel: Level.LevelData voption = ValueNone
+
+let mutable private bakedGroups: LevelBake.Group<Matrix>[] = [||]
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Enemy animation registry.
@@ -364,7 +362,6 @@ let view
 
   // ── Level geometry (instanced) ────────────────────────────────────────────
   currentGameContext <- ctx
-  instancedCtx.ResetFrameBuffers()
 
   let graphicsDevice = GameContext.getService<GraphicsDevice> ctx
 
@@ -382,9 +379,27 @@ let view
       cameraNear
       cameraFar
 
-  buffer
-    .renderCellGridVolumeInstanced(instancedCtx, box, model.Level.Grid)
-    .drop()
+  currentGameContext <- ctx
+
+  match bakedLevel with
+  | ValueSome existing when obj.ReferenceEquals(existing, model.Level) -> ()
+  | _ ->
+    bakedGroups <-
+      LevelBake.bake
+        (fun p -> Matrix.CreateTranslation(p.X, p.Y, p.Z))
+        model.Level
+
+    bakedLevel <- ValueSome model.Level
+
+  for group in bakedGroups do
+    for struct (mesh, material) in resolveMeshesAndMaterial group.Path do
+      buffer.AddDrawInstanced(
+        mesh,
+        group.Transforms,
+        material,
+        group.Transforms.Length,
+        ValueNone
+      )
 
   // ── Enemies (animated models) ─────────────────────────────────────────────
   for i = 0 to model.Enemy.Enemies.Length - 1 do

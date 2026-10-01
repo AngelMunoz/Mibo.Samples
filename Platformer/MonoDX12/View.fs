@@ -10,7 +10,7 @@ open Mibo.Layout
 open Mibo.Animation
 open Platformer.Constants
 open Platformer.Types
-open Platformer
+open global.Platformer
 open Platformer.MonoGame.Types
 
 type Model = Types.Model
@@ -197,7 +197,7 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
 
       if isVisible2D viewBounds chunkBounds then
         let struct (terrainGrid, _) =
-          LayeredGrid2D.getOrAddLayer Layer.Terrain chunk.Grids
+          LayeredMap.getOrAddLayer Layer.Terrain chunk.Grids
 
         CellGrid2D.iterVisible
           viewBounds.X

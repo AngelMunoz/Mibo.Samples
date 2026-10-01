@@ -16,7 +16,7 @@ open Platformer.Types
 open Platformer.MonoGame.Types
 open Platformer.MonoGame.Camera
 open Platformer.MonoGame.Systems
-open Platformer
+open global.Platformer
 
 let loadAssets(ctx: GameContext) : SpriteAssets =
   let assets = GameContext.getService<IAssets> ctx

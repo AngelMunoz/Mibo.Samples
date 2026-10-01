@@ -23,8 +23,9 @@ module Fixtures =
     WaveClearBonus = 10
     GridCols = 20
     GridRows = 12
-    // Tests rely on the fixed road (cell (1,1) buildable, row 4 is
-    // the road) — the procedural variant is covered by its own tests.
+    // Tests rely on the hand-authored map's road (row 8 west of
+    // the plaza); placement cells come from the scan helpers below —
+    // the procedural variant is covered by its own tests.
     MapVariant = MapVariant.HandAuthored
   }
 
@@ -187,6 +188,54 @@ let mkHarness(cfg: WorldConfig) =
 /// the sim's handlers use).
 let spawnEnemy (state: State) (def: EnemyDef) =
   Enemies.spawn def state.Enemies state.Map.Path
+
+/// A guaranteed-buildable cell on a map (scan — the seeded clutter
+/// moves with the seed, placement tests must not hardcode).
+let openCellOfMap(map: Defli3D.State.Systems.MapModel) : struct (int * int) =
+  let terrain = Defli3D.State.Systems.MapModel.terrain map
+  let mutable found = ValueNone
+
+  Mibo.Layout.CellGrid2D.iter
+    (fun x y tile ->
+      if tile.Buildable && found.IsNone then
+        found <- ValueSome struct (x, y))
+    terrain
+
+  match found with
+  | ValueSome c -> c
+  | ValueNone -> failwith "no buildable cell on the fixture map"
+
+/// A buildable cell on the state's map, orthogonally adjacent to the
+/// road and nearest the spawn — for placement tests whose tower must
+/// reach walking enemies quickly.
+let roadSideCell(state: State) : struct (int * int) =
+  let buildable = Defli3D.State.Systems.MapModel.buildableGrid state.Map
+
+  let struct (sx, sy) = state.Map.SpawnCell
+  let mutable best = ValueNone
+  let mutable bestDist = Int32.MaxValue
+
+  Mibo.Layout.CellGrid2D.iter
+    (fun x y tile ->
+      if tile.IsPath then
+        for struct (dx, dy) in
+          [| struct (0, -1); struct (0, 1); struct (-1, 0); struct (1, 0) |] do
+          match Mibo.Layout.CellGrid2D.get (x + dx) (y + dy) buildable with
+          | ValueSome b when b.Buildable ->
+            let d = abs(x + dx - sx) + abs(y + dy - sy)
+
+            if d < bestDist then
+              best <- ValueSome struct (x + dx, y + dy)
+              bestDist <- d
+          | _ -> ())
+    (Defli3D.State.Systems.MapModel.pathGrid state.Map)
+
+  match best with
+  | ValueSome c -> c
+  | ValueNone -> failwith "no buildable road-side cell on the fixture map"
+
+/// A guaranteed-buildable cell on the state's map.
+let openCell(state: State) : struct (int * int) = openCellOfMap state.Map
 
 /// Drives damage through the same event translation the sim's enemy
 /// handler uses (kills pay gold, burst, boss split).

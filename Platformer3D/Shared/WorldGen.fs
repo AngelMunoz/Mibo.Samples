@@ -228,7 +228,7 @@ let generateChunk (cx: int) (cz: int) (worldSeed: int) : Chunk =
   let originTileZ = cz * chunkDepth
 
   let grids =
-    LayeredGrid3D.create
+    LayeredMap3D.create
       chunkWidth
       chunkHeight
       chunkDepth
@@ -237,7 +237,7 @@ let generateChunk (cx: int) (cz: int) (worldSeed: int) : Chunk =
 
   let rng = Random(chunkSeed cx cz worldSeed)
 
-  LayeredLayout3D.layer
+  LayeredMap3D.runLayer
     Layer.Terrain
     (fun section ->
       let grid = section.BackingGrid

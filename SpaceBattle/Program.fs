@@ -229,7 +229,7 @@ let private startGame(preStartState: PreStartState, model: Model) =
       seq {
         for r in 0 .. map.Grid.Height - 1 do
           for c in 0 .. map.Grid.Width - 1 do
-            match HexGrid.get c r map.Grid with
+            match CellGrid2D.get c r map.Grid with
             | ValueSome _ -> yield struct (c, r)
             | ValueNone -> ()
       }
@@ -535,7 +535,7 @@ let update
         let waypoints =
           simplified
           |> Array.map(fun struct (c, r) ->
-            model.Map.Grid |> HexGrid.getWorldPos c r)
+            model.Map.Grid |> CellGrid2D.getWorldPos c r)
 
         let segDists = Array.zeroCreate simplified.Length
         segDists[0] <- 0f
@@ -599,8 +599,8 @@ let update
       | Phase.Intent.PerformAttack attack ->
         let struct (ac, ar) = attack.AttackerCell
         let struct (tc, tr) = attack.Target
-        let attackerPos = model.Map.Grid |> HexGrid.getWorldPos ac ar
-        let targetPos = model.Map.Grid |> HexGrid.getWorldPos tc tr
+        let attackerPos = model.Map.Grid |> CellGrid2D.getWorldPos ac ar
+        let targetPos = model.Map.Grid |> CellGrid2D.getWorldPos tc tr
 
         let shipDir = Units.directionFromCells attack.AttackerCell attack.Target
 

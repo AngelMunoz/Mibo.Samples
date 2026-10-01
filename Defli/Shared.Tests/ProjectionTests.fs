@@ -111,7 +111,7 @@ let tests =
         let economy = Economy.Economy.init cfg // gold 100
         let towers = Towers.Towers.init()
         let projectiles = Projectiles.Projectiles.init()
-        let hover = CVal.create(ValueSome(struct (1, 1))) // buildable grass
+        let hover = CVal.create(ValueSome(TestData.openCellOfMap map))
         let selected = CVal.create TowerDefs.frost
 
         let projections =

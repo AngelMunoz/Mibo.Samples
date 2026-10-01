@@ -80,7 +80,7 @@ module Minimap =
         && chunk.Bounds.Min.Z <= bounds.Max.Z
       then
         let struct (terrainGrid, _) =
-          LayeredGrid3D.getOrAddLayer Layer.Terrain chunk.Grids
+          LayeredMap3D.getOrAddLayer Layer.Terrain chunk.Grids
 
         CellGrid3D.iterVolume
           bounds

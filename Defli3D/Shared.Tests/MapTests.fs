@@ -17,8 +17,8 @@ let tests =
       Expect.equal map.Grid.Height cfg.GridRows "rows")
 
     testCase "path is continuous spawn → base" (fun () ->
-      Expect.equal map.SpawnCell (struct (0, 4)) "spawn cell"
-      Expect.equal map.BaseCell (struct (19, 2)) "base cell"
+      Expect.equal map.SpawnCell (struct (0, 8)) "spawn cell"
+      Expect.equal map.BaseCell (struct (19, 6)) "base cell"
       Expect.isGreaterThan map.Path.Length 1 "waypoints")
 
     testCase "path layer: every cell marked, none buildable" (fun () ->
@@ -46,22 +46,38 @@ let tests =
             | ValueNone -> ())
         buildable)
 
-    testCase "isBuildable: grass yes, road no, out of grid no" (fun () ->
-      Expect.isTrue (MapModel.isBuildable 0 0 map) "grass buildable"
-      Expect.isFalse (MapModel.isBuildable 1 4 map) "road not buildable"
-      Expect.isFalse (MapModel.isBuildable -1 0 map) "out of grid")
+    testCase
+      "isBuildable: open ground yes, road no, water no, out of grid no"
+      (fun () ->
+        let terrain = MapModel.terrain map
+        let mutable openCell = ValueNone
+
+        CellGrid2D.iter
+          (fun x y tile ->
+            if tile.Buildable && openCell.IsNone then
+              openCell <- ValueSome struct (x, y))
+          terrain
+
+        match openCell with
+        | ValueSome struct (x, y) ->
+          Expect.isTrue (MapModel.isBuildable x y map) "open ground buildable"
+        | ValueNone -> failtest "no open cell on the map"
+
+        Expect.isFalse (MapModel.isBuildable 1 8 map) "road not buildable"
+        Expect.isFalse (MapModel.isBuildable 12 1 map) "water not buildable"
+        Expect.isFalse (MapModel.isBuildable -1 0 map) "out of grid")
 
     testCase "waypoints layer marks the path vertices" (fun () ->
       let waypoints = MapModel.waypoints map
 
       let marked =
-        CellGrid2D.get 0 4 waypoints
+        CellGrid2D.get 0 8 waypoints
         |> ValueOption.exists(fun t -> t.IsWaypoint)
 
       Expect.isTrue marked "spawn vertex marked"
 
       let baseMarked =
-        CellGrid2D.get 19 2 waypoints
+        CellGrid2D.get 19 6 waypoints
         |> ValueOption.exists(fun t -> t.IsWaypoint)
 
       Expect.isTrue baseMarked "base vertex marked"
@@ -105,8 +121,8 @@ let tests =
 
     testCase "spawn and base cells are on the path" (fun () ->
       let pathGrid = MapModel.pathGrid map
-      let spawnTile = CellGrid2D.get 0 4 pathGrid
-      let baseTile = CellGrid2D.get 19 2 pathGrid
+      let spawnTile = CellGrid2D.get 0 8 pathGrid
+      let baseTile = CellGrid2D.get 19 6 pathGrid
 
       match spawnTile, baseTile with
       | ValueSome s, ValueSome b ->
@@ -150,24 +166,32 @@ let tests =
         Expect.isGreaterThan props 0 "props scattered"
         Expect.isGreaterThan blends 0 "road blends scattered")
 
-    testCase "visual props (HandAuthored) do not block buildability" (fun () ->
-      let buildable = MapModel.buildableGrid map
-      let deco = MapModel.decorations map
-      let mutable blockedProp = 0
+    testCase
+      "hand-authored clutter: obstacles block, dressing does not"
+      (fun () ->
+        let buildable = MapModel.buildableGrid map
+        let deco = MapModel.decorations map
+        let mutable obstacles = 0
+        let mutable dressings = 0
 
-      CellGrid2D.iter
-        (fun x y tile ->
-          if tile.Decoration.IsSome && not tile.Buildable then
-            blockedProp <- blockedProp + 1
+        CellGrid2D.iter
+          (fun x y tile ->
+            match tile.Decoration with
+            | ValueSome _ ->
+              match CellGrid2D.get x y buildable with
+              | ValueSome b ->
+                if b.Buildable then
+                  dressings <- dressings + 1
+                else
+                  obstacles <- obstacles + 1
+              | ValueNone -> failtest "buildable row exists"
+            | ValueNone -> ())
+          deco
 
-            // Hand-authored: the prop is visual only — the buildable
-            // grid must still allow building there.
-            match CellGrid2D.get x y buildable with
-            | ValueSome b -> Expect.isTrue b.Buildable "prop does not block"
-            | ValueNone -> failtest "buildable row exists")
-        deco
-
-      Expect.equal blockedProp 0 "no blocking props on the hand-authored map")
+        // Trees, crystals, rocks, and wood structures clear Buildable;
+        // the dirt dressing keeps it.
+        Expect.isGreaterThan obstacles 0 "obstacle props block building"
+        Expect.isGreaterThan dressings 0 "dressing keeps building")
   ]
 
 /// Procedural variant — Level-2 generation stress tests.

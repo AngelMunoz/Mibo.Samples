@@ -143,7 +143,7 @@ void main() {
   let render
     (state: FogState)
     (visible: Set<struct (int * int)>)
-    (grid: HexGrid<Tile>)
+    (grid: CellGrid2D<Tile>)
     (camera: Camera2D)
     (vpWidth: float32)
     (vpHeight: float32)
@@ -162,14 +162,14 @@ void main() {
     buffer |> Draw.beginShader 0<RenderLayer> state.Shader |> Draw.drop
 
     grid
-    |> HexGrid.iterVisible
-      topLeft.X
-      topLeft.Y
-      bottomRight.X
-      bottomRight.Y
+    |> CellGrid2D.iterVisible
+      (int topLeft.X)
+      (int topLeft.Y)
+      (int bottomRight.X)
+      (int bottomRight.Y)
       (fun col row _tile ->
         if not(visible.Contains(struct (col, row))) then
-          let worldPos = grid |> HexGrid.getWorldPos col row
+          let worldPos = grid |> CellGrid2D.getWorldPos col row
 
           buffer
           |> Draw.fillPoly

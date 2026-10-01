@@ -18,7 +18,7 @@ let tests =
       let chunk = generateChunk 0 0 42
 
       let struct (terrainGrid, _) =
-        LayeredGrid3D.getOrAddLayer Layer.Terrain chunk.Grids
+        LayeredMap3D.getOrAddLayer Layer.Terrain chunk.Grids
 
       let mutable count = 0
 
@@ -193,7 +193,7 @@ let tests =
       let chunk = generateChunk 0 0 42
 
       let struct (terrainGrid, _) =
-        LayeredGrid3D.getOrAddLayer Layer.Terrain chunk.Grids
+        LayeredMap3D.getOrAddLayer Layer.Terrain chunk.Grids
 
       // Find the first solid surface cell near the spawn point
       let mutable startFound = false
@@ -249,7 +249,7 @@ let tests =
       let chunk = generateChunk 0 0 42
 
       let struct (terrainGrid, _) =
-        LayeredGrid3D.getOrAddLayer Layer.Terrain chunk.Grids
+        LayeredMap3D.getOrAddLayer Layer.Terrain chunk.Grids
 
       // Find a non-spawn column and check that cells below the surface are solid.
       let mutable foundInterior = false
@@ -285,7 +285,7 @@ let tests =
           let chunk = generateChunk cx cz 42
 
           let struct (terrainGrid, _) =
-            LayeredGrid3D.getOrAddLayer Layer.Terrain chunk.Grids
+            LayeredMap3D.getOrAddLayer Layer.Terrain chunk.Grids
 
           CellGrid3D.iter
             (fun _ _ _ bt ->
@@ -311,7 +311,7 @@ let tests =
           let chunk = generateChunk cx cz 42
 
           let struct (terrainGrid, _) =
-            LayeredGrid3D.getOrAddLayer Layer.Terrain chunk.Grids
+            LayeredMap3D.getOrAddLayer Layer.Terrain chunk.Grids
 
           CellGrid3D.iter
             (fun _ _ _ bt ->
@@ -330,7 +330,7 @@ let tests =
       let chunk = generateChunk 3 3 42
 
       let struct (terrainGrid, _) =
-        LayeredGrid3D.getOrAddLayer Layer.Terrain chunk.Grids
+        LayeredMap3D.getOrAddLayer Layer.Terrain chunk.Grids
 
       let mutable emptyColumns = 0
 
