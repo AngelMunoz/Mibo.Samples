@@ -4,7 +4,8 @@ open System
 open System.Collections.Concurrent
 open System.Numerics
 open Mibo.Input
-open Mibo.Layout3D
+open Mibo.Layout
+open Platformer3D.BlockData
 open Platformer3D.Constants
 open Platformer3D.Types
 
@@ -14,6 +15,10 @@ open Platformer3D.Types
 //   Radius:    playerRadius (0.21)
 //   Bottom Y:  pos.Y           (feet)
 //   Top Y:     pos.Y + playerHeight (head)
+//
+// The world is a heightmap: physics queries footprint columns and compares
+// Y against the column's ground band, cap AABB, and the prop tiles — no
+// voxel iteration anywhere.
 
 // ── Ground probe constants ──
 
@@ -145,7 +150,145 @@ let inline circleVsRectXZ
     // Center inside rectangle — degenerate: full radius penetration.
     struct (true, r, 0.0f, 0.0f)
 
+// ── World queries (footprint columns) ──
+//
+// Chunk coordinates use floor division, so negative world cells resolve
+// into the chunk west/north of the origin — solid ground at x < 0 has
+// colliders exactly like everywhere else.
+
+/// The terrain column under a world cell, when its chunk is loaded.
+let columnAt
+  (chunks: ConcurrentDictionary<struct (int * int), Chunk>)
+  (wx: int)
+  (wz: int)
+  : TerrainColumn voption =
+  let cx = int(Math.Floor(float wx / float chunkWidth))
+  let cz = int(Math.Floor(float wz / float chunkDepth))
+
+  match chunks.TryGetValue(struct (cx, cz)) with
+  | true, chunk ->
+    CellGrid2D.get (wx - cx * chunkWidth) (wz - cz * chunkDepth) chunk.Terrain
+  | _ -> ValueNone
+
+/// The static prop tile under a world cell, when its chunk is loaded.
+let propAt
+  (chunks: ConcurrentDictionary<struct (int * int), Chunk>)
+  (wx: int)
+  (wz: int)
+  : PropTile voption =
+  let cx = int(Math.Floor(float wx / float chunkWidth))
+  let cz = int(Math.Floor(float wz / float chunkDepth))
+
+  match chunks.TryGetValue(struct (cx, cz)) with
+  | true, chunk ->
+    CellGrid2D.get (wx - cx * chunkWidth) (wz - cz * chunkDepth) chunk.Props
+  | _ -> ValueNone
+
 // ── Collision resolution ──
+
+/// One ground-probe candidate: a surface at `surfaceY` over an XZ rect.
+/// Returns the candidate's height when the cone touches it and it beats
+/// the current best, else the current best.
+let inline private considerGround
+  (best: float32)
+  (prevFeetY: float32)
+  (feetY: float32)
+  (px: float32)
+  (pz: float32)
+  (rectMinX: float32)
+  (rectMaxX: float32)
+  (rectMinZ: float32)
+  (rectMaxZ: float32)
+  (surfaceY: float32)
+  : float32 =
+  if
+    surfaceY <= prevFeetY + groundTolerance
+    && surfaceY >= feetY - groundProbeDepth
+  then
+    // Clamp depth to 0 — when the player overshoots the surface
+    // (feetY < surfaceY), the cone shouldn't shrink below the player's
+    // base radius.
+    let depth = max 0.0f (feetY - surfaceY)
+    let coneR = playerRadius + depth * coneTanAngle
+
+    let struct (overlaps, _, _, _) =
+      circleVsRectXZ px pz coneR rectMinX rectMaxX rectMinZ rectMaxZ
+
+    if overlaps && surfaceY > best then surfaceY else best
+  else
+    best
+
+/// One body-collision resolution against a world AABB. Returns the updated
+/// (position, velocity). Resolves by minimum penetration axis: Y-axis push
+/// up (land/step) or push down (head bonk, upward velocity killed), XZ-axis
+/// push horizontally along the closest-point direction.
+let resolveBody
+  (pos: Vector3)
+  (vel: Vector3)
+  (boxMinX: float32)
+  (boxMinY: float32)
+  (boxMinZ: float32)
+  (extW: float32)
+  (extH: float32)
+  (extD: float32)
+  : struct (Vector3 * Vector3) =
+  let struct (yOverlaps, yPenUp, yPenDown) =
+    cylinderYOverlap pos.Y (pos.Y + playerHeight) boxMinY (boxMinY + extH)
+
+  if yOverlaps then
+    let struct (xzOverlaps, xzPen, pushDirX, pushDirZ) =
+      circleVsRectXZ
+        pos.X
+        pos.Z
+        playerRadius
+        boxMinX
+        (boxMinX + extW)
+        boxMinZ
+        (boxMinZ + extD)
+
+    if xzOverlaps then
+      let yPen = min yPenUp yPenDown
+
+      if pushDirX = 0.0f && pushDirZ = 0.0f then
+        // Center inside block (degenerate) — resolve on Y only.
+        if yPenUp < yPenDown then
+          Vector3(pos.X, boxMinY + extH, pos.Z), vel
+        else
+          Vector3(pos.X, boxMinY - playerHeight, pos.Z), vel
+      elif yPen < xzPen then
+        // Y penetration is smaller — resolve vertically.
+        if yPenUp < yPenDown then
+          // Push up — position correction only, no velocity change.
+          Vector3(pos.X, boxMinY + extH, pos.Z), vel
+        else
+          // Head bonk — push down and kill upward velocity.
+          Vector3(pos.X, boxMinY - playerHeight, pos.Z),
+          Vector3(vel.X, 0.0f, vel.Z)
+      else
+        // XZ penetration is smaller — push horizontally.
+        let pen = xzPen + 0.01f
+
+        let pos' =
+          Vector3(pos.X + pushDirX * pen, pos.Y, pos.Z + pushDirZ * pen)
+
+        // Cancel velocity component into the wall.
+        let pushVel = pushDirX * vel.X + pushDirZ * vel.Z
+
+        if pushVel < 0.0f then
+          let vel' =
+            Vector3(
+              vel.X - pushDirX * pushVel,
+              vel.Y,
+              vel.Z - pushDirZ * pushVel
+            )
+
+          pos', vel'
+        else
+          pos', vel
+    else
+      pos, vel
+  else
+    pos, vel
 
 let resolveCollision
   (prevPos: Vector3)
@@ -158,110 +301,92 @@ let resolveCollision
   let mutable grounded = false
   let mutable scoreDelta = 0
 
-  let r = playerRadius
-
-  let pcx = int(Math.Floor(float pos.X / float chunkWorldWidth))
-  let pcz = int(Math.Floor(float pos.Z / float chunkWorldDepth))
-
   let bx = int(Math.Floor(float pos.X / float cellSize))
-
-  let localX =
-    bx - int(Math.Floor(float pos.X / float chunkWorldWidth)) * chunkWidth
-
-  let by = int(Math.Floor(float pos.Y / float cellSize))
-
   let bz = int(Math.Floor(float pos.Z / float cellSize))
 
-  let localZ =
-    bz - int(Math.Floor(float pos.Z / float chunkWorldDepth)) * chunkDepth
-
   // ── Phase A: Ground detection (cone probe) ──
-  // Scan the neighborhood downward for the highest walkable surface.
-  // The cone radius at depth dy below the feet is:
-  //   playerRadius + dy * tan(maxWalkableSlopeAngle)
-  // This widens with depth, naturally filtering steep surfaces.
+  // Scan the footprint window around the player for the highest walkable
+  // surface: column caps (analytical for slopes), bare ground tops, and
+  // solid prop tiles. The window is ±2 cells, wide enough for every
+  // multi-cell cap anchored near the player.
   let mutable groundY = Single.MinValue
 
-  for KeyValue(struct (cx, cz), chunk) in chunks do
-    if abs(cx - pcx) <= 2 && abs(cz - pcz) <= 2 then
-      let struct (terrainGrid, _) =
-        LayeredMap3D.getOrAddLayer Layer.Terrain chunk.Grids
+  for wx = bx - 2 to bx + 1 do
+    for wz = bz - 2 to bz + 1 do
+      let worldX = float32 wx * cellSize
+      let worldZ = float32 wz * cellSize
 
-      let origin = terrainGrid.Origin
-      let blockOriginX = int origin.X
-      let blockOriginZ = int origin.Z
+      match columnAt chunks wx wz with
+      | ValueSome col when not(TerrainColumn.isPit col) ->
+        let groundTop = float32 col.Height * cellSize
 
-      for dy in -1 .. 2 do
-        for dx in -2 .. 1 do
-          for dz in -2 .. 1 do
-            let gx = localX - (cx * chunkWidth - blockOriginX) + dx
-            let gy = by + dy
-            let gz = localZ - (cz * chunkDepth - blockOriginZ) + dz
+        match col.Cap with
+        | ValueSome shape ->
+          let info = capInfo col.Material shape
+          let struct (ew, eh, ed) = capExtents shape
 
-            if
-              gx >= 0
-              && gx < chunkWidth
-              && gy >= 0
-              && gy < chunkHeight
-              && gz >= 0
-              && gz < chunkDepth
-            then
-              match VoxelGrid.get gx gy gz terrainGrid with
-              | ValueSome blockType when BlockData.isSolid blockType ->
-                let worldX = origin.X + float32 gx * cellSize
-                let worldY = origin.Y + float32 gy * cellSize
-                let worldZ = origin.Z + float32 gz * cellSize
+          let surfaceY =
+            match slopeSurfaceY shape worldX groundTop worldZ pos.X pos.Z with
+            | ValueSome sy -> sy
+            | ValueNone -> groundTop + eh
 
-                // Surface height: analytical for slopes, AABB top otherwise.
-                let surfaceY =
-                  match
-                    BlockData.slopeSurfaceY
-                      blockType
-                      worldX
-                      worldY
-                      worldZ
-                      pos.X
-                      pos.Z
-                  with
-                  | ValueSome sy -> sy
-                  | ValueNone ->
-                    let struct (_, eh, _) = BlockData.colliderExtents blockType
+          // Kenney meshes are centered on their footprint (see BlockData):
+          // the collider is center ± half the snapped extent.
+          let centerX = worldX + info.CenterOffsetX
+          let centerZ = worldZ + info.CenterOffsetZ
 
-                    worldY + eh
+          groundY <-
+            considerGround
+              groundY
+              prevPos.Y
+              pos.Y
+              pos.X
+              pos.Z
+              (centerX - ew * 0.5f)
+              (centerX + ew * 0.5f)
+              (centerZ - ed * 0.5f)
+              (centerZ + ed * 0.5f)
+              surfaceY
+        | ValueNone ->
+          groundY <-
+            considerGround
+              groundY
+              prevPos.Y
+              pos.Y
+              pos.X
+              pos.Z
+              worldX
+              (worldX + cellSize)
+              worldZ
+              (worldZ + cellSize)
+              groundTop
+      | _ -> ()
 
-                // Surface must be below the player's previous feet position
-                // (within tolerance) and within probe depth of the current
-                // position. Using prevPos.Y as the upper bound catches the
-                // case where the player crossed the surface in a single frame
-                // (fell fast enough that pos.Y < surfaceY < prevPos.Y).
-                if
-                  surfaceY <= prevPos.Y + groundTolerance
-                  && surfaceY >= pos.Y - groundProbeDepth
-                then
-                  // Clamp depth to 0 — when the player overshoots the surface
-                  // (pos.Y < surfaceY), the cone shouldn't shrink below the
-                  // player's base radius.
-                  let depth = max 0.0f (pos.Y - surfaceY)
-                  let coneR = r + depth * coneTanAngle
-                  let struct (ew, _, ed) = BlockData.colliderExtents blockType
+      match propAt chunks wx wz with
+      | ValueSome { Prop = prop; Y = y } when isSolidProp prop ->
+        let info = propInfo prop
+        let struct (ew, eh, ed) = propExtents prop
 
-                  // Multi-cell blocks are centered on their footprint, so the
-                  // collider rect shifts by the same XZ offset as the mesh.
-                  let struct (cx, cz) = BlockData.colliderCenterOffset blockType
+        // The prop's rendered base sits at its cell plus the vertical
+        // offset (platforms float half a cell); the collider follows the
+        // render so the player stands on what they see.
+        let propY = float32 y * cellSize + info.VerticalOffset
+        let centerX = worldX + info.CenterOffsetX
+        let centerZ = worldZ + info.CenterOffsetZ
 
-                  let struct (overlaps, _, _, _) =
-                    circleVsRectXZ
-                      pos.X
-                      pos.Z
-                      coneR
-                      (worldX + cx)
-                      (worldX + cx + ew)
-                      (worldZ + cz)
-                      (worldZ + cz + ed)
-
-                  if overlaps && surfaceY > groundY then
-                    groundY <- surfaceY
-              | _ -> ()
+        groundY <-
+          considerGround
+            groundY
+            prevPos.Y
+            pos.Y
+            pos.X
+            pos.Z
+            (centerX - ew * 0.5f)
+            (centerX + ew * 0.5f)
+            (centerZ - ed * 0.5f)
+            (centerZ + ed * 0.5f)
+            (propY + eh)
+      | _ -> ()
 
   // Only ground when the player is descending or stationary (vel.Y <= 0).
   // If the player just jumped (vel.Y > 0), Phase A must NOT snap them back
@@ -275,152 +400,104 @@ let resolveCollision
     vel <- Vector3(vel.X, 0.0f, vel.Z)
     grounded <- true
 
-  // Refresh cylinder Y bounds after ground snap.
-  let yBottom = pos.Y
-  let yTop = pos.Y + playerHeight
-
-  // ── Phase B: Body collision (cylinder vs AABB) ──
-  // Resolve overlaps by minimum penetration axis:
-  //   Y-axis: push up (land/step) or push down (head bonk).
-  //   XZ-axis: push horizontally along closest-point direction.
+  // ── Phase B: Body collision (cylinder vs column AABBs) ──
+  // Every solid box in the window: the ground band [0, Height], the cap
+  // AABB (multi-cell caps included via the window), and solid props.
   // Phase B never sets grounded or zeroes velocity on push-up — Phase A
   // is the sole authority on grounding. Otherwise float-precision overlaps
   // on the block the player stands on would re-ground them every frame.
-  for KeyValue(struct (cx, cz), chunk) in chunks do
-    if abs(cx - pcx) <= 2 && abs(cz - pcz) <= 2 then
-      let struct (terrainGrid, _) =
-        LayeredMap3D.getOrAddLayer Layer.Terrain chunk.Grids
+  for wx = bx - 2 to bx + 1 do
+    for wz = bz - 2 to bz + 1 do
+      let worldX = float32 wx * cellSize
+      let worldZ = float32 wz * cellSize
 
-      let origin = terrainGrid.Origin
-      let blockOriginX = int origin.X
-      let blockOriginZ = int origin.Z
+      match columnAt chunks wx wz with
+      | ValueSome col when not(TerrainColumn.isPit col) ->
+        let groundTop = float32 col.Height * cellSize
 
-      for dy in -1 .. 2 do
-        for dx in -2 .. 1 do
-          for dz in -2 .. 1 do
-            let gx = localX - (cx * chunkWidth - blockOriginX) + dx
-            let gy = by + dy
-            let gz = localZ - (cz * chunkDepth - blockOriginZ) + dz
+        // The solid ground band under the column.
+        if groundTop > 0.0f then
+          let struct (pos', vel') =
+            resolveBody pos vel worldX 0.0f worldZ cellSize groundTop cellSize
 
-            if
-              gx >= 0
-              && gx < chunkWidth
-              && gy >= 0
-              && gy < chunkHeight
-              && gz >= 0
-              && gz < chunkDepth
-            then
-              match VoxelGrid.get gx gy gz terrainGrid with
-              | ValueSome blockType when BlockData.isSolid blockType ->
-                let worldX = origin.X + float32 gx * cellSize
-                let worldY = origin.Y + float32 gy * cellSize
-                let worldZ = origin.Z + float32 gz * cellSize
+          pos <- pos'
+          vel <- vel'
 
-                let struct (ew, eh, ed) = BlockData.colliderExtents blockType
+        match col.Cap with
+        | ValueSome shape ->
+          let info = capInfo col.Material shape
+          let struct (ew, eh, ed) = capExtents shape
 
-                // Multi-cell blocks are centered on their footprint, so the
-                // collider rect shifts by the same XZ offset as the mesh.
-                let struct (cx, cz) = BlockData.colliderCenterOffset blockType
+          // Center-based collider (meshes are footprint-centered).
+          let struct (pos', vel') =
+            resolveBody
+              pos
+              vel
+              (worldX + info.CenterOffsetX - ew * 0.5f)
+              groundTop
+              (worldZ + info.CenterOffsetZ - ed * 0.5f)
+              ew
+              eh
+              ed
 
-                let struct (yOverlaps, yPenUp, yPenDown) =
-                  cylinderYOverlap yBottom yTop worldY (worldY + eh)
+          pos <- pos'
+          vel <- vel'
+        | ValueNone -> ()
+      | _ -> ()
 
-                if yOverlaps then
-                  let struct (xzOverlaps, xzPen, pushDirX, pushDirZ) =
-                    circleVsRectXZ
-                      pos.X
-                      pos.Z
-                      r
-                      (worldX + cx)
-                      (worldX + cx + ew)
-                      (worldZ + cz)
-                      (worldZ + cz + ed)
+      match propAt chunks wx wz with
+      | ValueSome { Prop = prop; Y = y } when isSolidProp prop ->
+        let info = propInfo prop
+        let struct (ew, eh, ed) = propExtents prop
 
-                  if xzOverlaps then
-                    let yPen = min yPenUp yPenDown
+        let struct (pos', vel') =
+          resolveBody
+            pos
+            vel
+            (worldX + info.CenterOffsetX - ew * 0.5f)
+            (float32 y * cellSize + info.VerticalOffset)
+            (worldZ + info.CenterOffsetZ - ed * 0.5f)
+            ew
+            eh
+            ed
 
-                    if pushDirX = 0.0f && pushDirZ = 0.0f then
-                      // Center inside block (degenerate) — resolve on Y only.
-                      if yPenUp < yPenDown then
-                        pos <- Vector3(pos.X, worldY + eh, pos.Z)
-                      else
-                        pos <- Vector3(pos.X, worldY - playerHeight, pos.Z)
-                    elif yPen < xzPen then
-                      // Y penetration is smaller — resolve vertically.
-                      if yPenUp < yPenDown then
-                        // Push up — position correction only, no velocity change.
-                        pos <- Vector3(pos.X, worldY + eh, pos.Z)
-                      else
-                        // Head bonk — push down and kill upward velocity.
-                        pos <- Vector3(pos.X, worldY - playerHeight, pos.Z)
-                        vel <- Vector3(vel.X, 0.0f, vel.Z)
-                    else
-                      // XZ penetration is smaller — push horizontally.
-                      let pen = xzPen + 0.01f
+        pos <- pos'
+        vel <- vel'
+      | _ -> ()
 
-                      pos <-
-                        Vector3(
-                          pos.X + pushDirX * pen,
-                          pos.Y,
-                          pos.Z + pushDirZ * pen
-                        )
-
-                      // Cancel velocity component into the wall.
-                      let pushVel = pushDirX * vel.X + pushDirZ * vel.Z
-
-                      if pushVel < 0.0f then
-                        vel <-
-                          Vector3(
-                            vel.X - pushDirX * pushVel,
-                            vel.Y,
-                            vel.Z - pushDirZ * pushVel
-                          )
-              | _ -> ()
-
-  // ── Phase C: Collectibles ──
+  // ── Phase C: Pickups ──
+  // Pickup tiles in the ±1 window whose center sphere touches the player's
+  // cylinder; collecting clears the cell so the instance disappears.
+  // Floor division keeps negative cells working (ground west of spawn).
   let playerCenterY = pos.Y + playerHeight * 0.5f
 
-  for KeyValue(struct (cx, cz), chunk) in chunks do
-    if abs(cx - pcx) <= 2 && abs(cz - pcz) <= 2 then
-      let struct (terrainGrid, _) =
-        LayeredMap3D.getOrAddLayer Layer.Terrain chunk.Grids
+  for wx = bx - 1 to bx + 1 do
+    for wz = bz - 1 to bz + 1 do
+      let cx = int(Math.Floor(float wx / float chunkWidth))
+      let cz = int(Math.Floor(float wz / float chunkDepth))
 
-      let origin = terrainGrid.Origin
-      let blockOriginX = int origin.X
-      let blockOriginZ = int origin.Z
+      match chunks.TryGetValue struct (cx, cz) with
+      | true, chunk ->
+        let lx = wx - cx * chunkWidth
+        let lz = wz - cz * chunkDepth
 
-      for dy in -1 .. 2 do
-        for dx in -1 .. 1 do
-          for dz in -1 .. 1 do
-            let gx = localX - (cx * chunkWidth - blockOriginX) + dx
-            let gy = by + dy
-            let gz = localZ - (cz * chunkDepth - blockOriginZ) + dz
+        match CellGrid2D.get lx lz chunk.Pickups with
+        | ValueSome { Prop = Prop.Pickup kind; Y = y } ->
+          let worldX = float32 wx * cellSize + cellSize * 0.5f
+          let worldY = float32 y * cellSize + cellSize * 0.5f
+          let worldZ = float32 wz * cellSize + cellSize * 0.5f
 
-            if
-              gx >= 0
-              && gx < chunkWidth
-              && gy >= 0
-              && gy < chunkHeight
-              && gz >= 0
-              && gz < chunkDepth
-            then
-              match VoxelGrid.get gx gy gz terrainGrid with
-              | ValueSome blockType when BlockData.isCollectible blockType ->
-                let worldX = origin.X + float32 gx * cellSize + cellSize * 0.5f
-                let worldY = origin.Y + float32 gy * cellSize + cellSize * 0.5f
-                let worldZ = origin.Z + float32 gz * cellSize + cellSize * 0.5f
+          let dx = pos.X - worldX
+          let dy = playerCenterY - worldY
+          let dz = pos.Z - worldZ
 
-                let dx' = pos.X - worldX
-                let dy' = playerCenterY - worldY
-                let dz' = pos.Z - worldZ
+          let distSq = dx * dx + dy * dy + dz * dz
 
-                let distSq = dx' * dx' + dy' * dy' + dz' * dz'
-
-                if distSq < (playerRadius + 0.5f) * (playerRadius + 0.5f) then
-                  VoxelGrid.clear gx gy gz terrainGrid |> ignore
-                  scoreDelta <- scoreDelta + 1
-
-              | _ -> ()
+          if distSq < (playerRadius + 0.5f) * (playerRadius + 0.5f) then
+            CellGrid2D.clear lx lz chunk.Pickups
+            scoreDelta <- scoreDelta + PickupKind.score kind
+        | _ -> ()
+      | _ -> ()
 
   struct (pos, vel, grounded, scoreDelta)
 
