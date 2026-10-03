@@ -1,0 +1,82 @@
+// blocks-3d.kdl — a block map in two layers, authored in KDL.
+//
+// A block map is still a two-dimensional footprint: the vertical axis
+// lives in the cell, not in the document. The word grass is one cell of
+// ground, wall is two and a half cells of it, and a kernel like hill
+// decides the height of every cell it covers.
+//
+// The same map exists beside this file as blocks-3d.xml, and
+//
+//   dotnet run --project LiveMap -- --check
+//
+// compares the two layers, cell for cell.
+//
+// A block cell holds one column and every column stands on the ground
+// plane. Drawing the layers as they are would put two columns in the same
+// place, so the build lifts every layer above the ground by the height the
+// layers below it reach at that cell: `ground` carries the terrain, and
+// `decor` stands on it.
+
+map 32 20 {
+    // ── the terrain ──────────────────────────────────────────
+    layer ground {
+        // rolling ground, at three heights
+        generate field
+
+        // a hill in the north-west
+        hill x=6 y=2 w=18 h=7
+
+        // a snowfield in the east
+        plot x=24 y=4 w=8 h=12 { generate snowfield }
+    }
+
+    // ── what stands on it ────────────────────────────────────
+    layer decor {
+        // the woods along the top and the bottom
+        generate 0 0 32 2 wood
+        generate 0 18 32 2 wood
+
+        // the plants of the open field: stands of pines and loose stones,
+        // clear of the hill, the village, and the snowfield, so nothing is
+        // buried under a building or on the slope
+        plot x=0 y=2 w=3 h=16 pack=scatter seed=11 {
+            repeat 8 { pineSmall }
+            repeat 4 { stones }
+        }
+
+        plot x=19 y=16 w=5 h=2 pack=scatter seed=12 {
+            repeat 4 { pineSmall }
+            repeat 2 { stones }
+        }
+
+        plot x=24 y=2 w=8 h=2 pack=scatter seed=13 {
+            repeat 4 { pineSmall }
+            repeat 2 { stones }
+        }
+
+        // the snow trees of the snowfield
+        plot x=24 y=4 w=8 h=12 pack=scatter seed=14 {
+            repeat 6 { snowTree }
+            repeat 4 { stones }
+        }
+
+        // the village, from kernels the game baked out of Flow stamps
+        plot x=4 y=9 w=3 h=3 { generate hut }
+        plot x=9 y=9 w=5 h=5 { generate yard }
+        plot x=15 y=10 w=3 h=3 { generate tower }
+
+        // the surface already carries a rampart; this map adds a keep of
+        // its own on top of it
+        rampart x=3 y=15 w=9 h=3
+        element keep { fill stones; border wall }
+        keep x=14 y=15 w=5 h=4
+
+        // an avenue of pillars, four cells tall
+        plot x=20 y=6 w=1 h=10 { fill pillar }
+
+        // markers at the crossing
+        set 20 5 flag
+        set 19 6 ladder
+        set 21 6 sign
+    }
+}

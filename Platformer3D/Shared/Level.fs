@@ -266,12 +266,14 @@ let segment
   let center2 = exitCenter // the checkpoint band must match the neighbor
 
   // Pieces are placed at explicit (x, z) offsets — the segment tracks the
-  // X cursor itself, the bands carry their own Z.
+  // X cursor itself, the bands carry their own Z. `Flow.at` is the layer
+  // form of an exact placement: a layer is full-bleed, so a piece states
+  // its own rectangle instead of relying on the container's.
   let pieces = ResizeArray<Stamp<TerrainColumn>>()
   let mutable used = 0
 
   let addPiece (stamp: Stamp<TerrainColumn>) (length: int) =
-    pieces.Add(Stamp.offset used 0 stamp)
+    pieces.Add(Flow.at used 0 stamp)
     used <- used + length
 
   // The checkpoint strip is RESERVED before any middle piece runs: the
@@ -308,7 +310,7 @@ let segment
     let strip = runway length entryCenter material entryHeight
 
     pieces.Add(
-      Stamp.offset 0 0 (Stamp.named "spawn" (Stamp.tagged [ "safe" ] strip))
+      Flow.at 0 0 (Stamp.named "spawn" (Stamp.tagged [ "safe" ] strip))
     )
 
     used <- used + length

@@ -25,8 +25,13 @@
     <PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.5" />
   </ItemGroup>
   <ItemGroup>
+  <!-- One .mgcb, four clients. MGCB writes the colormap it discovers for
+       the models above the content root, at a path that ignores the
+       platform, so two clients building at once lock the same file.
+       Naming the output folder after the platform keeps them apart. -->
     <MonoGameContentReference Include="..\Content\Content.mgcb">
       <Link>Content\Content.mgcb</Link>
+      <OutputFolder>Content/$(MonoGamePlatform)/Content</OutputFolder>
     </MonoGameContentReference>
   </ItemGroup>
 </Project>

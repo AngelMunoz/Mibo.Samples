@@ -171,7 +171,7 @@ let create (def: IslandDefinition) (section: GridSection2D<Tile>) =
     section
     |> Flow.dock {
       Anchor = flags
-      Inset = 0
+      Inset = InsetSpec.Zero
       Stamp = Stamp.sized w h wall
     }
 

@@ -1,0 +1,85 @@
+# The map palette: the tile words a LiveMap document may use.
+# Consumed by tools/gen-tiles.fsx --curation LiveMap/Catalog/Tiles.curation.
+#
+# Ground words name a material; the numbered variants (grassB, grassC)
+# are the same material with different paint, for texture variety.
+# Blend words paint one material onto another (dirtDotOnGrass is a
+# speck of dirt on grass) and are the vocabulary for edges between
+# regions.
+
+binding grass = grass_full_a
+binding grassB = grass_full_b
+binding grassC = grass_full_c
+binding dirt = dirt_full_a
+binding dirtB = dirt_full_b
+binding dirtC = dirt_full_c
+binding sand = sand_full_a
+binding sandB = sand_full_b
+binding sandC = sand_full_c
+binding stone = stone_full_a
+binding stoneB = stone_full_b
+binding stoneC = stone_full_c
+
+binding pathVerticalDirt = path_vertical_dirt
+binding pathHorizontalDirt = path_horizontal_dirt
+binding pathEndUpDirt = path_end_up_dirt
+binding pathEndLeftDirt = path_end_left_dirt
+binding pathVerticalStone = path_vertical_stone
+binding pathHorizontalStone = path_horizontal_stone
+binding pathEndUpStone = path_end_up_stone
+binding pathEndLeftStone = path_end_left_stone
+
+binding bush = bush_small
+binding rockSmall = rock_small
+binding rockMedium = rock_medium
+binding rockLarge = rock_large
+binding treeRound = tree_round
+binding treePine = tree_pine
+binding crate = crate_metal_square
+binding crateBeveled = crate_metal_beveled
+binding container = container_small
+binding containerLarge = container_large
+binding coin = coin_gold
+binding turretMount = turret_mount_empty
+binding turretBase = turret_base_a
+
+binding grassDotOnDirt = grass_dot_on_dirt
+binding sandDotOnDirt = sand_dot_on_dirt
+binding stoneDotOnDirt = stone_dot_on_dirt
+binding dirtDotOnGrass = dirt_dot_on_grass
+binding sandDotOnGrass = sand_dot_on_grass
+binding stoneDotOnGrass = stone_dot_on_grass
+binding grassDotOnSand = grass_dot_on_sand
+binding dirtDotOnSand = dirt_dot_on_sand
+binding stoneDotOnSand = stone_dot_on_sand
+binding grassDotOnStone = grass_dot_on_stone
+binding dirtDotOnStone = dirt_dot_on_stone
+binding sandDotOnStone = sand_dot_on_stone
+
+binding grassPatchOnDirt = grass_patch_on_dirt_center
+binding sandPatchOnDirt = sand_patch_on_dirt_center
+binding stonePatchOnDirt = stone_patch_on_dirt_center
+binding dirtPatchOnGrass = dirt_patch_on_grass_center
+binding sandPatchOnGrass = sand_patch_on_grass_center
+binding stonePatchOnGrass = stone_patch_on_grass_center
+binding grassPatchOnSand = grass_patch_on_sand_center
+binding dirtPatchOnSand = dirt_patch_on_sand_center
+binding stonePatchOnSand = stone_patch_on_sand_center
+binding grassPatchOnStone = grass_patch_on_stone_center
+binding dirtPatchOnStone = dirt_patch_on_stone_center
+binding sandPatchOnStone = sand_patch_on_stone_center
+
+group groundGrass = grass, grassB, grassC
+group groundDirt = dirt, dirtB, dirtC
+group groundSand = sand, sandB, sandC
+group groundStone = stone, stoneB, stoneC
+group grounds = grass, grassB, grassC, dirt, dirtB, dirtC, sand, sandB, sandC, stone, stoneB, stoneC
+group pathDirt = pathVerticalDirt, pathHorizontalDirt, pathEndUpDirt, pathEndLeftDirt
+group pathStone = pathVerticalStone, pathHorizontalStone, pathEndUpStone, pathEndLeftStone
+group paths = pathVerticalDirt, pathHorizontalDirt, pathEndUpDirt, pathEndLeftDirt, pathVerticalStone, pathHorizontalStone, pathEndUpStone, pathEndLeftStone
+group rocks = rockSmall, rockMedium, rockLarge
+group trees = treeRound, treePine
+group crates = crate, crateBeveled, container, containerLarge
+group props = bush, rockSmall, rockMedium, rockLarge, treeRound, treePine, crate, crateBeveled, container, containerLarge, coin, turretMount, turretBase
+group blendDots = grassDotOnDirt, sandDotOnDirt, stoneDotOnDirt, dirtDotOnGrass, sandDotOnGrass, stoneDotOnGrass, grassDotOnSand, dirtDotOnSand, stoneDotOnSand, grassDotOnStone, dirtDotOnStone, sandDotOnStone
+group blendPatches = grassPatchOnDirt, sandPatchOnDirt, stonePatchOnDirt, dirtPatchOnGrass, sandPatchOnGrass, stonePatchOnGrass, grassPatchOnSand, dirtPatchOnSand, stonePatchOnSand, grassPatchOnStone, dirtPatchOnStone, sandPatchOnStone

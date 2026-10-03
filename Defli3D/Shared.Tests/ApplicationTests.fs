@@ -677,11 +677,10 @@ let tests =
       // Pan is a HELD query: handleActions reads the Actions root's
       // Held set every step and SETS the keyboard-pan direction from
       // it (synonym bindings count once; a stale direction cannot
-      // survive — nothing held rewrites it to Zero). The posted root
-      // write drains after the step's Update, so the first step that
-      // consumes it is the second's; Held persists (the subscription
-      // clears only the edges), so with two steps the pan applies
-      // exactly once.
+      // survive — nothing held rewrites it to Zero). A posted write
+      // drains at the step boundary, before that step's Update, so both
+      // steps see the held direction and the camera advances once per
+      // step.
       h.Post(fun () ->
         h.State.Actions.Set {
           ActionState.empty with
@@ -699,8 +698,8 @@ let tests =
 
       Expect.equal
         after.X
-        (before.X - panDelta)
-        "target moved with the held pan"
+        (before.X - 2f * panDelta)
+        "target advanced once per step with the held pan"
 
       Expect.equal after.Y before.Y "no vertical motion")
   ]

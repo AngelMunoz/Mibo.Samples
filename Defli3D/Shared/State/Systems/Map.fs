@@ -866,11 +866,11 @@ module MapModel =
         Gap = 0
         Areas = [| "north north river rise"; "meadow yard river rise" |]
         Places = [|
-          struct ("north", north)
-          struct ("meadow", meadow)
-          struct ("yard", yard)
-          struct ("river", river)
-          struct ("rise", rise)
+          struct (Place.Area "north", north)
+          struct (Place.Area "meadow", meadow)
+          struct (Place.Area "yard", yard)
+          struct (Place.Area "river", river)
+          struct (Place.Area "rise", rise)
         |]
       }
 

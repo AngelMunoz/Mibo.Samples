@@ -161,9 +161,11 @@ module Level =
             Flow.cell { X = mid + 8; Y = mid + 6 } (crateCol 1)
           ]
 
-          // Central pillar: a tagged 3x3 box offset into place.
+          // Central pillar: a tagged 3x3 box at an exact offset.
+          // `Flow.at` is the layer form of an exact placement — a layer is
+          // full-bleed, so a sized child has to state its own rectangle.
           Stamp.tagged [ "pillar" ] (Stamp.box 3 3 [ Flow.fill wallCol ])
-          |> Stamp.offset (mid - 1) (mid - 1)
+          |> Flow.at (mid - 1) (mid - 1)
 
           // The ramp footprint, 2 wide and 4 deep. Height 1 across —
           // byte-identical to the retired voxel loop, whose integer
@@ -171,7 +173,7 @@ module Level =
           Stamp.tagged
             [ "ramp" ]
             (Stamp.box 2 4 [ Flow.fill { Kind = Cell.Wall; Height = 1 } ])
-          |> Stamp.offset (mid + 5) (mid + 5)
+          |> Flow.at (mid + 5) (mid + 5)
         ]
 
       let grid =

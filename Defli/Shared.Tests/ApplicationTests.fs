@@ -608,9 +608,9 @@ let tests =
       // Keyboard pan mirrors a drag: the shell sends the OPPOSITE sign
       // (PanRight → -x), so the handler applies Pan semantics — the
       // target moves opposite the accumulated delta, scaled by
-      // KeyboardPanSpeed * dt / zoom. The posted AddKeyboardPan drains
-      // AFTER the step's Update, so the first tick that sees it is the
-      // second step's.
+      // KeyboardPanSpeed * dt / zoom. A posted write drains at the step
+      // boundary, before that step's Update, so both steps see the
+      // accumulated direction and the camera advances once per step.
       h.Post(fun () ->
         Camera.Camera.handle
           (CameraMsg.AddKeyboardPan(Vector2(100f, 0f)))
@@ -625,8 +625,8 @@ let tests =
 
       Expect.equal
         after.X
-        (before.X - panDelta)
-        "target moved opposite the pan delta"
+        (before.X - 2f * panDelta)
+        "target advanced once per step, opposite the pan delta"
 
       Expect.equal after.Y before.Y "no vertical motion")
   ]

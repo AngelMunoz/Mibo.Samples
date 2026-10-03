@@ -479,7 +479,12 @@ module MapModel =
     let depot =
       Flow.docked {
         Anchor = Dock.Top ||| Dock.Right
-        Inset = 1
+        // one cell in from each anchored edge
+        Inset = {
+          InsetSpec.Zero with
+              Top = 1
+              Right = 1
+        }
         Stamp =
           Flow.row { FlowOpts.Default with Gap = 1 } [
             Flow.prop(obstacle TerrainKind.Sand Tiles.crateMetalSquare)
@@ -491,19 +496,24 @@ module MapModel =
 
     let level =
       Flow.overlay [
-        Flow.grid {
-          Cols = [| Weight 6f; Weight 7f; Weight 4f; Weight 3f |]
-          Rows = [| Fixed 3; Weight 1f |]
-          Gap = 0
-          Areas = [| "shore shore shore shore"; "woods plaza flats rise" |]
-          Places = [|
-            struct ("shore", shore)
-            struct ("woods", woods)
-            struct ("plaza", plaza)
-            struct ("flats", flats)
-            struct ("rise", rise)
-          |]
-        }
+        // the grid carries fixed rows, so it has a footprint: `stretch`
+        // mounts it as the full-bleed base layer the overlay expects
+        Flow.stretch(
+          Flow.grid {
+            Cols = [| Weight 6f; Weight 7f; Weight 4f; Weight 3f |]
+            Rows = [| Fixed 3; Weight 1f |]
+            Gap = 0
+            Areas = [| "shore shore shore shore"; "woods plaza flats rise" |]
+
+            Places = [|
+              struct (Place.Area "shore", shore)
+              struct (Place.Area "woods", woods)
+              struct (Place.Area "plaza", plaza)
+              struct (Place.Area "flats", flats)
+              struct (Place.Area "rise", rise)
+            |]
+          }
+        )
 
         depot
       ]
