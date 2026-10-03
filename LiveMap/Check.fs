@@ -21,12 +21,16 @@ let private probes: (Mode * int * int * string * string)[] = [|
   // one cell below the plaza plot, so the yard is the smallest region
   Flat, 31, 18, "decor", "yard"
   Flat, 15, 4, "decor", "thicket"
-  // the woods, and bare ground the decor layer left alone
-  Blocks, 2, 1, "decor", ""
-  Blocks, 30, 17, "ground", ""
-  Blocks, 7, 16, "decor", "rampart"
-  Blocks, 16, 17, "decor", "keep"
-  Blocks, 10, 11, "decor", "plot"
+  // blocks 3D: a piece of each material, and what stands on them. The ground
+  // answers with the piece's own name, because each piece is a node
+  Blocks, 2, 2, "ground", "grassLowLarge"
+  Blocks, 5, 13, "ground", "grassLarge"
+  Blocks, 14, 4, "ground", "grassTall"
+  Blocks, 30, 13, "ground", "snowLarge"
+  Blocks, 28, 10, "decor", "snowTree"
+  Blocks, 14, 13, "decor", "plot"
+  Blocks, 14, 6, "decor", "plot"
+  Blocks, 5, 10, "decor", "stones"
 |]
 
 let private read(path: string) : Result<string, string> =
@@ -75,6 +79,20 @@ let private compareLayers<'T when 'T: equality>
       i <- i + 1
 
     differences
+
+/// Two builds of one document must answer the same occupancy: the same
+/// instances, the same rectangles, and the same number of hidden cells.
+let private sameOccupancy<'T>
+  (left: DocFlow.BuiltLayer<'T>[])
+  (right: DocFlow.BuiltLayer<'T>[])
+  : bool =
+  left.Length = right.Length
+  && Array.forall2
+    (fun (a: DocFlow.BuiltLayer<'T>) (b: DocFlow.BuiltLayer<'T>) ->
+      a.Occupancy.Cells.Length = b.Occupancy.Cells.Length
+      && a.Occupancy.Claimed = b.Occupancy.Claimed)
+    left
+    right
 
 /// The hover's own query: the topmost layer that painted a cell, and the
 /// region that layer reports for it. Both answers read the same
@@ -152,17 +170,21 @@ let private checkMode<'T when 'T: equality>
   for syntax, result in [ Kdl, kdl; Xml, xml ] do
     match result with
     | Ok layers ->
-      // the painted-cell count is what makes a layer a layer: the ground
-      // covers the map, the decor covers what it placed and leaves the rest
-      // empty, so the cells under it show through
+      // the painted-cell count is what makes a layer a layer; the covered
+      // count is the cells the layer's instances stand for, which a plate
+      // stretched over a rectangle reports as many while it holds one cell
       let painted(grid: CellGrid2D<'T>) =
         let mutable count = 0
         CellGrid2D.iter (fun _ _ _ -> count <- count + 1) grid
         count
 
+      let covered(occupancy: Occupancy) =
+        occupancy.Rects |> Array.sumBy(fun rect -> rect.W * rect.H)
+
       let names =
         layers
-        |> Array.map(fun l -> $"{l.Name} ({painted l.Grid} cells)")
+        |> Array.map(fun l ->
+          $"{l.Name} ({l.Occupancy.Cells.Length} instances over {covered l.Occupancy} cells of {painted l.Grid} painted, {l.Occupancy.Claimed} covered)")
         |> String.concat ", "
 
       printfn
@@ -195,6 +217,17 @@ let private checkMode<'T when 'T: equality>
         label
         differences
 
+    if sameOccupancy kdlLayers xmlLayers then
+      printfn
+        "  ok    %-9s      both syntaxes agree on the instances and the covered cells"
+        label
+    else
+      failures <- failures + 1
+
+      printfn
+        "  FAIL  %-9s      the two syntaxes disagree on the occupancy of a layer"
+        label
+
     for probeMode, x, y, expectedLayer, expectedRegion in probes do
       if probeMode = mode then
         failures <-
@@ -203,6 +236,90 @@ let private checkMode<'T when 'T: equality>
 
   printfn ""
   failures
+
+/// The spans: the ground is nine instances over the whole map, the words
+/// decide how high each region stands, and the decorations stand on the
+/// region they were placed in. It pins the numbers the sample's own
+/// document states, so a broken span build cannot pass quietly.
+let private checkSpans(directory: string) : int =
+  let label = "blocks-3d"
+  let syntax = Syntax.Kdl
+  let path = Document.path directory Mode.Blocks syntax
+
+  let fail(reason: string) =
+    printfn "  FAIL  %-9s      %s" label reason
+    1
+
+  let covered(occupancy: Occupancy) =
+    occupancy.Rects |> Array.sumBy(fun rect -> rect.W * rect.H)
+
+  match read path |> Result.bind(Document.build Mode.Blocks syntax) with
+  | Error reason -> fail reason
+  | Ok(Document.FlatMap _) -> fail "the blocks document built as a flat map"
+  | Ok(Document.BlockMap(layers, drawn)) ->
+    let layerAt name =
+      layers |> Array.tryFindIndex(fun layer -> layer.Name = name)
+
+    match layerAt "ground", layerAt "decor" with
+    | Some ground, Some decor ->
+      let occupancy = layers[ground].Occupancy
+
+      // the pieces: every instance of the ground covers more than one cell
+      let pieces =
+        occupancy.Rects |> Array.filter(fun rect -> rect.W > 1 || rect.H > 1)
+
+      let groundHeight x y =
+        Occupancy.owner x y occupancy
+        |> ValueOption.bind(fun at ->
+          CellGrid2D.get at.X at.Y layers[ground].Grid)
+        |> ValueOption.map(fun cell -> cell.Height)
+
+      // what stands on the terrace is lifted by the terrace, not by the
+      // field under it
+      let decorLift x y =
+        CellGrid2D.get x y drawn[decor]
+        |> ValueOption.map(fun cell -> cell.Lift)
+
+      let expected name =
+        Blocks.words
+        |> Array.tryFind(fun (word, _) -> word = name)
+        |> ValueOption.ofOption
+        |> ValueOption.map(fun (_, cell) -> cell.Height)
+
+      let report = [
+        "every ground instance is a piece of several cells", pieces.Length = 160
+        "the pieces cover every cell of the map", covered occupancy = 640
+        "the ground paints no cell twice", occupancy.Claimed = 0
+        "the north floor is half a cell of grassLowLarge",
+        groundHeight 2 2 = expected "grassLowLarge"
+        "the west field is a cell of grassLarge",
+        groundHeight 2 10 = expected "grassLarge"
+        "the terrace is a two-cell piece",
+        groundHeight 14 6 = expected "grassTall"
+        "the village stands on the terrace",
+        decorLift 14 6 = expected "grassTall"
+        "a stone in the west field stands on the field",
+        decorLift 5 10 = expected "grassLarge"
+      ]
+
+      let broken =
+        report |> List.filter(fun (_, held) -> not held) |> List.map fst
+
+      match broken with
+      | [] ->
+        printfn
+          "  ok    %-9s      the ground is %d pieces over %d cells at three heights, the decorations lifted onto them"
+          label
+          pieces.Length
+          (covered occupancy)
+
+        0
+      | _ ->
+        for reason in broken do
+          printfn "  FAIL  %-9s      %s" label reason
+
+        broken.Length
+    | _ -> fail "the document has no 'ground' and 'decor' layer"
 
 /// Builds every shipped document in both syntaxes and reports what
 /// happened.
@@ -224,6 +341,7 @@ let run(directory: string) : int =
   let failures =
     checkMode Flat directory Flat.surface
     + checkMode Blocks directory Volume.surface
+    + checkSpans directory
 
   if failures = 0 then
     printfn

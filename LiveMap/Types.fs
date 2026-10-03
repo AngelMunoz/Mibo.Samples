@@ -1,6 +1,7 @@
 namespace LiveMap
 
 open LiveMap.Catalog
+open Mibo.Layout
 
 /// One square cell of a flat map: the atlas tile that paints it, and
 /// whether it blocks movement. Every document word resolves to one of
@@ -14,7 +15,8 @@ type Cell = {
 }
 
 /// One cell of a block map: the model that paints it, how many cells
-/// tall it stands, where its base sits, and whether it blocks movement.
+/// tall it stands, where its base sits, how many cells its instance covers,
+/// and whether it blocks movement.
 ///
 /// `Height` is in cells. A word that means "the model as authored"
 /// states the model's own mesh height, so nothing stretches; a word that
@@ -24,22 +26,28 @@ type Cell = {
 /// layer stands on the plane, and the build lifts every layer above it by
 /// the height the layers below reach at that cell, so a decoration stands
 /// on the ground instead of replacing it.
+///
+/// `Span` is the grid-plane footprint of the instance. `One` means the
+/// column covers its own cell; a plate covers a rectangle, and one model
+/// stretches over it.
 [<Struct>]
 type BlockCell = {
   Model: ModelInfo
   Height: float32
   Lift: float32
+  Span: InstanceSpan
   Solid: bool
 }
 
 module BlockCell =
 
   /// A block as the model was authored: the column is as tall as the
-  /// mesh, so nothing stretches.
+  /// mesh, so nothing stretches, and it covers its own cell.
   let ofModel (model: ModelInfo) (solid: bool) : BlockCell = {
     Model = model
     Height = model.SizeY
     Lift = 0f
+    Span = One
     Solid = solid
   }
 
@@ -49,6 +57,7 @@ module BlockCell =
     Model = model
     Height = height
     Lift = 0f
+    Span = One
     Solid = solid
   }
 

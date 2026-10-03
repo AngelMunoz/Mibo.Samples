@@ -9,8 +9,8 @@ open Mibo.Markup
 open Raylib_cs
 
 /// What the pointer is over: the cell, the layer that painted it, the word
-/// it painted, whether that word blocks movement, and the smallest
-/// document region that covers the cell.
+/// it painted, whether that word blocks movement, the instance that owns
+/// the cell, and the smallest document region that covers it.
 [<Struct>]
 type Info = {
   Cell: struct (int * int)
@@ -24,6 +24,9 @@ type Info = {
   /// kernel painted alone sits in no region.
   Region: string voption
   Rect: CellRect voption
+  /// The rectangle of the instance that owns the cell. It is the cell
+  /// itself for a plain word, and the whole plate for a spanning one.
+  Instance: CellRect voption
 }
 
 /// The smallest region covering a cell, in one layer's landmarks.
@@ -55,29 +58,32 @@ let regionAt
 let private describe
   (x: int)
   (y: int)
-  (layer: string)
+  (layer: DocFlow.BuiltLayer<'T>)
   (word: string)
   (solid: bool)
-  (landmarks: Landmarks)
   : Info =
   // the smallest region covering the cell, split into the two halves the
   // panel reads: a cell a kernel painted alone sits in none
-  let region = regionAt x y landmarks
+  let region = regionAt x y layer.Landmarks
 
   {
     Cell = struct (x, y)
-    Layer = layer
+    Layer = layer.Name
     Word = word
     Solid = solid
     Region = region |> ValueOption.map(fun struct (name, _) -> name)
     Rect = region |> ValueOption.map(fun struct (_, rect) -> rect)
+    Instance =
+      Occupancy.owner x y layer.Occupancy
+      |> ValueOption.bind(fun at -> Occupancy.rectOf at layer.Occupancy)
   }
 
 /// The topmost layer that painted a cell, and what it painted there.
 ///
 /// Layers stack bottom first, so the walk starts at the top: the first
-/// layer with a cell at that position is the one the reader sees. The
-/// hover and `--check` both read this walk.
+/// layer whose occupancy owns the cell is the one the reader sees. A cell
+/// a plate covers answers with the plate, not with the empty ground under
+/// it. The hover and `--check` both read this walk.
 let tryCellAt
   (layers: DocFlow.BuiltLayer<'T>[])
   (x: int)
@@ -87,9 +93,12 @@ let tryCellAt
   let mutable i = layers.Length - 1
 
   while found.IsNone && i >= 0 do
+    let layer = layers[i]
+
     found <-
-      CellGrid2D.get x y layers[i].Grid
-      |> ValueOption.map(fun cell -> struct (layers[i], cell))
+      Occupancy.owner x y layer.Occupancy
+      |> ValueOption.bind(fun at -> CellGrid2D.get at.X at.Y layer.Grid)
+      |> ValueOption.map(fun cell -> struct (layer, cell))
 
     i <- i - 1
 
@@ -108,7 +117,7 @@ let private probe
   : Info voption =
   tryCellAt layers x y
   |> ValueOption.map(fun struct (layer, cell) ->
-    describe x y layer.Name (word cell) (solid cell) layer.Landmarks)
+    describe x y layer (word cell) (solid cell))
 
 /// The cell under a screen point on a flat map, and what sits there.
 let flat

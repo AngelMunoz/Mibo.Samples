@@ -84,39 +84,40 @@ let path (directory: string) (mode: Mode) (syntax: Syntax) : string =
 
 /// One grid per layer, ready to draw: every layer above the ground is
 /// lifted by the height the layers below it reach at that cell, so a
-/// decoration stands on the ground rather than replacing it.
-///
-/// A block cell holds one column, and the view draws one instance per
-/// populated cell. Drawn as they are, two layers that both painted a cell
-/// would put two columns in the same place, and the shorter one would be
-/// buried inside the taller one — a hut's platform floor is 0.195 cells
-/// tall and the field's grass block is 1 cell, so the hut would sink into
-/// the terrain. The lift hands the upper layer the ground's depth to stand
-/// on, and it leaves the terrain whole underneath.
+/// decoration stands on the ground rather than replacing it. A plate lifts
+/// the whole rectangle it covers, so what stands over any of its cells
+/// lands on top of it.
 let private lift
   (layers: DocFlow.BuiltLayer<BlockCell>[])
   : CellGrid2D<BlockCell>[] =
   let bottom = layers[0].Grid
-  // the top of the stack so far, per cell, in cells above the plane
-  let tops = Array.zeroCreate(bottom.Width * bottom.Height)
+  let width = bottom.Width
+  let height = bottom.Height
+
+  let grids = layers |> Array.map(fun layer -> layer.Grid)
+  let occupancies = layers |> Array.map(fun layer -> layer.Occupancy)
+
+  let feet = Stack.feet occupancies grids (fun cell -> cell.Height)
 
   layers
-  |> Array.map(fun layer ->
+  |> Array.mapi(fun i layer ->
     let drawn =
       CellGrid2D.create
-        bottom.Width
-        bottom.Height
+        width
+        height
         (Vector2(Constants.cellSize, Constants.cellSize))
         Vector2.Zero
 
-    CellGrid2D.iter
-      (fun x y cell ->
-        let index = x + y * bottom.Width
-        let foot = tops[index]
-
-        CellGrid2D.set x y { cell with Lift = foot } drawn
-        tops[index] <- foot + cell.Height)
-      layer.Grid
+    layer.Grid
+    |> CellGrid2D.iter(fun x y cell ->
+      CellGrid2D.set
+        x
+        y
+        {
+          cell with
+              Lift = feet[i][x + y * width]
+        }
+        drawn)
 
     drawn)
 
@@ -139,7 +140,7 @@ let private buildDocument
     Doc.findMapNode roots
     |> ValueOption.map(fun node ->
       Doc.dimsOf(source, node)
-      |> Result.map(fun dims ->
+      |> Result.bind(fun dims ->
         // one stamp per layer, one grid per stamp: `main` is layer 0 when
         // the map paints anything of its own, and every stated layer
         // follows in document order
@@ -151,18 +152,38 @@ let private buildDocument
 
         let painted = Flow.runLayers stamps grids
 
-        let layers: DocFlow.BuiltLayer<'T>[] =
-          Array.init painted.Length (fun i ->
-            let struct (name, _) = emitted[i]
-            let struct (built, marks) = painted[i]
+        // every layer carries the occupancy its draws resolve through: which
+        // instance owns each cell, and the rectangle a plate covers. A layer
+        // that breaks a span rule fails the build with its own name in front
+        // of the reason.
+        let spanOf =
+          match surface.Span with
+          | ValueSome read -> read
+          | ValueNone -> fun _ -> One
 
-            {
-              Name = name
-              Grid = built
-              Landmarks = marks
-            })
+        let layers: DocFlow.BuiltLayer<'T>[] = Array.zeroCreate painted.Length
+        let mutable failure = ValueNone
+        let mutable i = 0
 
-        wrap layers))
+        while failure.IsNone && i < painted.Length do
+          let struct (name, _) = emitted[i]
+          let struct (built, marks) = painted[i]
+
+          (match Occupancy.scan spanOf built with
+           | Error reason -> failure <- ValueSome $"layer '{name}': {reason}"
+           | Ok occupancy ->
+             layers[i] <- {
+               Name = name
+               Grid = built
+               Landmarks = marks
+               Occupancy = occupancy
+             })
+
+          i <- i + 1
+
+        match failure with
+        | ValueSome reason -> Error reason
+        | ValueNone -> Ok(wrap layers)))
     |> ValueOption.defaultValue(
       Error "the document needs a map node with two dimensions: map 36 20"
     )

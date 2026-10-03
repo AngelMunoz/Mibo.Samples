@@ -97,4 +97,7 @@ let surface: Doc.Surface<Cell> = {
       prop "turretBase" Palette.turretBase
       prop "coin" Palette.coin
     ]
+  // a flat sprite covers its cell, and no statement sizes one
+  Span = ValueNone
+  WithSpan = ValueNone
 }

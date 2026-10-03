@@ -42,7 +42,7 @@ No mouse button is bound. The pointer only selects the cell for the hover panel.
 | Mode | Key | Grid | Drawing |
 | --- | --- | --- | --- |
 | square 2D | 1 | one `CellGrid2D<Cell>` for each layer | one sprite for each cell, one pass for each layer, bottom first |
-| blocks 3D | 2 | one `CellGrid2D<BlockCell>` for each layer, lifted onto the layer below | one instanced draw for each model |
+| blocks 3D | 2 | one `CellGrid2D<BlockCell>` for each layer, lifted onto the layer below | one instanced draw for each instance: a column covers its cell, a plate covers its rectangle |
 
 Each mode reads two files. The two files hold the same map in two syntaxes.
 
@@ -184,7 +184,9 @@ Two habits keep a document's layers honest:
 
 - **A kernel belongs to one layer.** A kernel paints every cell of its area, and there is no way to paint nothing, so the rules in `Semantics/Terrain.fs` and `Semantics/Volume.fs` are ground. The things that stand on that ground — shrubs, stones, boulders, trees, crates — are props: elements a `plot pack=scatter` places, which leaves the cells it did not use empty.
 - **A prop goes where nothing covers it.** An element reports its rectangle, and the hover names the smallest one that covers the cell, so a prop buried under a building would still answer for it. The stands of props in these documents sit in open ground, clear of every building and every route.
-- **An upper layer stands on the one below it.** The flat mode gets that from the sprite order; the blocks mode holds one column per cell, so the build lifts every layer above the ground by the height the layers below it reach at that cell. A decoration stands on the terrain, and the terrain stays whole underneath it.
+- **An upper layer stands on the one below it.** The flat mode gets that from the sprite order; the blocks mode holds one column per cell, so the build lifts every layer above the ground by the height the layers below it reach at that cell. A decoration stands on the terrain, and the terrain stays whole underneath it. A plate lifts the whole rectangle it covers, so what stands over any of its cells lands on top of it.
+- **One instance can cover many cells.** The kit authors the ground in pieces of one, two, and four cells, and a word states the size of the piece it names: `set 0 0 grassLarge` is four cells of ground drawn with one model. A statement may size a piece instead, with `spanX=` and `spanZ=`, which is how the market plaza stretches one flat piece over twenty cells. The cells a piece covers keep their values in the grid, the hover answers with the piece for every one of them, and the draw emits one instance per piece — so the blocks map's whole 640-cell ground leaves as 160 instances.
+- **Place a piece at the size it was drawn for.** Every ground piece carries its own bevel at its border, and a span scales that bevel with it: stretching a one-cell block over a whole region leaves a rim of empty space around a floating slab. The map's ground is a mosaic of two-cell pieces for that reason, and its heights come from the words — half a cell for the woods floors, a cell for the fields, two cells for the terrace — so nothing about the ground is decided per cell.
 
 Each layer reports its own element rectangles, so the hover names the region of the layer that painted the cell. The framework guide is [Layers in authored maps](https://angelmunoz.github.io/Mibo/level-design/2d/layers.html).
 
@@ -204,6 +206,7 @@ Each layer reports its own element rectangles, so the hover names the region of 
 | Property | Meaning |
 | --- | --- |
 | `w=` `h=` | size in cells; absent means the element keeps its own size |
+| `spanX=` `spanZ=` | how many cells one instance covers, on `set` only; absent means the word keeps the span it declares |
 | `x=` `y=` | exact position inside the container |
 | `col=` `row=` | grid slot that the child claims |
 | `colspan=` `rowspan=` | how many tracks the slot spans |
@@ -301,6 +304,11 @@ A block map is a footprint. The vertical axis lives in the cell, so a word state
 | `wall` | grass column, two and a half cells tall | yes |
 | `pillar` | grass column, four cells tall | yes |
 | `kerb` | narrow grass column, three quarters of a cell tall | yes |
+| `grassLarge` `grassLowLarge` `grassTall` | ground pieces: two cells by two, a cell, half a cell, and two cells tall | yes |
+| `grassLong` `grassLowLong` | ground pieces two cells by one | yes |
+| `snowLarge` `snowLowLarge` `snowLong` | the same three sizes in snow | yes |
+| `snowEdge` `snowCorner` | snow pieces: edge and corner | yes |
+| `slab` | a plate: one model stretched over the cells the document states | no |
 | `tree` `pine` `pineSmall` `snowTree` | planted trees | yes |
 | `hedge` | hedge | yes |
 | `stones` | loose stones | no |
@@ -351,7 +359,8 @@ The pointer names what it is over:
 - the layer that painted the cell,
 - the word that painted the cell, or the model name in the blocks mode,
 - whether that word blocks movement,
-- the smallest region of the document that covers the cell.
+- the smallest region of the document that covers the cell,
+- the instance that owns the cell, outlined in blue when one model covers more than that cell.
 
 The map draws the cell and the region as outlines. The topmost layer that painted the cell answers, so the panel names what the reader sees. An element used four times reports four rectangles. The anonymous `plot` container reports under the name `plot`; ground a kernel painted sits in no region.
 

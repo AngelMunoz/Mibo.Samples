@@ -91,6 +91,18 @@ let private prop
   : string * Doc.ElementDecl<BlockCell> =
   element name (ValueSome { W = 1; H = 1 }) [| Doc.Op.Fill cell |]
 
+/// A ground piece as a node, so a document places ground through a flow
+/// container by name alone. The element states no size: the piece's own span
+/// measures it, so a two-cell piece reserves two cells of the row it flows
+/// into.
+let private ground
+  (name: string)
+  (cell: BlockCell)
+  : string * Doc.ElementDecl<BlockCell> =
+  element name ValueNone [|
+    Doc.Op.Set(ValueSome { X = 0; Y = 0 }, Start, Start, cell)
+  |]
+
 let surface: Doc.Surface<BlockCell> = {
   Words = frozen(List.ofArray Blocks.words)
   Kernels =
@@ -134,5 +146,25 @@ let surface: Doc.Surface<BlockCell> = {
       prop "ladder" Blocks.ladder
       prop "flag" Blocks.flag
       prop "coin" Blocks.coin
+      // ground pieces, so a flow container lays the ground out by name
+      ground "grass" Blocks.grass
+      ground "grassLow" Blocks.grassLow
+      ground "grassLarge" Blocks.grassLarge
+      ground "grassLowLarge" Blocks.grassLowLarge
+      ground "grassTall" Blocks.grassTall
+      ground "grassLong" Blocks.grassLong
+      ground "grassLowLong" Blocks.grassLowLong
+      ground "snow" Blocks.snow
+      ground "snowLow" Blocks.snowLow
+      ground "snowLarge" Blocks.snowLarge
+      ground "snowLowLarge" Blocks.snowLowLarge
+      ground "snowLong" Blocks.snowLong
+      ground "snowEdge" Blocks.snowEdge
+      ground "snowCorner" Blocks.snowCorner
+      ground "grassEdge" Blocks.grassEdge
+      ground "grassCorner" Blocks.grassCorner
     ]
+  // a plate reads the span it carries, and a `set` may size one
+  Span = ValueSome(fun cell -> cell.Span)
+  WithSpan = ValueSome(fun cell span -> { cell with Span = span })
 }
