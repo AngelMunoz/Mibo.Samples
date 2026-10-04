@@ -10,9 +10,7 @@
     <!-- the ground is one flow container. The track pattern says how many
          pieces stand in a row and every piece states its own size, so no
          placement is written down. -->
-    <plot w="32" h="20">
-      <cols v="auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto" />
-
+    <plot w="32" h="20" cols="auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto">
       <!-- cells y=0..1: the north woods floor, half a cell below the fields -->
       <grassLowLarge />
       <grassLowLarge />

@@ -30,9 +30,7 @@ map 32 20 {
         // pieces stand in a row and every piece states its own size, so no
         // placement is written down: pieces flow into the tracks in order and
         // the container wraps them, two cells at a time.
-        plot w=32 h=20 {
-            cols auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto
-
+        plot w=32 h=20 cols="auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto" {
             // cells y=0..1: the north woods floor, half a cell below the fields
             grassLowLarge
             grassLowLarge

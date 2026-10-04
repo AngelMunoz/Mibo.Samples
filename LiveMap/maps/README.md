@@ -48,9 +48,7 @@ The blocks map's ground is not one column per cell. It is a mosaic of the pieces
 Each region is a run of piece nodes inside one flow container. The container declares its track pattern, the pieces carry no coordinates, and the pieces flow into the tracks in order:
 
 ```kdl
-plot w=32 h=20 {
-    cols auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto
-
+plot w=32 h=20 cols="auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto" {
     // cells y=4..5: the west field, the village terrace, and the snow field
     grassLarge
     grassLarge
