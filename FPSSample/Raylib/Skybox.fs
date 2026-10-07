@@ -8,6 +8,7 @@ open System.Numerics
 open FSharp.NativeInterop
 open Raylib_cs
 open Mibo.Elmish
+open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics3D
 
 /// Procedural starry skybox. Renders a sphere from the inside with a custom
@@ -210,28 +211,28 @@ void main() {
     let transform = Matrix4x4.CreateScale(scale)
 
     buffer
-    |> Draw3D.drawImmediate(fun scene ->
-      Raylib.BeginShaderMode sky.Shader
-      Rlgl.DisableBackfaceCulling()
-      Rlgl.DisableDepthTest()
+      .drawImmediate(fun scene ->
+        Raylib.BeginShaderMode sky.Shader
+        Rlgl.DisableBackfaceCulling()
+        Rlgl.DisableDepthTest()
 
-      let vp = Raymath.MatrixMultiply(scene.View, scene.Projection)
+        let vp = Raymath.MatrixMultiply(scene.View, scene.Projection)
 
-      Raylib.SetShaderValueMatrix(
-        sky.Shader,
-        Raylib.GetShaderLocation(sky.Shader, "viewProj"),
-        vp
-      )
+        Raylib.SetShaderValueMatrix(
+          sky.Shader,
+          Raylib.GetShaderLocation(sky.Shader, "viewProj"),
+          vp
+        )
 
-      Raylib.SetShaderValueMatrix(
-        sky.Shader,
-        Raylib.GetShaderLocation(sky.Shader, "matModel"),
-        transform
-      )
+        Raylib.SetShaderValueMatrix(
+          sky.Shader,
+          Raylib.GetShaderLocation(sky.Shader, "matModel"),
+          transform
+        )
 
-      Raylib.DrawMesh(sky.Mesh, sky.Material, transform)
+        Raylib.DrawMesh(sky.Mesh, sky.Material, transform)
 
-      Rlgl.EnableDepthTest()
-      Rlgl.EnableBackfaceCulling()
-      Raylib.EndShaderMode())
-    |> Draw3D.drop
+        Rlgl.EnableDepthTest()
+        Rlgl.EnableBackfaceCulling()
+        Raylib.EndShaderMode())
+      .drop()

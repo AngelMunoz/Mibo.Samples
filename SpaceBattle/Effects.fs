@@ -206,4 +206,4 @@ module Effects =
 
       i <- i - 1
 
-  let ambientColor = Color(180uy, 180uy, 200uy)
+  let ambientColor = Mibo.Color.rgb 180uy 180uy 200uy

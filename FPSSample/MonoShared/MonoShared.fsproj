@@ -23,9 +23,9 @@
     <PackageReference Include="MonoGame.Framework.Native" Version="3.8.5" PrivateAssets="all"/>
   </ItemGroup>
 
-  <ItemGroup>
-    <MonoGameContentReference Include="Content/Content.mgcb" />
-  </ItemGroup>
+  <!-- The clients build the shared content. A library ships no Content
+       folder, and a second builder of the same .mgcb races them on the file
+       MGCB writes above the content root. -->
 
   <ItemGroup>
     <Content Include="..\..\assets\kenney_platformer-kit\Models\character-oobi.glb">

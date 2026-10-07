@@ -155,20 +155,32 @@ type IslandDefinition = {
 }
 
 /// Create a floating island from a definition.
-/// Walls are applied at island edges; content is projected onto the
+/// Walls are docked to the island edges; content is projected onto the
 /// full island sub-section (relative 0,0) and can override wall tiles.
 /// Execution order: Left → Right → Top → Bottom → Content.
 /// Horizontal walls (Top/Bottom) are applied last so they own the corners —
 /// a cloud bottom wall keeps CloudLeft/CloudRight at the corners instead of
 /// being overwritten by the vertical wall's block corner tiles.
 let create (def: IslandDefinition) (section: GridSection2D<Tile>) =
-  section
-  |> Layout.section 0 0 def.Left
-  |> Layout.section (def.Width - 1) 0 def.Right
-  |> Layout.section 0 0 def.Top
-  |> Layout.section 0 (def.Height - 1) def.Bottom
-  |> ignore
+  let dockWall
+    (flags: Dock)
+    (w: int)
+    (h: int)
+    (wall: GridSection2D<Tile> -> GridSection2D<Tile>)
+    =
+    section
+    |> Flow.dock {
+      Anchor = flags
+      Inset = InsetSpec.Zero
+      Stamp = Stamp.sized w h wall
+    }
+
+  dockWall (Dock.StretchY ||| Dock.Left) 1 def.Height def.Left |> ignore
+  dockWall (Dock.StretchY ||| Dock.Right) 1 def.Height def.Right |> ignore
+  dockWall (Dock.StretchX ||| Dock.Top) def.Width 1 def.Top |> ignore
+  dockWall (Dock.StretchX ||| Dock.Bottom) def.Width 1 def.Bottom |> ignore
 
   match def.Content with
-  | ValueSome content -> section |> Layout.section 0 0 content
+  | ValueSome content ->
+    section |> Flow.paint(Stamp.sized def.Width def.Height content)
   | ValueNone -> section

@@ -1,5 +1,7 @@
 module SpaceBattle.Types
 
+open Mibo.Layout
+
 
 type Tile =
   | Asteroid1

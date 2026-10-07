@@ -105,7 +105,7 @@ module WorldConfig =
     WaveClearBonus = 25
     GridCols = 20
     GridRows = 12
-    MapVariant = MapVariant.Procedural
+    MapVariant = MapVariant.HandAuthored
   }
 
 // ─────────────────────────────────────────────────────────────

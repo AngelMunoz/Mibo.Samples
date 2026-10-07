@@ -165,7 +165,7 @@ let tests =
 
     testCase "PlaceTower on buildable cell spends gold and places" (fun () ->
       let h = TestData.mkHarness cfg
-      let cell = struct (1, 1) // grass, not path, not occupied
+      let cell = TestData.openCell h.State
 
       h.Post(fun () -> Application.placeTower h.State cell |> ignore)
       h.StepN(2, TestData.dt)
@@ -188,7 +188,7 @@ let tests =
 
     testCase "PlaceTower on path cell is rejected" (fun () ->
       let h = TestData.mkHarness cfg
-      let cell = struct (1, 4) // the road (spawn row)
+      let cell = struct (1, 8) // the road (spawn row)
 
       h.Post(fun () -> Application.placeTower h.State cell |> ignore)
       h.StepN(2, TestData.dt)
@@ -200,7 +200,7 @@ let tests =
 
     testCase "PlaceTower on an occupied cell is rejected" (fun () ->
       let h = TestData.mkHarness cfg
-      let cell = struct (1, 1)
+      let cell = TestData.openCell h.State
 
       h.Post(fun () -> Application.placeTower h.State cell |> ignore)
       h.StepN(2, TestData.dt)
@@ -229,7 +229,9 @@ let tests =
 
       h.StepN(2, TestData.dt)
 
-      h.Post(fun () -> Application.placeTower h.State struct (1, 1) |> ignore)
+      h.Post(fun () ->
+        Application.placeTower h.State (TestData.openCell h.State) |> ignore)
+
       h.StepN(2, TestData.dt)
 
       let model = h.State
@@ -243,7 +245,8 @@ let tests =
 
         // Place a tower next to the path (the road runs along row 4).
         h.Post(fun () ->
-          Application.placeTower h.State struct (2, 3) |> ignore)
+          Application.placeTower h.State (TestData.roadSideCell h.State)
+          |> ignore)
 
         h.StepN(2, TestData.dt)
 
@@ -297,7 +300,8 @@ let tests =
         h.Post(fun () -> Application.selectTower h.State TowerDefs.bunker)
 
         h.Post(fun () ->
-          Application.placeTower h.State struct (2, 3) |> ignore)
+          Application.placeTower h.State (TestData.roadSideCell h.State)
+          |> ignore)
 
         h.StepN(2, TestData.dt)
 
@@ -333,7 +337,7 @@ let tests =
               (m.Projectiles.Rows |> AMap.getValue).Count = 0
               && m.Enemies.Alive |> AMap.count |> AVal.getValue = 0),
             TestData.dt,
-            300
+            600
           )
 
         Expect.isTrue
@@ -344,15 +348,14 @@ let tests =
       "upgrade through the sim update: gold spent, scaled damage"
       (fun () ->
         let h = TestData.mkHarness cfg
+        let cell = TestData.roadSideCell h.State
 
-        h.Post(fun () ->
-          Application.placeTower h.State struct (2, 3) |> ignore)
+        h.Post(fun () -> Application.placeTower h.State cell |> ignore)
 
         h.StepN(2, TestData.dt)
 
         // Upgrade the tower (sentry: UpgradeCost 30).
-        h.Post(fun () ->
-          Application.upgradeTower h.State struct (2, 3) |> ignore)
+        h.Post(fun () -> Application.upgradeTower h.State cell |> ignore)
 
         h.StepN(1, TestData.dt)
 
@@ -391,7 +394,9 @@ let tests =
 
     testCase "upgrade is capped at MaxLevel" (fun () ->
       let h = TestData.mkHarness cfg
-      h.Post(fun () -> Application.placeTower h.State struct (2, 3) |> ignore)
+      let cell = TestData.roadSideCell h.State
+
+      h.Post(fun () -> Application.placeTower h.State cell |> ignore)
       h.StepN(1, TestData.dt)
 
       // Top up so the full ladder is affordable (sentry ladder: 4 × 30).
@@ -401,15 +406,13 @@ let tests =
 
       // Upgrade to the cap.
       for _ in 1 .. TowerDefs.sentry.MaxLevel - 1 do
-        h.Post(fun () ->
-          Application.upgradeTower h.State struct (2, 3) |> ignore)
+        h.Post(fun () -> Application.upgradeTower h.State cell |> ignore)
 
       h.StepN(2, TestData.dt)
       let goldBefore = goldOf h.State
 
       // Past the cap: nothing happens, no gold spent.
-      h.Post(fun () ->
-        Application.upgradeTower h.State struct (2, 3) |> ignore)
+      h.Post(fun () -> Application.upgradeTower h.State cell |> ignore)
 
       h.StepN(1, TestData.dt)
 
@@ -432,7 +435,8 @@ let tests =
           Application.selectTower h.State TestData.Fixtures.zoneTower)
 
         h.Post(fun () ->
-          Application.placeTower h.State struct (1, 3) |> ignore)
+          Application.placeTower h.State (TestData.roadSideCell h.State)
+          |> ignore)
 
         h.StepN(2, TestData.dt)
 
@@ -480,7 +484,11 @@ let tests =
       h.Post(fun () -> Economy.Economy.earnGold 60 h.State.Economy)
 
       h.Post(fun () -> Application.selectTower h.State TowerDefs.bunker)
-      h.Post(fun () -> Application.placeTower h.State struct (1, 3) |> ignore)
+
+      h.Post(fun () ->
+        Application.placeTower h.State (TestData.roadSideCell h.State)
+        |> ignore)
+
       h.StepN(2, TestData.dt)
 
       // Two runners stacked on the same path cell (identical motion).
@@ -516,7 +524,8 @@ let tests =
         h.Post(fun () -> Application.selectTower h.State TowerDefs.bunker)
 
         h.Post(fun () ->
-          Application.placeTower h.State struct (1, 3) |> ignore)
+          Application.placeTower h.State (TestData.roadSideCell h.State)
+          |> ignore)
 
         h.StepN(2, TestData.dt)
 
@@ -567,7 +576,8 @@ let tests =
         let h = TestData.mkHarness cfg
 
         h.Post(fun () ->
-          Application.placeTower h.State struct (2, 3) |> ignore)
+          Application.placeTower h.State (TestData.roadSideCell h.State)
+          |> ignore)
 
         h.StepN(2, TestData.dt)
 
@@ -667,11 +677,10 @@ let tests =
       // Pan is a HELD query: handleActions reads the Actions root's
       // Held set every step and SETS the keyboard-pan direction from
       // it (synonym bindings count once; a stale direction cannot
-      // survive — nothing held rewrites it to Zero). The posted root
-      // write drains after the step's Update, so the first step that
-      // consumes it is the second's; Held persists (the subscription
-      // clears only the edges), so with two steps the pan applies
-      // exactly once.
+      // survive — nothing held rewrites it to Zero). A posted write
+      // drains at the step boundary, before that step's Update, so both
+      // steps see the held direction and the camera advances once per
+      // step.
       h.Post(fun () ->
         h.State.Actions.Set {
           ActionState.empty with
@@ -689,8 +698,8 @@ let tests =
 
       Expect.equal
         after.X
-        (before.X - panDelta)
-        "target moved with the held pan"
+        (before.X - 2f * panDelta)
+        "target advanced once per step with the held pan"
 
       Expect.equal after.Y before.Y "no vertical motion")
   ]

@@ -2,7 +2,9 @@ module Platformer.Raylib.MinimapView
 
 open System.Numerics
 open Raylib_cs
+open Mibo
 open Mibo.Elmish
+open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics2D
 
 type Model = Types.Model
@@ -25,28 +27,38 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
 
   if model.MinimapTexReady then
     buffer
-    |> Draw.sprite(
-      SpriteState.create(
-        model.MinimapTexture,
-        Rectangle(minimapX, minimapY, minimapSize, minimapSize),
-        Rectangle(0.0f, 0.0f, float32 texSize, float32 texSize)
+      .sprite(
+        SpriteState.create(
+          model.MinimapTexture,
+          Rectangle(minimapX, minimapY, minimapSize, minimapSize),
+          Rectangle(0.0f, 0.0f, float32 texSize, float32 texSize)
+        )
+        |> SpriteState.withLayer 1010<RenderLayer>
       )
-      |> SpriteState.withLayer 1010<RenderLayer>
-    )
-    |> Draw.drop
+      .drop()
 
   let centerX = minimapX + halfMinimap
   let centerY = minimapY + halfMinimap
 
+  // raylib palette bytes (raylib Yellow 253,249,0 — Mibo.Color's presets differ)
+  let markerColor = Color.rgb 253uy 249uy 0uy
+
   buffer
-  |> Draw.fillCircle
-    (1012<RenderLayer>, Color.Yellow)
-    (Vector2(centerX, centerY), 3.0f)
-  |> Draw.lineThick
-    (1012<RenderLayer>, Color.Yellow, 2.0f)
-    (Vector2(centerX, centerY),
-     Vector2(centerX + model.Physics.Facing * 10.0f, centerY))
-  |> Draw.rectOutline
-    (1013<RenderLayer>, Color.White, 2.0f)
-    (Rectangle(minimapX, minimapY, minimapSize, minimapSize))
-  |> Draw.drop
+    .fillCircle(Vector2(centerX, centerY), 3.0f, markerColor, 1012<RenderLayer>)
+    .lineThick(
+      Vector2(centerX, centerY),
+      Vector2(centerX + model.Physics.Facing * 10.0f, centerY),
+      markerColor,
+      thickness = 2.0f,
+      layer = 1012<RenderLayer>
+    )
+    .rectOutline(
+      minimapX,
+      minimapY,
+      minimapSize,
+      minimapSize,
+      Color.White,
+      thickness = 2.0f,
+      layer = 1013<RenderLayer>
+    )
+    .drop()

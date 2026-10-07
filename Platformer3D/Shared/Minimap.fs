@@ -5,8 +5,10 @@ open System.Collections.Concurrent
 open System.Collections.Generic
 open System.Numerics
 open Mibo
+open Mibo.Layout
 open Mibo.Layout3D
 open Mibo.Elmish
+open Platformer3D.Constants
 open Platformer3D.Types
 open Platformer3D.DayNight
 
@@ -30,47 +32,64 @@ module Minimap =
   [<Literal>]
   let private texSize = 200
 
-  let private blockColor (fallbackColor: Color) (blockType: BlockType) =
-    match blockType with
-    | Block Grass
-    | LargeBlock Grass
-    | TallBlock Grass
-    | LongBlock Grass
-    | LowBlock Grass
-    | NarrowBlock Grass
-    | Slope(Grass, _) -> Color.rgb 76uy 153uy 0uy
-    | Block Snow
-    | LargeBlock Snow
-    | TallBlock Snow
-    | LongBlock Snow
-    | LowBlock Snow
-    | NarrowBlock Snow
-    | Slope(Snow, _) -> Color.rgb 230uy 230uy 230uy
-    | Platform
-    | PlatformRamp -> Color.rgb 100uy 100uy 100uy
-    | TreePine
-    | TreeSnow -> Color.rgb 0uy 100uy 0uy
-    | Rock -> Color.rgb 128uy 128uy 128uy
-    | GrassTuft -> Color.rgb 50uy 120uy 50uy
-    | Coin -> Color.rgb 255uy 215uy 0uy
-    | Jewel -> Color.rgb 0uy 191uy 255uy
-    | Heart -> Color.rgb 255uy 0uy 0uy
-    | Star -> Color.rgb 255uy 255uy 0uy
-    | Mushrooms
-    | MushroomLight -> Color.rgb 139uy 69uy 19uy
-    | Crate -> Color.rgb 160uy 82uy 45uy
-    | Barrel -> Color.rgb 139uy 90uy 43uy
-    | Flag -> Color.rgb 255uy 0uy 0uy
-    | Spikes -> Color.rgb 192uy 192uy 192uy
-    | Empty -> fallbackColor
+  let materialColor(material: Biome3D) =
+    match material with
+    | Grass -> Color.rgb 76uy 153uy 0uy
+    | Snow -> Color.rgb 230uy 230uy 230uy
 
-  let private collectBlocks
-    (playerPos: Vector3)
+  let propColor(prop: Prop) =
+    match prop with
+    | Platform _ -> Color.rgb 100uy 100uy 100uy
+    | Hazard _ -> Color.rgb 192uy 192uy 192uy
+    | Pickup kind ->
+      match kind with
+      | Gold
+      | Key -> Color.rgb 255uy 215uy 0uy
+      | Silver -> Color.rgb 192uy 192uy 192uy
+      | Bronze -> Color.rgb 205uy 127uy 50uy
+      | Jewel -> Color.rgb 0uy 191uy 255uy
+      | Heart -> Color.rgb 255uy 0uy 0uy
+      | Star -> Color.rgb 255uy 255uy 0uy
+    | Decoration kind ->
+      match kind with
+      | TreePine
+      | TreeSnow -> Color.rgb 0uy 100uy 0uy
+      | Rock -> Color.rgb 128uy 128uy 128uy
+      | Stones -> Color.rgb 160uy 160uy 160uy
+      | GrassTuft -> Color.rgb 50uy 120uy 50uy
+      | Flowers
+      | FlowersTall -> Color.rgb 200uy 80uy 200uy
+      | Mushrooms
+      | GlowMushroom -> Color.rgb 139uy 69uy 19uy
+      | Crate -> Color.rgb 160uy 82uy 45uy
+      | Barrel -> Color.rgb 139uy 90uy 43uy
+      | Flag -> Color.rgb 255uy 0uy 0uy
+
+  /// One minimap sample per quantized footprint cell, keeping the highest
+  /// world entry: terrain surface by material, then props and pickups over
+  /// it when they sit higher.
+  let collectEntries
     (bounds: BoundingBox)
     (chunks: ConcurrentDictionary<struct (int * int), Chunk>)
-    (blocks: Dictionary<struct (int * int), struct (float32 * BlockType)>)
+    (entries: Dictionary<struct (int * int), struct (float32 * Color)>)
     : unit =
-    blocks.Clear()
+    entries.Clear()
+
+    let remember (wx: int) (wz: int) (worldY: float32) (color: Color) =
+      let qx = wx / sampleStep * sampleStep
+      let qz = wz / sampleStep * sampleStep
+      let key = struct (qx, qz)
+
+      match entries.TryGetValue key with
+      | true, struct (existingY, _) when existingY >= worldY -> ()
+      | _ -> entries[key] <- struct (worldY, color)
+
+    // The same world-space window the retired volume pass used — per-cell
+    // culling inside each intersecting chunk.
+    let left = int bounds.Min.X
+    let top = int bounds.Min.Z
+    let right = int bounds.Max.X
+    let bottom = int bounds.Max.Z
 
     for KeyValue(struct (_cx, _cz), chunk) in chunks do
       if
@@ -79,30 +98,30 @@ module Minimap =
         && chunk.Bounds.Max.Z >= bounds.Min.Z
         && chunk.Bounds.Min.Z <= bounds.Max.Z
       then
-        let struct (terrainGrid, _) =
-          LayeredGrid3D.getOrAddLayer Layer.Terrain chunk.Grids
+        let origin = chunk.Terrain.Origin
 
-        CellGrid3D.iterVolume
-          bounds
-          (fun x y z blockType ->
-            if blockType <> Empty then
-              let worldX =
-                terrainGrid.Origin.X + float32 x * terrainGrid.CellSize.X
+        chunk.Terrain
+        |> CellGrid2D.iterVisible left top right bottom (fun x z col ->
+          if not(TerrainColumn.isPit col) then
+            let wx = int origin.X + x
+            let wz = int origin.Y + z
 
-              let worldZ =
-                terrainGrid.Origin.Z + float32 z * terrainGrid.CellSize.Z
+            remember
+              wx
+              wz
+              (float32(TerrainColumn.surfaceCells col) * cellSize)
+              (materialColor col.Material))
 
-              let worldY =
-                terrainGrid.Origin.Y + float32 y * terrainGrid.CellSize.Y
+        let rememberProp(grid: CellGrid2D<PropTile>) =
+          grid
+          |> CellGrid2D.iterVisible left top right bottom (fun x z tile ->
+            let wx = int origin.X + x
+            let wz = int origin.Y + z
 
-              let qx = int(worldX) / sampleStep * sampleStep
-              let qz = int(worldZ) / sampleStep * sampleStep
-              let key = struct (qx, qz)
+            remember wx wz (float32 tile.Y * cellSize) (propColor tile.Prop))
 
-              match blocks.TryGetValue key with
-              | true, struct (existingY, _) when existingY >= worldY -> ()
-              | _ -> blocks[key] <- struct (worldY, blockType))
-          terrainGrid
+        rememberProp chunk.Props
+        rememberProp chunk.Pickups
 
   let generateMinimapData
     (playerPos: Vector3)
@@ -125,10 +144,6 @@ module Minimap =
           playerPos.Z + minimapWorldRadius
         )
     }
-
-    let blocks = Dictionary<struct (int * int), struct (float32 * BlockType)>()
-
-    collectBlocks playerPos bounds chunks blocks
 
     let skyColor = getSkyColor timeOfDay
     let halfMinimap = minimapSize * 0.5f
@@ -157,7 +172,10 @@ module Minimap =
         for xx = x0 to x1 - 1 do
           pixels[row + xx] <- color
 
-    for KeyValue(struct (wx, wz), struct (_, blockType)) in blocks do
+    let entries = Dictionary<struct (int * int), struct (float32 * Color)>()
+    collectEntries bounds chunks entries
+
+    for KeyValue(struct (wx, wz), struct (_, color)) in entries do
       let relX = (float32 wx - playerPos.X) * scale
       let relZ = (float32 wz - playerPos.Z) * scale
       let pixelX = int(halfMinimap + relX)
@@ -169,8 +187,6 @@ module Minimap =
         && pixelZ >= -pixelSizeI
         && pixelZ < texSize
       then
-        let color = blockColor skyColor blockType
-
         if color.A > 0uy then
           fillRect(pixelX, pixelZ, color)
 

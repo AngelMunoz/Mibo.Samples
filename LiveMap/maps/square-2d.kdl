@@ -1,0 +1,106 @@
+// square-2d.kdl — a flat map in two layers, authored in KDL.
+//
+// The same map exists beside this file as square-2d.xml. The two must
+// paint the same layers, cell for cell, and
+//
+//   dotnet run --project LiveMap -- --check
+//
+// compares them.
+//
+// Every name below comes from the game's surface: the words (grass,
+// treePine), the kernels (forest, plaza), and the element library
+// (grove, court, camp, yard, cache). A name outside those tables fails
+// the build and points at its own line.
+//
+// The layers are the document's own: `ground` holds the terrain, `decor`
+// holds what stands on it. Each one becomes a grid of its own, and the
+// decor grid stays empty where nothing was placed, so the ground shows
+// through. A cell reports the topmost layer that painted it.
+
+map 40 24 {
+    // ── the terrain ──────────────────────────────────────────
+    layer ground {
+        // the field the whole map is cut from
+        generate meadow
+
+        // the road across the map at row 11, and a track running north
+        generate 0 11 40 1 road
+        generate 12 4 1 7 track
+
+        // broken ground in the north-east: the gravel between the
+        // boulders, which stand in the decor layer
+        plot x=28 y=3 w=10 h=6 { generate gravel }
+
+        // the plaza, from a stamp the game baked into a kernel
+        plot x=29 y=13 w=7 h=5 { generate plaza }
+    }
+
+    // ── what stands on it ────────────────────────────────────
+    layer decor {
+        // the field the ground layer left bare: stands of shrubs and
+        // stones, in the open ground between the woods, the buildings, and
+        // the broken ground. A scatter leaves the cells it did not use
+        // empty, so the field shows through, and no stand touches a
+        // building, so nothing is buried under one.
+        plot x=22 y=18 w=8 h=6 pack=scatter seed=11 {
+            repeat 8 { bush }
+            repeat 4 { rockSmall }
+        }
+
+        plot x=6 y=20 w=9 h=4 pack=scatter seed=12 {
+            repeat 6 { bush }
+            repeat 3 { rockSmall }
+        }
+
+        plot x=4 y=12 w=2 h=12 pack=scatter seed=13 {
+            repeat 4 { bush }
+            repeat 2 { rockSmall }
+        }
+
+        plot x=26 y=3 w=2 h=8 pack=scatter seed=14 {
+            repeat 4 { bush }
+            repeat 2 { rockSmall }
+        }
+
+        // the boulders of the broken ground the ground layer laid
+        plot x=28 y=3 w=10 h=6 pack=scatter seed=15 {
+            repeat 10 { rockLarge }
+            repeat 8 { rockMedium }
+            repeat 6 { rockSmall }
+        }
+
+        // the woods: a band along the top and a strip down the left
+        generate 0 0 40 3 forest
+        generate 0 3 4 21 forest
+
+        // the hamlet, from the game's element library
+        court x=6 y=14 w=9 h=6
+        camp x=17 y=15
+        yard x=30 y=15 w=8 h=6
+
+        // a template declared here, sized once by a style rule instead of
+        // at each use. A declaration inside a layer is still a document
+        // declaration: it belongs to no layer.
+        element thicket { generate forest }
+        style thicket w=6 h=5
+        thicket x=14 y=3
+        thicket x=33 y=9
+
+        // the market: a scatter of stores and containers
+        plot x=17 y=6 w=9 h=4 pack=scatter seed=7 {
+            repeat 3 { crate }
+            repeat 2 { crateBeveled }
+            container
+            containerLarge
+        }
+
+        // the orchard: two species, repeated into the scatter
+        plot x=4 y=4 w=9 h=6 pack=scatter seed=3 {
+            repeat 6 { treeRound }
+            repeat 4 { treePine }
+        }
+
+        // a cache of coins beside the road
+        cache x=20 y=12 w=6 h=3
+    }
+}

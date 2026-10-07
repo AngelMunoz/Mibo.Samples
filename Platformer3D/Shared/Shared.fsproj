@@ -8,6 +8,7 @@
     <Compile Include="Constants.fs" />
     <Compile Include="Types.fs" />
     <Compile Include="BlockData.fs" />
+    <Compile Include="Level.fs" />
     <Compile Include="WorldGen.fs" />
     <Compile Include="Physics.fs" />
     <Compile Include="DayNight.fs" />

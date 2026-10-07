@@ -2,14 +2,19 @@ namespace FPSSample
 
 open System
 open System.Numerics
+open Mibo.Layout
 open Mibo.Layout3D
 
-/// Level definition built on Mibo.Layout3D.CellGrid3D.
-/// The grid stores voxel cells (Wall, Floor, Cover, etc.) and collision
-/// AABBs are extracted from solid cells for physics and raycasting.
+/// Level definition on a 2D footprint grid with per-column height —
+/// the heightmap approach. Each (x, z) cell carries what stands there
+/// and how tall it is; collision AABBs and ground heights derive from
+/// the columns, and the views draw one native-size instance per
+/// height level at the retired voxel positions. The arena itself is a
+/// Flow document (floor fill, wall border, crates, pillar, ramp);
+/// spawn points keep the retired level's literal coordinates.
 module Level =
 
-  /// Voxel cell types used to build the FPS arena.
+  /// Content kinds used to build the FPS arena.
   [<Struct; RequireQualifiedAccess>]
   type Cell =
     | Empty
@@ -36,6 +41,11 @@ module Level =
       | Cell.Crate -> FPSSample.Assets.crate
       | Cell.Empty -> ""
 
+  /// One footprint column: the content kind and how many cells it
+  /// stacks from the ground. Height 0 stands for nothing.
+  [<Struct>]
+  type Column = { Kind: Cell; Height: int }
+
   /// Logical pickup kind (health/ammo).
   [<Struct; RequireQualifiedAccess>]
   type PickupKind =
@@ -50,10 +60,13 @@ module Level =
   [<Struct>]
   type EnemySpawn = { Position: Vector3 }
 
-  /// Complete level definition: voxel grid + spawn data.
+  /// Complete level definition: footprint columns + spawn data.
   type LevelData = {
-    Grid: CellGrid3D<Cell>
+    Grid: CellGrid2D<Column>
     CellSize: float32
+    /// World Y of height level 0's center — the floor top lands at
+    /// world Y 0, matching the retired voxel arena.
+    BaseY: float32
     PlayerSpawn: Vector3
     EnemySpawns: EnemySpawn[]
     PickupSpawns: PickupSpawn[]
@@ -61,130 +74,119 @@ module Level =
 
   module LevelData =
 
-    /// Converts a grid cell (x,y,z) to a world-space center position.
+    /// World-space center of stack level `y` of the column at (x, z) —
+    /// the same positions the retired voxel grid produced.
     let inline cellCenter
       (x: int)
       (y: int)
       (z: int)
       (level: LevelData)
       : Vector3 =
-      CellGrid3D.getWorldPos x y z level.Grid
+      let corner = CellGrid2D.getWorldPos x z level.Grid
 
-    /// Converts a grid cell to a world-space bounding box.
-    let inline cellBounds
-      (x: int)
-      (y: int)
-      (z: int)
-      (level: LevelData)
-      : BoundingBox =
-      let center = cellCenter x y z level
-      let half = level.CellSize * 0.5f
+      Vector3(corner.X, level.BaseY + float32 y * level.CellSize, corner.Y)
 
-      {
-        BoundingBox.Min =
-          Vector3(center.X - half, center.Y - half, center.Z - half)
-        BoundingBox.Max =
-          Vector3(center.X + half, center.Y + half, center.Z + half)
-      }
-
-    /// Extracts all solid cell bounding boxes for collision and raycasting.
+    /// Extracts one collider AABB per solid stack level — walls,
+    /// cover, and crates. Floor columns stay out (standing on the
+    /// floor is a ground-height query, not a collider).
     let extractColliders(level: LevelData) : BoundingBox[] =
       let result = ResizeArray<BoundingBox>(256)
+      let half = level.CellSize * 0.5f
 
       level.Grid
-      |> CellGrid3D.iter(fun x y z cell ->
-        if Cell.isSolid cell then
-          result.Add(cellBounds x y z level))
+      |> CellGrid2D.iter(fun x z column ->
+        if Cell.isSolid column.Kind then
+          for y = 0 to column.Height - 1 do
+            let center = cellCenter x y z level
+
+            result.Add(
+              {
+                BoundingBox.Min =
+                  Vector3(center.X - half, center.Y - half, center.Z - half)
+                BoundingBox.Max =
+                  Vector3(center.X + half, center.Y + half, center.Z + half)
+              }
+            ))
 
       result.ToArray()
 
-    /// Finds the highest walkable surface at (x,z) and returns its top Y.
-    /// Considers both Floor cells (walkable surface) and solid cells (walls/cover).
+    /// The world Y of a column's top surface — the highest walkable
+    /// height at (x, z). Empty columns report 0.
+    let inline columnTop (x: int) (z: int) (level: LevelData) : float32 =
+      match CellGrid2D.get x z level.Grid with
+      | ValueSome column when column.Height > 0 ->
+        level.BaseY
+        + float32(column.Height - 1) * level.CellSize
+        + level.CellSize * 0.5f
+      | _ -> 0.0f
+
+    /// Finds the highest walkable surface under a world position.
     let inline groundHeightAt
       (worldX: float32)
       (worldZ: float32)
       (level: LevelData)
       : float32 =
       let g = level.Grid
-      let fx = (worldX - g.Origin.X) / g.CellSize.X
-      let fz = (worldZ - g.Origin.Z) / g.CellSize.Z
-      let cx = int(MathF.Floor(fx))
-      let cz = int(MathF.Floor(fz))
+      let cx = int(MathF.Floor((worldX - g.Origin.X) / g.CellSize.X))
+      let cz = int(MathF.Floor((worldZ - g.Origin.Y) / g.CellSize.Y))
 
-      let mutable topY = 0.0f
+      columnTop cx cz level
 
-      for y = g.Height - 1 downto 0 do
-        match CellGrid3D.get cx y cz g with
-        | ValueSome cell when cell <> Cell.Empty ->
-          let center = CellGrid3D.getWorldPos cx y cz g
-          topY <- center.Y + g.CellSize.Y * 0.5f
-        | _ -> ()
-
-      topY
-
-    /// Builds the default FPS arena: a bounded floor with perimeter walls
-    /// (outline only, not full slices), interior cover, crates, and a ramp.
+    /// Builds the default FPS arena as one Flow document: a floor
+    /// canvas with a wall border and crate columns, a tagged central
+    /// pillar, and the ramp footprint. Spawn points keep the retired
+    /// level's literal world coordinates.
     let createDefault() : LevelData =
       let cs = 2.0f
       let half = int(Constants.FloorSize / cs / 2.0f)
-      let wallH = 2
       let w = half * 2 + 1
-      let h = wallH
       let d = half * 2 + 1
-
-      let grid =
-        CellGrid3D.create
-          w
-          h
-          d
-          (Vector3(cs, cs, cs))
-          (Vector3(-float32 half * cs, -cs * 0.5f, -float32 half * cs))
-
-      // Floor at y=0
-      grid |> CellGrid3D.iter(fun _ _ _ _ -> ()) // no-op
-
-      for x = 0 to w - 1 do
-        for z = 0 to d - 1 do
-          CellGrid3D.set x 0 z Cell.Floor grid
-
-      // Perimeter walls (outline only - just the edge cells)
-      for y = 0 to h - 1 do
-        for x = 0 to w - 1 do
-          CellGrid3D.set x y 0 Cell.Wall grid
-          CellGrid3D.set x y (d - 1) Cell.Wall grid
-
-        for z = 0 to d - 1 do
-          CellGrid3D.set 0 y z Cell.Wall grid
-          CellGrid3D.set (w - 1) y z Cell.Wall grid
-
-      // Interior cover: central pillar
       let mid = half
 
-      for y = 0 to 1 do
-        for dx = -1 to 1 do
-          for dz = -1 to 1 do
-            CellGrid3D.set (mid + dx) y (mid + dz) Cell.Wall grid
+      let floorCol = { Kind = Cell.Floor; Height = 1 }
+      let wallCol = { Kind = Cell.Wall; Height = 2 }
 
-      // Crates as cover
-      CellGrid3D.set (mid - 6) 0 (mid + 3) Cell.Crate grid
-      CellGrid3D.set (mid - 6) 1 (mid + 3) Cell.Crate grid
-      CellGrid3D.set (mid + 5) 0 (mid - 4) Cell.Crate grid
-      CellGrid3D.set (mid - 9) 0 (mid - 6) Cell.Crate grid
-      CellGrid3D.set (mid + 8) 0 (mid + 6) Cell.Crate grid
+      let crateCol height = { Kind = Cell.Crate; Height = height }
 
-      // A stepped ramp going up along +Z near the east side
-      let rampBaseX = mid + 5
-      let rampBaseZ = mid + 5
-      let rampDepth = 4
-      let rampRise = 1
+      let doc =
+        Flow.overlay [
+          // Ground everywhere, wall columns along the rim, crates as
+          // single footprint cells (a double stack plus singles).
+          Flow.canvas [
+            Flow.fill floorCol
+            Flow.border wallCol
+            Flow.cell { X = mid - 6; Y = mid + 3 } (crateCol 2)
+            Flow.cell { X = mid + 5; Y = mid - 4 } (crateCol 1)
+            Flow.cell { X = mid - 9; Y = mid - 6 } (crateCol 1)
+            Flow.cell { X = mid + 8; Y = mid + 6 } (crateCol 1)
+          ]
 
-      for rz = 0 to rampDepth - 1 do
-        let yMax = (rz * rampRise) / rampDepth
+          // Central pillar: a tagged 3x3 box at an exact offset.
+          // `Flow.at` is the layer form of an exact placement — a layer is
+          // full-bleed, so a sized child has to state its own rectangle.
+          Stamp.tagged [ "pillar" ] (Stamp.box 3 3 [ Flow.fill wallCol ])
+          |> Flow.at (mid - 1) (mid - 1)
 
-        for dx = 0 to 1 do
-          for fy in 0..yMax do
-            CellGrid3D.set (rampBaseX + dx) fy (rampBaseZ + rz) Cell.Wall grid
+          // The ramp footprint, 2 wide and 4 deep. Height 1 across —
+          // byte-identical to the retired voxel loop, whose integer
+          // division painted every step at level 0.
+          Stamp.tagged
+            [ "ramp" ]
+            (Stamp.box 2 4 [ Flow.fill { Kind = Cell.Wall; Height = 1 } ])
+          |> Flow.at (mid + 5) (mid + 5)
+        ]
 
+      let grid =
+        CellGrid2D.create
+          w
+          d
+          (Vector2(cs, cs))
+          (Vector2(-float32 half * cs, -float32 half * cs))
+
+      let struct (grid, _) = grid |> Flow.run doc
+
+      // Spawn points keep the retired level's exact world coordinates —
+      // placement is not part of the storage migration.
       let enemySpawns = [|
         {
           Position = Vector3(5.0f, 0.0f, -15.0f)
@@ -223,6 +225,7 @@ module Level =
       {
         Grid = grid
         CellSize = cs
+        BaseY = -cs * 0.5f
         PlayerSpawn = Vector3(-6.0f, Constants.PlayerEyeHeight, -6.0f)
         EnemySpawns = enemySpawns
         PickupSpawns = pickupSpawns

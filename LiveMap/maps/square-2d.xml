@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- square-2d.xml — the same map as square-2d.kdl, written in XML.
+     Attributes carry the scalars here, where KDL carries them as
+     positional arguments; the resolver reads both by name, so the two
+     files build the same layers, cell for cell.
+
+     A layer names itself with the `name` property. -->
+<map w="40" h="24">
+  <!-- ── the terrain ──────────────────────────────────────── -->
+  <layer name="ground">
+    <!-- the field the whole map is cut from -->
+    <generate kernel="meadow" />
+
+    <!-- the road across the map at row 11, and a track running north -->
+    <generate x="0" y="11" w="40" h="1" kernel="road" />
+    <generate x="12" y="4" w="1" h="7" kernel="track" />
+
+    <!-- broken ground in the north-east: the gravel between the
+         boulders, which stand in the decor layer -->
+    <plot x="28" y="3" w="10" h="6"><generate kernel="gravel" /></plot>
+
+    <!-- the plaza, from a stamp the game baked into a kernel -->
+    <plot x="29" y="13" w="7" h="5"><generate kernel="plaza" /></plot>
+  </layer>
+
+  <!-- ── what stands on it ────────────────────────────────── -->
+  <layer name="decor">
+    <!-- the field the ground layer left bare: stands of shrubs and
+         stones, in the open ground between the woods, the buildings, and
+         the broken ground. A scatter leaves the cells it did not use
+         empty, so the field shows through, and no stand touches a
+         building, so nothing is buried under one. -->
+    <plot x="22" y="18" w="8" h="6" pack="scatter" seed="11">
+      <repeat count="8"><bush /></repeat>
+      <repeat count="4"><rockSmall /></repeat>
+    </plot>
+
+    <plot x="6" y="20" w="9" h="4" pack="scatter" seed="12">
+      <repeat count="6"><bush /></repeat>
+      <repeat count="3"><rockSmall /></repeat>
+    </plot>
+
+    <plot x="4" y="12" w="2" h="12" pack="scatter" seed="13">
+      <repeat count="4"><bush /></repeat>
+      <repeat count="2"><rockSmall /></repeat>
+    </plot>
+
+    <plot x="26" y="3" w="2" h="8" pack="scatter" seed="14">
+      <repeat count="4"><bush /></repeat>
+      <repeat count="2"><rockSmall /></repeat>
+    </plot>
+
+    <!-- the boulders of the broken ground the ground layer laid -->
+    <plot x="28" y="3" w="10" h="6" pack="scatter" seed="15">
+      <repeat count="10"><rockLarge /></repeat>
+      <repeat count="8"><rockMedium /></repeat>
+      <repeat count="6"><rockSmall /></repeat>
+    </plot>
+
+    <!-- the woods: a band along the top and a strip down the left -->
+    <generate x="0" y="0" w="40" h="3" kernel="forest" />
+    <generate x="0" y="3" w="4" h="21" kernel="forest" />
+
+    <!-- the hamlet, from the game's element library -->
+    <court x="6" y="14" w="9" h="6" />
+    <camp x="17" y="15" />
+    <yard x="30" y="15" w="8" h="6" />
+
+    <!-- a template declared here, sized once by a style rule instead of
+         at each use. A declaration inside a layer is still a document
+         declaration: it belongs to no layer. -->
+    <element name="thicket"><generate kernel="forest" /></element>
+    <style name="thicket" w="6" h="5" />
+    <thicket x="14" y="3" />
+    <thicket x="33" y="9" />
+
+    <!-- the market: a scatter of stores and containers -->
+    <plot x="17" y="6" w="9" h="4" pack="scatter" seed="7">
+      <repeat count="3"><crate /></repeat>
+      <repeat count="2"><crateBeveled /></repeat>
+      <container />
+      <containerLarge />
+    </plot>
+
+    <!-- the orchard: two species, repeated into the scatter -->
+    <plot x="4" y="4" w="9" h="6" pack="scatter" seed="3">
+      <repeat count="6"><treeRound /></repeat>
+      <repeat count="4"><treePine /></repeat>
+    </plot>
+
+    <!-- a cache of coins beside the road -->
+    <cache x="20" y="12" w="6" h="3" />
+  </layer>
+</map>

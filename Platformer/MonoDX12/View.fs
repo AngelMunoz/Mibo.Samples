@@ -4,13 +4,14 @@ open System
 open Microsoft.Xna.Framework
 open Mibo
 open Mibo.Elmish
+open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics2D.Lighting
 open Mibo.Elmish.Graphics2D
 open Mibo.Layout
 open Mibo.Animation
 open Platformer.Constants
 open Platformer.Types
-open Platformer
+open global.Platformer
 open Platformer.MonoGame.Types
 
 type Model = Types.Model
@@ -53,22 +54,18 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
       (float32 ctx.WindowHeight)
 
   buffer
-  |> Draw.rectGradientV
-    (-1000<RenderLayer>)
-    (0,
-     0,
-     ctx.WindowWidth,
-     ctx.WindowHeight,
-     MonoGameColor.toMonoGameColor skyTop,
-     MonoGameColor.toMonoGameColor skyBot)
-  |> Draw.beginCamera 0<RenderLayer> camera
-  |> LightDraw.setAmbient
-    model.Lighting
-    (5<RenderLayer>,
-     {
-       Color = MonoGameColor.toMonoGameColor ambient
-     })
-  |> Draw.drop
+    .rectGradientV(
+      0,
+      0,
+      ctx.WindowWidth,
+      ctx.WindowHeight,
+      skyTop,
+      skyBot,
+      -1000<RenderLayer>
+    )
+    .beginCamera(camera, 0<RenderLayer>)
+    .setAmbient(model.Lighting, ambient, 5<RenderLayer>)
+    .drop()
 
   if sunIntensity > 0.0f then
     let sunPos = Vector2.op_Implicit sunPos
@@ -77,13 +74,18 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
       Vector2.Normalize(Vector2(playerCenterX, groundLevel - 200.0f) - sunPos)
 
     buffer
-    |> LightDraw.addDirectionalLight model.Lighting 6<RenderLayer> {
-      Direction = sunDir
-      Color = MonoGameColor.toMonoGameColor(Mibo.Color.rgb 255uy 245uy 220uy)
-      Intensity = sunIntensity * 1.5f
-      CastsShadows = true
-    }
-    |> Draw.drop
+      .addDirectionalLight(
+        model.Lighting,
+        {
+          Direction = sunDir
+          Color =
+            MonoGameColor.toMonoGameColor(Mibo.Color.rgb 255uy 245uy 220uy)
+          Intensity = sunIntensity * 1.5f
+          CastsShadows = true
+        },
+        6<RenderLayer>
+      )
+      .drop()
 
   if moonIntensity > 0.0f then
     let moonPos = Vector2.op_Implicit moonPos
@@ -92,13 +94,18 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
       Vector2.Normalize(Vector2(playerCenterX, groundLevel - 200.0f) - moonPos)
 
     buffer
-    |> LightDraw.addDirectionalLight model.Lighting 6<RenderLayer> {
-      Direction = moonDir
-      Color = MonoGameColor.toMonoGameColor(Mibo.Color.rgb 180uy 200uy 255uy)
-      Intensity = moonIntensity * 0.8f
-      CastsShadows = true
-    }
-    |> Draw.drop
+      .addDirectionalLight(
+        model.Lighting,
+        {
+          Direction = moonDir
+          Color =
+            MonoGameColor.toMonoGameColor(Mibo.Color.rgb 180uy 200uy 255uy)
+          Intensity = moonIntensity * 0.8f
+          CastsShadows = true
+        },
+        6<RenderLayer>
+      )
+      .drop()
 
   let pcx =
     int(Math.Floor(float model.Physics.Position.X / float chunkWorldSize))
@@ -164,30 +171,30 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
   for i = 0 to torchCount - 1 do
     let torch = nearbyTorches[i]
 
-    buffer
-    |> LightDraw.addPointLight model.Lighting 7<RenderLayer> torch
-    |> Draw.drop
+    buffer.addPointLight(model.Lighting, torch, 7<RenderLayer>).drop()
 
     let torchDest =
       Rectangle(int torch.Position.X - 16, int torch.Position.Y - 32, 32, 32)
 
     buffer
-    |> LightDraw.litSprite
-      model.Lighting
-      (SpriteState.create(model.Assets.TorchSheet.Texture, torchDest, torchSrc)
-       |> SpriteState.withLayer 7<RenderLayer>)
-    |> Draw.drop
+      .litSprite(
+        model.Lighting,
+        SpriteState.create(model.Assets.TorchSheet.Texture, torchDest, torchSrc)
+        |> SpriteState.withLayer 7<RenderLayer>
+      )
+      .drop()
 
   for i = 0 to ocCount - 1 do
     buffer
-    |> LightDraw.addOccluder model.Lighting 8<RenderLayer> nearbyOccluders[i]
-    |> Draw.drop
+      .addOccluder(model.Lighting, nearbyOccluders[i], 8<RenderLayer>)
+      .drop()
 
   buffer
-  |> Draw.setSamplerState
-    9<RenderLayer>
-    Microsoft.Xna.Framework.Graphics.SamplerState.PointClamp
-  |> Draw.drop
+    .setSamplerState(
+      Microsoft.Xna.Framework.Graphics.SamplerState.PointClamp,
+      9<RenderLayer>
+    )
+    .drop()
 
   for KeyValue(key, chunk) in model.Chunks.Chunks do
     let struct (cx, cy) = key
@@ -197,7 +204,7 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
 
       if isVisible2D viewBounds chunkBounds then
         let struct (terrainGrid, _) =
-          LayeredGrid2D.getOrAddLayer Layer.Terrain chunk.Grids
+          LayeredMap.getOrAddLayer Layer.Terrain chunk.Grids
 
         CellGrid2D.iterVisible
           viewBounds.X
@@ -221,7 +228,7 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
                 SpriteState.create(model.Assets.TileTexture, dest, srcRect)
                 |> SpriteState.withLayer 10<RenderLayer>
 
-              buffer |> LightDraw.litSprite model.Lighting sprite |> Draw.drop)
+              buffer.litSprite(model.Lighting, sprite).drop())
           terrainGrid
 
         // Animated collectibles (litAnimatedSprite for per-frame animation)
@@ -230,73 +237,79 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
             Rectangle(int coin.X, int coin.Y, int coin.Width, int coin.Height)
 
           buffer
-          |> LightDraw.litAnimatedSprite
-            model.Lighting
-            10<RenderLayer>
-            dest
-            model.CoinSprite
-          |> Draw.drop
+            .litAnimatedSprite(
+              model.Lighting,
+              dest,
+              model.CoinSprite,
+              10<RenderLayer>
+            )
+            .drop()
 
         for flag in chunk.Flags do
           let dest =
             Rectangle(int flag.X, int flag.Y, int flag.Width, int flag.Height)
 
           buffer
-          |> LightDraw.litAnimatedSprite
-            model.Lighting
-            10<RenderLayer>
-            dest
-            model.FlagSprite
-          |> Draw.drop
+            .litAnimatedSprite(
+              model.Lighting,
+              dest,
+              model.FlagSprite,
+              10<RenderLayer>
+            )
+            .drop()
 
   buffer
-  |> Draw.setSamplerState
-    11<RenderLayer>
-    Microsoft.Xna.Framework.Graphics.SamplerState.LinearClamp
-  |> Draw.drop
+    .setSamplerState(
+      Microsoft.Xna.Framework.Graphics.SamplerState.LinearClamp,
+      11<RenderLayer>
+    )
+    .drop()
 
   let playerDrawY = int(model.Physics.Position.Y + playerHeight - 64.0f)
   let playerDest = Rectangle(int model.Physics.Position.X, playerDrawY, 64, 64)
 
   buffer
-  |> LightDraw.litAnimatedSprite
-    model.Lighting
-    20<RenderLayer>
-    playerDest
-    model.PlayerSprite
-  |> Draw.drop
+    .litAnimatedSprite(
+      model.Lighting,
+      playerDest,
+      model.PlayerSprite,
+      20<RenderLayer>
+    )
+    .drop()
 
   let particleCount = model.ParticleState.Count
 
   for i = 0 to particleCount - 1 do
     model.ParticleBuffer[i] <- toParticle model.ParticleState.Particles[i]
 
-  buffer
-  |> ParticleDraw.particles
-    model.Assets.ParticleTexture
-    model.ParticleBuffer
-    particleCount
-    3<RenderLayer>
-  |> LightDraw.endLighting model.Lighting 999<RenderLayer>
-  |> Draw.endCamera 1000<RenderLayer>
-  |> Draw.text(
-    TextState.create(
-      model.Assets.Font,
-      $"Day/Night Cycle | Time: {model.DayNight.Time.TimeOfDay:F1}h | Chunks: {model.Chunks.Chunks.Count} | Score: {model.Physics.Score} | WASD/Arrows: Move | Space: Jump | S/Down: Drop | R: Respawn",
-      Vector2(10.0f, 10.0f)
+  // End lighting + camera, then the UI texts and the minimap
+  (buffer
+    .particles(
+      model.Assets.ParticleTexture,
+      model.ParticleBuffer,
+      particleCount,
+      3<RenderLayer>
     )
-    |> TextState.withScale 1.0f
-    |> TextState.withColor(Color.White |> MonoGameColor.toMonoGameColor)
-    |> TextState.withLayer 1001<RenderLayer>
-  )
-  |> Draw.text(
-    TextState.create(
-      model.Assets.Font,
-      $"FPS: {model.Diag.Fps} | Frame Time: {model.Diag.FrameTime * 1000.0f:F1}ms",
-      Vector2(10.0f, 32.0f)
+    .endLighting(model.Lighting, 999<RenderLayer>)
+    .endCamera(1000<RenderLayer>)
+    .text(
+      TextState.create(
+        model.Assets.Font,
+        $"Day/Night Cycle | Time: {model.DayNight.Time.TimeOfDay:F1}h | Chunks: {model.Chunks.Chunks.Count} | Score: {model.Physics.Score} | WASD/Arrows: Move | Space: Jump | S/Down: Drop | R: Respawn",
+        Vector2(10.0f, 10.0f)
+      )
+      |> TextState.withScale 1.0f
+      |> TextState.withColor(Color.White |> MonoGameColor.toMonoGameColor)
+      |> TextState.withLayer 1001<RenderLayer>
     )
-    |> TextState.withScale 1.0f
-    |> TextState.withColor(Color.White |> MonoGameColor.toMonoGameColor)
-    |> TextState.withLayer 1001<RenderLayer>
-  )
+    .text(
+      TextState.create(
+        model.Assets.Font,
+        $"FPS: {model.Diag.Fps} | Frame Time: {model.Diag.FrameTime * 1000.0f:F1}ms",
+        Vector2(10.0f, 32.0f)
+      )
+      |> TextState.withScale 1.0f
+      |> TextState.withColor(Color.White |> MonoGameColor.toMonoGameColor)
+      |> TextState.withLayer 1001<RenderLayer>
+    ))
   |> MinimapView.view ctx model

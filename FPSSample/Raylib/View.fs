@@ -44,9 +44,7 @@ let mutable private currentGameContext = Unchecked.defaultof<GameContext>
 /// Shared starry skybox instance.
 let skybox = Skybox.create()
 
-let private resolveMeshesAndMaterial(cell: Level.Cell) =
-  let path = Level.Cell.modelPath cell
-
+let private resolveMeshesAndMaterial(path: string) =
   match meshMaterialCache.TryGetValue path with
   | true, cached -> cached
   | false, _ ->
@@ -74,15 +72,14 @@ let private resolveMeshesAndMaterial(cell: Level.Cell) =
     meshMaterialCache[path] <- result
     result
 
-// Persistent instanced render context for level geometry.
-let private instancedCtx =
-  InstancedRenderContext<Level.Cell, string>(
-    getKey = Level.Cell.modelPath,
-    getMeshesAndMaterial = resolveMeshesAndMaterial,
-    getTransform =
-      fun worldPos _cell ->
-        Raymath.MatrixTranslate(worldPos.X, worldPos.Y, worldPos.Z)
-  )
+// Level geometry: the footprint grid baked into per-path instance
+// groups — one native-size instance per stack level, translate-only
+// (Raymath.MatrixTranslate, exactly the retired context's transform;
+// no scaling, no re-ordered multiplication). Rebuilt only when the
+// level instance changes (restart).
+let mutable private bakedLevel: Level.LevelData voption = ValueNone
+
+let mutable private bakedGroups: LevelBake.Group<System.Numerics.Matrix4x4>[] = [||]
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Enemy animation registry.
@@ -675,12 +672,28 @@ let view
 
     buffer.addPointLight(ViewMath.torchLight pos flicker).drop()
 
-  // ── Level geometry (instanced) ────────────────────────────────────────────
+  // ── Level geometry (instanced, baked per level) ────────────────────────
   currentGameContext <- ctx
-  instancedCtx.ResetFrameBuffers()
 
-  // Render the entire grid instanced by cell type
-  CellGridRenderer3D.renderInstanced instancedCtx model.Level.Grid buffer
+  match bakedLevel with
+  | ValueSome existing when obj.ReferenceEquals(existing, model.Level) -> ()
+  | _ ->
+    bakedGroups <-
+      LevelBake.bake
+        (fun p -> Raymath.MatrixTranslate(p.X, p.Y, p.Z))
+        model.Level
+
+    bakedLevel <- ValueSome model.Level
+
+  for group in bakedGroups do
+    for struct (mesh, material) in resolveMeshesAndMaterial group.Path do
+      buffer.AddDrawInstanced(
+        mesh,
+        group.Transforms,
+        material,
+        group.Transforms.Length,
+        ValueNone
+      )
 
   // ── Enemies (animated models) ─────────────────────────────────────────────
   for i = 0 to model.Enemy.Enemies.Length - 1 do

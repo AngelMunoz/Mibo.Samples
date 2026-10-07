@@ -7,13 +7,13 @@ open SpaceBattle.Types
 module AnimatedDecorations =
 
   let init
-    (map: HexGrid<Tile>)
+    (map: CellGrid2D<Tile>)
     (assets: GameAssets)
     : Map<struct (int * int), AnimatedSprite> =
     let mutable sprites = Map.empty
 
     map
-    |> HexGrid.iter(fun col row tile ->
+    |> CellGrid2D.iter(fun col row tile ->
       match tile with
       | Asteroid1 ->
         let sheet =
@@ -60,7 +60,7 @@ module AnimatedDecorations =
 
   let update
     (dt: float32)
-    (map: HexGrid<Tile>)
+    (map: CellGrid2D<Tile>)
     (camera: Raylib_cs.Camera2D)
     (vpWidth: float32)
     (vpHeight: float32)
@@ -78,11 +78,11 @@ module AnimatedDecorations =
     let mutable sprites = sprites
 
     map
-    |> HexGrid.iterVisible
-      topLeft.X
-      topLeft.Y
-      bottomRight.X
-      bottomRight.Y
+    |> CellGrid2D.iterVisible
+      (int topLeft.X)
+      (int topLeft.Y)
+      (int bottomRight.X)
+      (int bottomRight.Y)
       (fun col row tile ->
         match sprites |> Map.tryFind struct (col, row) with
         | Some animated ->

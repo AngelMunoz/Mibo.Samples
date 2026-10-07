@@ -3,7 +3,9 @@ module SpaceBattle.Program
 open System
 open System.Numerics
 open Mibo.Animation
+open Mibo
 open Mibo.Elmish
+open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics2D.Lighting
 open Mibo.Input
 open Mibo.Layout
@@ -229,7 +231,7 @@ let private startGame(preStartState: PreStartState, model: Model) =
       seq {
         for r in 0 .. map.Grid.Height - 1 do
           for c in 0 .. map.Grid.Width - 1 do
-            match HexGrid.get c r map.Grid with
+            match CellGrid2D.get c r map.Grid with
             | ValueSome _ -> yield struct (c, r)
             | ValueNone -> ()
       }
@@ -535,7 +537,7 @@ let update
         let waypoints =
           simplified
           |> Array.map(fun struct (c, r) ->
-            model.Map.Grid |> HexGrid.getWorldPos c r)
+            model.Map.Grid |> CellGrid2D.getWorldPos c r)
 
         let segDists = Array.zeroCreate simplified.Length
         segDists[0] <- 0f
@@ -599,8 +601,8 @@ let update
       | Phase.Intent.PerformAttack attack ->
         let struct (ac, ar) = attack.AttackerCell
         let struct (tc, tr) = attack.Target
-        let attackerPos = model.Map.Grid |> HexGrid.getWorldPos ac ar
-        let targetPos = model.Map.Grid |> HexGrid.getWorldPos tc tr
+        let attackerPos = model.Map.Grid |> CellGrid2D.getWorldPos ac ar
+        let targetPos = model.Map.Grid |> CellGrid2D.getWorldPos tc tr
 
         let shipDir = Units.directionFromCells attack.AttackerCell attack.Target
 
@@ -853,7 +855,7 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
     |> Shaders.Skybox.render
       (model.Cam.Camera.Target, model.VPWidth, model.VPHeight)
       model.Skybox
-    |> Draw.drop
+    |> ignore
 
     PreStart.view
       model.PreStartState
@@ -861,7 +863,7 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
       model.VPWidth
       model.VPHeight
       buffer
-    |> Draw.drop
+    |> ignore
   | Playing ->
 
   model.Effects.Lighting.Reset()
@@ -870,13 +872,13 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
   |> Shaders.Skybox.render
     (model.Cam.Camera.Target, model.VPWidth, model.VPHeight)
     model.Skybox
-  |> Draw.drop
+  |> ignore
 
-  Camera.beginView model.Cam buffer
-  |> LightDraw.setAmbient
-    model.Effects.Lighting
-    (0<RenderLayer>, { Color = Effects.ambientColor })
-  |> Draw.drop
+  Camera.beginView model.Cam buffer |> ignore
+
+  buffer
+    .setAmbient(model.Effects.Lighting, Effects.ambientColor, 0<RenderLayer>)
+    .drop()
 
   match model.Anim with
   | AnimState.Attacking tween ->
@@ -886,33 +888,41 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
 
     let lightColor =
       if isLaser1 then
-        Color(255uy, 100uy, 60uy)
+        Raylib_cs.Color(255uy, 100uy, 60uy)
       else
-        Color(80uy, 255uy, 100uy)
+        Raylib_cs.Color(80uy, 255uy, 100uy)
 
     buffer
-    |> LightDraw.addPointLight model.Effects.Lighting 0<RenderLayer> {
-      Position = laserPos
-      Color = lightColor
-      Intensity = 2.5f
-      Radius = 150.0f
-      Falloff = 1.5f
-      CastsShadows = false
-    }
-    |> Draw.drop
+      .addPointLight(
+        model.Effects.Lighting,
+        {
+          Position = laserPos
+          Color = lightColor
+          Intensity = 2.5f
+          Radius = 150.0f
+          Falloff = 1.5f
+          CastsShadows = false
+        },
+        0<RenderLayer>
+      )
+      .drop()
   | _ -> ()
 
   for flash in model.Effects.ImpactFlashes do
     buffer
-    |> LightDraw.addPointLight model.Effects.Lighting 0<RenderLayer> {
-      Position = flash.Position
-      Color = Color(255uy, 255uy, 200uy)
-      Intensity = flash.Intensity
-      Radius = flash.Radius
-      Falloff = 2.0f
-      CastsShadows = false
-    }
-    |> Draw.drop
+      .addPointLight(
+        model.Effects.Lighting,
+        {
+          Position = flash.Position
+          Color = Raylib_cs.Color(255uy, 255uy, 200uy)
+          Intensity = flash.Intensity
+          Radius = flash.Radius
+          Falloff = 2.0f
+          CastsShadows = false
+        },
+        0<RenderLayer>
+      )
+      .drop()
 
   buffer
   |> Map.viewTiles
@@ -922,7 +932,7 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
     model.Cam.Camera
     model.Map
     model.Effects.Lighting
-  |> Draw.drop
+  |> ignore
 
   FogOfWar.render
     model.Fog
@@ -932,7 +942,7 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
     model.VPWidth
     model.VPHeight
     buffer
-  |> Draw.drop
+  |> ignore
 
   let movingUnit =
     match model.Anim with
@@ -959,7 +969,7 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
     model.Map.Visible
     model.Effects.Lighting
     model.Cam.Camera
-  |> Draw.drop
+  |> ignore
 
   match model.Anim with
   | AnimState.Attacking tween ->
@@ -994,28 +1004,28 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
     let origin = Vector2(fw / 2f, fh / 2f)
 
     buffer
-    |> LightDraw.litSprite
-      model.Effects.Lighting
-      (SpriteState.create(laser.Texture, targetRect, source)
-       |> SpriteState.withRotation angle
-       |> SpriteState.withOrigin origin)
-    |> Draw.drop
+      .litSprite(
+        model.Effects.Lighting,
+        SpriteState.create(laser.Texture, targetRect, source)
+        |> SpriteState.withRotation angle
+        |> SpriteState.withOrigin origin
+      )
+      .drop()
   | _ -> ()
 
-  buffer
-  |> LightDraw.endLighting model.Effects.Lighting 0<RenderLayer>
-  |> Draw.drop
+  buffer.endLighting(model.Effects.Lighting, 0<RenderLayer>).drop()
 
   if model.Effects.ParticleCount > 0 then
     buffer
-    |> Draw.setBlend 0<RenderLayer> BlendMode.Additive
-    |> ParticleDraw.particles
-      model.Effects.ParticleTexture
-      model.Effects.Particles
-      model.Effects.ParticleCount
-      0<RenderLayer>
-    |> Draw.setBlend 0<RenderLayer> BlendMode.Alpha
-    |> Draw.drop
+      .setBlend(BlendMode.Additive, 0<RenderLayer>)
+      .particles(
+        model.Effects.ParticleTexture,
+        model.Effects.Particles,
+        model.Effects.ParticleCount,
+        0<RenderLayer>
+      )
+      .setBlend(BlendMode.Alpha, 0<RenderLayer>)
+      .drop()
 
   buffer
   |> UI.drawHpBars
@@ -1027,7 +1037,7 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
     movingUnit
     model.Turn
     model.Cam.Camera
-  |> Draw.drop
+  |> ignore
 
   let infoMode = model.Input.State.Held.Contains InfoMode
 
@@ -1041,7 +1051,7 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
       model.Map.Visible
       model.Input.HoveredOver
       model.Cam.Camera
-    |> Draw.drop
+    |> ignore
   else
     buffer
     |> Map.viewOverlays
@@ -1050,9 +1060,9 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
       model.Cam.Camera
       model.Map
       model.Input.HoveredOver
-    |> Draw.drop
+    |> ignore
 
-  Camera.endView buffer |> Draw.drop
+  Camera.endView buffer |> ignore
 
   match model.Anim with
   | AnimState.Transitioning transition ->
@@ -1060,28 +1070,32 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
 
     let factionColor =
       match transition.NewFaction with
-      | Federation -> Color(60uy, 120uy, 255uy, alpha)
-      | Empire -> Color(255uy, 60uy, 60uy, alpha)
-      | Pirates -> Color(60uy, 255uy, 120uy, alpha)
+      | Federation -> Raylib_cs.Color(60uy, 120uy, 255uy, alpha)
+      | Empire -> Raylib_cs.Color(255uy, 60uy, 60uy, alpha)
+      | Pirates -> Raylib_cs.Color(60uy, 255uy, 120uy, alpha)
 
     let cx = model.VPWidth / 2.0f
     let cy = model.VPHeight / 2.0f
 
     buffer
-    |> Draw.fillRect
-      (0<RenderLayer>, Color(0uy, 0uy, 0uy, alpha))
-      (Rectangle(0f, 0f, model.VPWidth, model.VPHeight))
-    |> Draw.text(
-      TextState.create(
-        model.GameAssets.MonoFont,
-        $"{transition.NewFaction}'s Turn",
-        Vector2(cx - 120.0f, cy - 30.0f)
+      .fillRect(
+        0f,
+        0f,
+        model.VPWidth,
+        model.VPHeight,
+        Color.create 0uy 0uy 0uy alpha
       )
-      |> TextState.withFontSize 48.0f
-      |> TextState.withSpacing 2.0f
-      |> TextState.withColor factionColor
-    )
-    |> Draw.drop
+      .text(
+        TextState.create(
+          model.GameAssets.MonoFont,
+          $"{transition.NewFaction}'s Turn",
+          Vector2(cx - 120.0f, cy - 30.0f)
+        )
+        |> TextState.withFontSize 48.0f
+        |> TextState.withSpacing 2.0f
+        |> TextState.withColor factionColor
+      )
+      .drop()
   | _ -> ()
 
   buffer
@@ -1090,10 +1104,10 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
     model.TurnOrder
     model.GameAssets.MonoFont
     model.VPWidth
-  |> Draw.drop
+  |> ignore
 
 #if DEBUG
-  ModelDebugoverlay.view model buffer |> Draw.drop
+  ModelDebugoverlay.view model buffer |> ignore
 #endif
 
   match model.GameOver with
@@ -1102,30 +1116,34 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
     let cy = model.VPHeight / 2.0f
 
     buffer
-    |> Draw.fillRect
-      (0<RenderLayer>, Color(0uy, 0uy, 0uy, 180uy))
-      (Rectangle(0f, 0f, model.VPWidth, model.VPHeight))
-    |> Draw.text(
-      TextState.create(
-        model.GameAssets.MonoFont,
-        $"{winner} Wins!",
-        Vector2(cx - 140.0f, cy - 40.0f)
+      .fillRect(
+        0f,
+        0f,
+        model.VPWidth,
+        model.VPHeight,
+        Color.create 0uy 0uy 0uy 180uy
       )
-      |> TextState.withFontSize 56.0f
-      |> TextState.withSpacing 2.0f
-      |> TextState.withColor Color.White
-    )
-    |> Draw.text(
-      TextState.create(
-        model.GameAssets.MonoFont,
-        "Press R to restart",
-        Vector2(cx - 100.0f, cy + 30.0f)
+      .text(
+        TextState.create(
+          model.GameAssets.MonoFont,
+          $"{winner} Wins!",
+          Vector2(cx - 140.0f, cy - 40.0f)
+        )
+        |> TextState.withFontSize 56.0f
+        |> TextState.withSpacing 2.0f
+        |> TextState.withColor Raylib_cs.Color.White
       )
-      |> TextState.withFontSize 24.0f
-      |> TextState.withSpacing 1.0f
-      |> TextState.withColor Color.Gray
-    )
-    |> Draw.drop
+      .text(
+        TextState.create(
+          model.GameAssets.MonoFont,
+          "Press R to restart",
+          Vector2(cx - 100.0f, cy + 30.0f)
+        )
+        |> TextState.withFontSize 24.0f
+        |> TextState.withSpacing 1.0f
+        |> TextState.withColor Raylib_cs.Color.Gray
+      )
+      .drop()
   | ValueNone -> ()
 
 // ─────────────────────────────────────────────────────────────

@@ -1,8 +1,9 @@
 
 #----------------------------- Global Properties ----------------------------#
 
-/outputDir:Content
-/intermediateDir:obj
+# The MonoGame build task passes absolute output and intermediate paths for
+# every platform, so this file states neither. A relative path here is inert
+# and misleads whoever opens the file next.
 /platform:Windows
 /config:
 /profile:HiDef

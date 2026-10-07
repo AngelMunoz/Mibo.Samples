@@ -3,6 +3,7 @@ namespace SpaceBattle
 open System.Numerics
 open Mibo.Animation
 open Mibo.Elmish
+open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics2D.Lighting
 open Mibo.Layout
 open Mibo.Elmish.Graphics2D
@@ -220,12 +221,12 @@ module Units =
     (vpHeight: float32)
     (units: Map<struct (int * int), SBUnit>)
     (unitSprites: Map<struct (Faction * UnitClass), SpriteSheet>)
-    (map: HexGrid<Tile>)
+    (map: CellGrid2D<Tile>)
     (movingUnit: struct (int * int * Vector2) voption)
     (visibleCells: Set<struct (int * int)>)
     (lightCtx: LightContext2D)
     camera
-    buffer
+    (buffer: RenderBuffer2D)
     =
     let topLeft = Raylib.GetScreenToWorld2D(Vector2.Zero, camera)
 
@@ -233,11 +234,11 @@ module Units =
       Raylib.GetScreenToWorld2D(Vector2(vpWidth, vpHeight), camera)
 
     map
-    |> HexGrid.iterVisible
-      topLeft.X
-      topLeft.Y
-      bottomRight.X
-      bottomRight.Y
+    |> CellGrid2D.iterVisible
+      (int topLeft.X)
+      (int topLeft.Y)
+      (int bottomRight.X)
+      (int bottomRight.Y)
       (fun col row tile ->
         if not(visibleCells.Contains(struct (col, row))) then
           ()
@@ -248,7 +249,7 @@ module Units =
           let worldPos =
             match movingUnit with
             | ValueSome struct (mc, mr, pos) when mc = col && mr = row -> pos
-            | _ -> map |> HexGrid.getWorldPos col row
+            | _ -> map |> CellGrid2D.getWorldPos col row
 
           let hexW = Constants.CellSize * 2.0f
           let hexH = Constants.CellSize * sqrt 3.0f
@@ -281,10 +282,11 @@ module Units =
               )
 
             buffer
-            |> LightDraw.litSprite
-              lightCtx
-              (SpriteState.create(sheet.Texture, targetRect, source))
-            |> Draw.drop
+              .litSprite(
+                lightCtx,
+                SpriteState.create(sheet.Texture, targetRect, source)
+              )
+              .drop()
           | None -> ()
         | None -> ())
 

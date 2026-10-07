@@ -104,7 +104,7 @@ module Input =
   let inline cellFromMouse
     (pos: Vector2)
     (camera: Camera2D)
-    (grid: HexGrid<Tile>)
+    (grid: CellGrid2D<Tile>)
     =
     let worldPos = Raylib.GetScreenToWorld2D(pos, camera)
     grid |> Hex2DSpatial.worldToCell worldPos

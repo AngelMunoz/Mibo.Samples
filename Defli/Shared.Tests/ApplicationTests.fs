@@ -126,7 +126,7 @@ let tests =
 
     testCase "PlaceTower on buildable cell spends gold and places" (fun () ->
       let h = TestData.mkHarness cfg
-      let cell = struct (1, 1) // grass, not path, not occupied
+      let cell = TestData.openCell h.State
 
       h.Post(fun () -> Application.placeTower h.State cell |> ignore)
       h.StepN(2, TestData.dt)
@@ -149,7 +149,7 @@ let tests =
 
     testCase "PlaceTower on path cell is rejected" (fun () ->
       let h = TestData.mkHarness cfg
-      let cell = struct (1, 4) // the road (spawn row)
+      let cell = struct (1, 7) // the road (spawn row)
 
       h.Post(fun () -> Application.placeTower h.State cell |> ignore)
       h.StepN(2, TestData.dt)
@@ -161,7 +161,7 @@ let tests =
 
     testCase "PlaceTower on an occupied cell is rejected" (fun () ->
       let h = TestData.mkHarness cfg
-      let cell = struct (1, 1)
+      let cell = TestData.openCell h.State
 
       h.Post(fun () -> Application.placeTower h.State cell |> ignore)
       h.StepN(2, TestData.dt)
@@ -190,7 +190,9 @@ let tests =
 
       h.StepN(2, TestData.dt)
 
-      h.Post(fun () -> Application.placeTower h.State struct (1, 1) |> ignore)
+      h.Post(fun () ->
+        Application.placeTower h.State (TestData.openCell h.State) |> ignore)
+
       h.StepN(2, TestData.dt)
 
       let model = h.State
@@ -202,9 +204,10 @@ let tests =
       (fun () ->
         let h = TestData.mkHarness cfg
 
-        // Place a tower next to the path (the road runs along row 4).
+        // Place a tower next to the path.
         h.Post(fun () ->
-          Application.placeTower h.State struct (2, 3) |> ignore)
+          Application.placeTower h.State (TestData.roadSideCell h.State)
+          |> ignore)
 
         h.StepN(2, TestData.dt)
 
@@ -249,14 +252,15 @@ let tests =
       (fun () ->
         let h = TestData.mkHarness cfg
 
-        // Cannon next to the path (the road runs along row 4). The
-        // fixture gold (100) cannot afford a cannon (120) — top up.
+        // Cannon next to the path. The fixture gold (100) cannot
+        // afford a cannon (120) — top up.
         h.Post(fun () -> Economy.earnGold 200 h.State.Economy)
 
         h.Post(fun () -> Application.selectTower h.State TowerDefs.cannon)
 
         h.Post(fun () ->
-          Application.placeTower h.State struct (2, 3) |> ignore)
+          Application.placeTower h.State (TestData.roadSideCell h.State)
+          |> ignore)
 
         h.StepN(2, TestData.dt)
 
@@ -303,15 +307,14 @@ let tests =
       "upgrade through the sim update: gold spent, scaled damage"
       (fun () ->
         let h = TestData.mkHarness cfg
+        let cell = TestData.roadSideCell h.State
 
-        h.Post(fun () ->
-          Application.placeTower h.State struct (2, 3) |> ignore)
+        h.Post(fun () -> Application.placeTower h.State cell |> ignore)
 
         h.StepN(2, TestData.dt)
 
         // Upgrade the tower (arrow: UpgradeCost 40).
-        h.Post(fun () ->
-          Application.upgradeTower h.State struct (2, 3) |> ignore)
+        h.Post(fun () -> Application.upgradeTower h.State cell |> ignore)
 
         h.StepN(1, TestData.dt)
 
@@ -350,7 +353,9 @@ let tests =
 
     testCase "upgrade is capped at MaxLevel" (fun () ->
       let h = TestData.mkHarness cfg
-      h.Post(fun () -> Application.placeTower h.State struct (2, 3) |> ignore)
+      let cell = TestData.roadSideCell h.State
+
+      h.Post(fun () -> Application.placeTower h.State cell |> ignore)
       h.StepN(1, TestData.dt)
 
       // Top up so the full ladder is affordable. (The original MVU
@@ -363,15 +368,13 @@ let tests =
 
       // Upgrade to the cap.
       for _ in 1 .. TowerDefs.arrow.MaxLevel - 1 do
-        h.Post(fun () ->
-          Application.upgradeTower h.State struct (2, 3) |> ignore)
+        h.Post(fun () -> Application.upgradeTower h.State cell |> ignore)
 
       h.StepN(2, TestData.dt)
       let goldBefore = goldOf h.State
 
       // Past the cap: nothing happens, no gold spent.
-      h.Post(fun () ->
-        Application.upgradeTower h.State struct (2, 3) |> ignore)
+      h.Post(fun () -> Application.upgradeTower h.State cell |> ignore)
 
       h.StepN(1, TestData.dt)
 
@@ -386,7 +389,11 @@ let tests =
 
       // Frost fires slower but applies the Slow factor on impact.
       h.Post(fun () -> Application.selectTower h.State TowerDefs.frost)
-      h.Post(fun () -> Application.placeTower h.State struct (1, 3) |> ignore)
+
+      h.Post(fun () ->
+        Application.placeTower h.State (TestData.roadSideCell h.State)
+        |> ignore)
+
       h.StepN(2, TestData.dt)
 
       h.Post(fun () -> TestData.spawnEnemy h.State TestData.Fixtures.grunt)
@@ -415,7 +422,11 @@ let tests =
       h.Post(fun () -> Economy.earnGold 60 h.State.Economy)
 
       h.Post(fun () -> Application.selectTower h.State TowerDefs.cannon)
-      h.Post(fun () -> Application.placeTower h.State struct (1, 3) |> ignore)
+
+      h.Post(fun () ->
+        Application.placeTower h.State (TestData.roadSideCell h.State)
+        |> ignore)
+
       h.StepN(2, TestData.dt)
 
       // Two runners stacked on the same path cell (identical motion).
@@ -451,7 +462,8 @@ let tests =
         h.Post(fun () -> Application.selectTower h.State TowerDefs.cannon)
 
         h.Post(fun () ->
-          Application.placeTower h.State struct (1, 3) |> ignore)
+          Application.placeTower h.State (TestData.roadSideCell h.State)
+          |> ignore)
 
         h.StepN(2, TestData.dt)
 
@@ -502,7 +514,8 @@ let tests =
         let h = TestData.mkHarness cfg
 
         h.Post(fun () ->
-          Application.placeTower h.State struct (2, 3) |> ignore)
+          Application.placeTower h.State (TestData.roadSideCell h.State)
+          |> ignore)
 
         h.StepN(2, TestData.dt)
 
@@ -514,9 +527,9 @@ let tests =
 
         Expect.isTrue bossUp "boss spawned"
 
-        // The boss walks the road (row 4, y = 288); it enters the tower's
-        // aura radius (128 px of (160, 224)) after ~5 s. Tower dps is far
-        // too low to kill it first (arrow 22.5 dps vs 800 hp).
+        // The boss walks the road and passes the road-side tower; it
+        // enters the aura radius after ~5 s. Tower dps is far too low
+        // to kill it first (arrow 22.5 dps vs 800 hp).
         let suppressed =
           h.StepUntil(
             (fun m ->
@@ -595,9 +608,9 @@ let tests =
       // Keyboard pan mirrors a drag: the shell sends the OPPOSITE sign
       // (PanRight → -x), so the handler applies Pan semantics — the
       // target moves opposite the accumulated delta, scaled by
-      // KeyboardPanSpeed * dt / zoom. The posted AddKeyboardPan drains
-      // AFTER the step's Update, so the first tick that sees it is the
-      // second step's.
+      // KeyboardPanSpeed * dt / zoom. A posted write drains at the step
+      // boundary, before that step's Update, so both steps see the
+      // accumulated direction and the camera advances once per step.
       h.Post(fun () ->
         Camera.Camera.handle
           (CameraMsg.AddKeyboardPan(Vector2(100f, 0f)))
@@ -612,8 +625,8 @@ let tests =
 
       Expect.equal
         after.X
-        (before.X - panDelta)
-        "target moved opposite the pan delta"
+        (before.X - 2f * panDelta)
+        "target advanced once per step, opposite the pan delta"
 
       Expect.equal after.Y before.Y "no vertical motion")
   ]

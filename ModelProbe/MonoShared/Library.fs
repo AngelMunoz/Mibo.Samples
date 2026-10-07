@@ -14,8 +14,8 @@ open Mibo.Input
 // ModelProbe — minimal PBR forward + shadow atlas probe.
 //
 // One scene, three zones in a single frame:
-//   Zone 1 (front): 5 different kenney blocks, non-instanced (Draw3D.drawModel)
-//   Zone 2 (mid):   the same 5 blocks, instanced (Draw3D.drawInstanced)
+//   Zone 1 (front): 5 different kenney blocks, non-instanced (Draw.model)
+//   Zone 2 (mid):   the same 5 blocks, instanced (Draw.instancedSlice)
 //   Zone 3 (back):  both draw styles on a floor, with a shadow-casting light
 //
 // Zones 1+2 render in a camera block whose directional light does NOT cast
@@ -91,7 +91,10 @@ let private modelPath name = $"kenney_platformer-kit/Models/{name}"
 type BlockEntry = {
   Name: string
   Model: Microsoft.Xna.Framework.Graphics.Model
-  Parts: struct (PrimitiveMesh * Material3D)[]
+  /// One entry per model mesh part: the part wrapped as a PrimitiveMesh, its
+  /// material, and the part's slice of the shared content-pipeline buffers
+  /// (vertexOffset/startIndex) for the Slice draw members.
+  Parts: struct (PrimitiveMesh * Material3D * int * int)[]
   /// Absolute transform of the first mesh's parent bone. Instanced draws grab
   /// raw vertex buffers (bone-local space), so this must be baked into each
   /// instance transform — see Platformer3D/MonoGame/View.fs.
@@ -150,7 +153,9 @@ let private loadBlock (assets: IAssets) (name: string) : BlockEntry =
                   Material3D.fromModelMeshPart part with
                       Roughness = 0.65f
                       Metallic = 0.2f
-                })
+                },
+                part.VertexOffset,
+                part.StartIndex)
   |]
 
   {
@@ -402,7 +407,7 @@ let private drawFloorScene (model: Model) (buffer: RenderBuffer3D) =
 
   let transparentFloor = { floorMaterial with Opacity = 0.6f }
 
-  buffer.mesh(model.Floor, floorTransform, transparentFloor).drop()
+  buffer.meshSlice(model.Floor, floorTransform, transparentFloor).drop()
 
   for i = 0 to model.Blocks.Length - 1 do
     let p = zone1Pos i + Vector3(0.f, 0.f, 20.f)
@@ -417,8 +422,17 @@ let private drawFloorScene (model: Model) (buffer: RenderBuffer3D) =
       for x in instanceX -> block.Bone * Matrix.CreateTranslation(x, 0.f, z)
     |]
 
-    for struct (mesh, material) in block.Parts do
-      buffer.instanced(mesh, transforms, material, transforms.Length).drop()
+    for struct (mesh, material, vofs, sidx) in block.Parts do
+      buffer
+        .instancedSlice(
+          mesh,
+          transforms,
+          material,
+          transforms.Length,
+          vertexOffset = vofs,
+          startIndex = sidx
+        )
+        .drop()
 
   // Transparency probe (PR #99): a stack of three semi-transparent cubes at
   // differing depths, drawn after the opaque/transparent geometry above. Each
@@ -435,15 +449,27 @@ let private drawFloorScene (model: Model) (buffer: RenderBuffer3D) =
     Matrix.CreateScale(2.f) * Matrix.CreateTranslation(x, y, z)
 
   buffer
-    .mesh(model.TransparentCube, probeTransform(-3.f, 1.f, 16.f), probeMat 0.3f)
+    .meshSlice(
+      model.TransparentCube,
+      probeTransform(-3.f, 1.f, 16.f),
+      probeMat 0.3f
+    )
     .drop()
 
   buffer
-    .mesh(model.TransparentCube, probeTransform(0.f, 1.5f, 14.f), probeMat 0.5f)
+    .meshSlice(
+      model.TransparentCube,
+      probeTransform(0.f, 1.5f, 14.f),
+      probeMat 0.5f
+    )
     .drop()
 
   buffer
-    .mesh(model.TransparentCube, probeTransform(3.f, 2.f, 12.f), probeMat 0.8f)
+    .meshSlice(
+      model.TransparentCube,
+      probeTransform(3.f, 2.f, 12.f),
+      probeMat 0.8f
+    )
     .drop()
 
   buffer
@@ -517,8 +543,17 @@ let private zonesView (model: Model) (buffer: RenderBuffer3D) =
       for x in instanceX -> block.Bone * Matrix.CreateTranslation(x, 0.f, z)
     |]
 
-    for struct (mesh, material) in block.Parts do
-      noShadow.instanced(mesh, transforms, material, transforms.Length).drop()
+    for struct (mesh, material, vofs, sidx) in block.Parts do
+      noShadow
+        .instancedSlice(
+          mesh,
+          transforms,
+          material,
+          transforms.Length,
+          vertexOffset = vofs,
+          startIndex = sidx
+        )
+        .drop()
 
   noShadow.endCamera().drop()
 
@@ -538,7 +573,7 @@ let private zonesView (model: Model) (buffer: RenderBuffer3D) =
   let floorMaterial =
     Material3D.colored(Microsoft.Xna.Framework.Color(110, 112, 120))
 
-  shadowed.mesh(model.Floor, floorTransform, floorMaterial).drop()
+  shadowed.meshSlice(model.Floor, floorTransform, floorMaterial).drop()
 
   // Non-instanced row on the floor
   for i = 0 to model.Blocks.Length - 1 do
@@ -555,8 +590,17 @@ let private zonesView (model: Model) (buffer: RenderBuffer3D) =
       for x in instanceX -> block.Bone * Matrix.CreateTranslation(x, 0.f, z)
     |]
 
-    for struct (mesh, material) in block.Parts do
-      shadowed.instanced(mesh, transforms, material, transforms.Length).drop()
+    for struct (mesh, material, vofs, sidx) in block.Parts do
+      shadowed
+        .instancedSlice(
+          mesh,
+          transforms,
+          material,
+          transforms.Length,
+          vertexOffset = vofs,
+          startIndex = sidx
+        )
+        .drop()
 
   shadowed.endCamera().drop()
 

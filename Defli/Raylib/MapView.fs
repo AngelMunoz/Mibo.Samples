@@ -26,10 +26,12 @@ module MapView =
     Rectangle(float32 t.X, float32 t.Y, float32 t.Width, float32 t.Height)
 
   /// Picks the path tile frame for a cell from its path neighbors.
-  /// Corners fall back to the vertical piece (placeholder — a nicer
-  /// corner mapping can land later). No rotation is returned: the path
-  /// frames are solid dirt, and raylib's origin handling would shift
-  /// the draw position (see the view).
+  /// The frame family follows the terrain the road crosses (the map
+  /// keeps the zone's terrain on road cells), so a road over sand
+  /// wears the sand-bordered sprites. Corners fall back to the
+  /// vertical piece (placeholder — a nicer corner mapping can land
+  /// later). No rotation is returned: the path frames are solid, and
+  /// raylib's origin handling would shift the draw position.
   let private pathFrame
     (grid: CellGrid2D<MapTile>)
     (x: int)
@@ -37,6 +39,13 @@ module MapView =
     : TileInfo =
     let isPath x y =
       grid |> CellGrid2D.get x y |> ValueOption.exists(fun t -> t.IsPath)
+
+    let road =
+      grid
+      |> CellGrid2D.get x y
+      |> ValueOption.map _.Terrain
+      |> ValueOption.defaultValue TerrainKind.Grass
+      |> MapModel.MapGround.road
 
     let n = isPath x (y - 1)
     let s = isPath x (y + 1)
@@ -52,17 +61,13 @@ module MapView =
     match count with
     | 1 ->
       // End piece — the frame's opening faces the road's continuation.
-      if n then Tiles.pathEndUpDirt
-      elif s then Tiles.pathEndUpDirt
-      elif e then Tiles.pathEndLeftDirt
-      else Tiles.pathEndLeftDirt
-    | 2 when n && s -> Tiles.pathVerticalDirt
-    | 2 when e && w -> Tiles.pathHorizontalDirt
-    | _ -> Tiles.pathVerticalDirt // straight / corner placeholder
-
-  /// Deterministic grass variety — no RNG needed for static content.
-  let inline private grassVariant (x: int) (y: int) =
-    Tiles.groundGrass[(x * 7 + y * 13) % 3]
+      if n then road.EndUp
+      elif s then road.EndUp
+      elif e then road.EndLeft
+      else road.EndLeft
+    | 2 when n && s -> road.Vertical
+    | 2 when e && w -> road.Horizontal
+    | _ -> road.Vertical // straight / corner placeholder
 
   /// `visible` is the camera's world-space view rect (camera bounds
   /// from CameraView.cullingBounds — iterVisible culls to it).
@@ -86,15 +91,16 @@ module MapView =
     let right = left + int visible.Width
     let bottom = top + int visible.Height
 
-    // Terrain (grass) — only the visible cells.
+    // Terrain — the zone kinds (grass/sand/stone/dirt), only the
+    // visible cells.
     CellGrid2D.iterVisible
       left
       top
       right
       bottom
-      (fun x y _ ->
+      (fun x y tile ->
         let pos = CellGrid2D.getWorldPos x y terrain
-        let frame = grassVariant x y
+        let frame = MapModel.MapGround.frame x y tile.Terrain
 
         buffer
           .sprite(

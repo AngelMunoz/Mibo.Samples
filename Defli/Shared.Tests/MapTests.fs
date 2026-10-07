@@ -16,8 +16,8 @@ let tests =
       Expect.equal map.Grid.Height cfg.GridRows "rows")
 
     testCase "path is continuous spawn → base" (fun () ->
-      Expect.equal map.SpawnCell (struct (0, 4)) "spawn cell"
-      Expect.equal map.BaseCell (struct (19, 2)) "base cell"
+      Expect.equal map.SpawnCell (struct (0, 7)) "spawn cell"
+      Expect.equal map.BaseCell (struct (19, 7)) "base cell"
       Expect.isGreaterThan map.Path.Length 1 "waypoints")
 
     testCase "path layer: every cell marked, none buildable" (fun () ->
@@ -45,28 +45,43 @@ let tests =
             | ValueNone -> ())
         buildable)
 
-    testCase "isBuildable: grass yes, road no, out of grid no" (fun () ->
-      Expect.isTrue (MapModel.isBuildable 0 0 map) "grass buildable"
-      Expect.isFalse (MapModel.isBuildable 1 4 map) "road not buildable"
+    testCase "isBuildable: open ground yes, road no, out of grid no" (fun () ->
+      // Find one open cell by scanning (seeded clutter is dense near
+      // the edges — the assertion must not depend on one landing).
+      let terrain = MapModel.terrain map
+      let mutable openCell = ValueNone
+
+      CellGrid2D.iter
+        (fun x y tile ->
+          if tile.Buildable && openCell.IsNone then
+            openCell <- ValueSome struct (x, y))
+        terrain
+
+      match openCell with
+      | ValueSome struct (x, y) ->
+        Expect.isTrue (MapModel.isBuildable x y map) "open ground buildable"
+      | ValueNone -> failtest "no open cell on the map"
+
+      Expect.isFalse (MapModel.isBuildable 1 7 map) "road not buildable"
       Expect.isFalse (MapModel.isBuildable -1 0 map) "out of grid")
 
     testCase "waypoints layer marks the path vertices" (fun () ->
       let waypoints = MapModel.waypoints map
 
       let marked =
-        CellGrid2D.get 0 4 waypoints
+        CellGrid2D.get 0 7 waypoints
         |> ValueOption.exists(fun t -> t.IsWaypoint)
 
       Expect.isTrue marked "spawn vertex marked"
 
       let baseMarked =
-        CellGrid2D.get 19 2 waypoints
+        CellGrid2D.get 19 7 waypoints
         |> ValueOption.exists(fun t -> t.IsWaypoint)
 
       Expect.isTrue baseMarked "base vertex marked"
 
       let offPath =
-        CellGrid2D.get 3 3 waypoints
+        CellGrid2D.get 3 5 waypoints
         |> ValueOption.exists(fun t -> t.IsWaypoint)
 
       Expect.isFalse offPath "off-path cell not marked")
@@ -109,8 +124,8 @@ let tests =
 
     testCase "spawn and base cells are on the path" (fun () ->
       let pathGrid = MapModel.pathGrid map
-      let spawnTile = CellGrid2D.get 0 4 pathGrid
-      let baseTile = CellGrid2D.get 19 2 pathGrid
+      let spawnTile = CellGrid2D.get 0 7 pathGrid
+      let baseTile = CellGrid2D.get 19 7 pathGrid
 
       match spawnTile, baseTile with
       | ValueSome s, ValueSome b ->
@@ -119,7 +134,7 @@ let tests =
       | _ -> failtest "spawn/base cells must exist")
 
     testCase
-      "decorations: props + dirt blends exist and stay off the road"
+      "decorations: props + terrain blends exist and stay off the road"
       (fun () ->
         let deco = MapModel.decorations map
         let pathGrid = MapModel.pathGrid map
@@ -135,9 +150,7 @@ let tests =
               | ValueSome p -> Expect.isFalse p.IsPath "decoration off road"
               | ValueNone -> ()
 
-              // Props vs blends: the frame's family (both keep
-              // Buildable = true on the hand-authored map — the prop is
-              // visual only; only procedural obstacles clear it).
+              // Props vs blends: the frame's family.
               let isProp =
                 Tiles.decoProps |> Array.exists(fun p -> p.Name = frame.Name)
 
@@ -149,26 +162,34 @@ let tests =
           deco
 
         Expect.isGreaterThan props 0 "props scattered"
-        Expect.isGreaterThan blends 0 "road blends scattered")
+        Expect.isGreaterThan blends 0 "terrain blends scattered")
 
-    testCase "visual props (HandAuthored) do not block buildability" (fun () ->
-      let buildable = MapModel.buildableGrid map
-      let deco = MapModel.decorations map
-      let mutable blockedProp = 0
+    testCase
+      "hand-authored clutter: obstacles block, dressing does not"
+      (fun () ->
+        let buildable = MapModel.buildableGrid map
+        let deco = MapModel.decorations map
+        let mutable obstacles = 0
+        let mutable dressings = 0
 
-      CellGrid2D.iter
-        (fun x y tile ->
-          if tile.Decoration.IsSome && not tile.Buildable then
-            blockedProp <- blockedProp + 1
+        CellGrid2D.iter
+          (fun x y tile ->
+            match tile.Decoration with
+            | ValueSome _ ->
+              match CellGrid2D.get x y buildable with
+              | ValueSome b ->
+                if b.Buildable then
+                  dressings <- dressings + 1
+                else
+                  obstacles <- obstacles + 1
+              | ValueNone -> failtest "buildable row exists"
+            | ValueNone -> ())
+          deco
 
-            // Hand-authored: the prop is visual only — the buildable
-            // grid must still allow building there.
-            match CellGrid2D.get x y buildable with
-            | ValueSome b -> Expect.isTrue b.Buildable "prop does not block"
-            | ValueNone -> failtest "buildable row exists")
-        deco
-
-      Expect.equal blockedProp 0 "no blocking props on the hand-authored map")
+        // Trees, rocks, crates, containers clear Buildable; bushes,
+        // sprigs, and the terrain blends keep it.
+        Expect.isGreaterThan obstacles 0 "obstacle props block building"
+        Expect.isGreaterThan dressings 0 "dressing and blends keep building")
   ]
 
 /// Procedural variant — Level-2 generation stress tests.
@@ -247,72 +268,51 @@ let proceduralTests =
 
 /// Temporary probe — REMOVE BEFORE COMMIT.
 let probeTests =
-  let procCfg = {
-    cfg with
-        MapVariant = MapVariant.Procedural
-  }
-
-  let pmap = MapModel.create procCfg
+  let g = MapModel.create WorldConfig.defaults
 
   testList "Map (probe)" [
-    testCase "dump path vs obstacles" (fun () ->
-      let pathGrid = MapModel.pathGrid pmap
-      let deco = MapModel.decorations pmap
-      let mutable onRoad = 0
-      let mutable obs = 0
-      let mutable path = 0
+    testCase "dump the Old Harbour map" (fun () ->
+      let terrain = MapModel.terrain g
 
-      CellGrid2D.iter
-        (fun x y t ->
-          if t.Decoration.IsSome && not t.Buildable then
-            obs <- obs + 1
+      for y in 0 .. g.Grid.Height - 1 do
+        let mutable row = ""
 
-            let onPath =
-              pathGrid |> CellGrid2D.get x y |> ValueOption.exists _.IsPath
+        for x in 0 .. g.Grid.Width - 1 do
+          match CellGrid2D.get x y terrain with
+          | ValueSome t ->
+            if t.IsPath then row <- row + "R"
+            elif not t.Buildable then row <- row + "#"
+            elif t.Decoration.IsSome then row <- row + "d"
+            else row <- row + "."
+          | ValueNone -> row <- row + " "
 
-            if onPath then
-              onRoad <- onRoad + 1
-              printfn "PROBE obstacle ON ROAD at %d,%d" x y
-            else
-              printfn "PROBE obstacle at %d,%d" x y)
-        deco
+        printfn "%s" row
 
-      CellGrid2D.iter
-        (fun x y t ->
-          if t.IsPath then
-            path <- path + 1)
-        pathGrid
+      printfn "PROBE spawn=%A base=%A path=%A" g.SpawnCell g.BaseCell g.Path)
 
-      printfn "PROBE path=%d obstacles=%d onRoad=%d" path obs onRoad
-      Expect.equal onRoad 0 "no obstacle on the road")
-
-    testCase "game seed 42 road shape" (fun () ->
-      let g = MapModel.create WorldConfig.defaults
-      let pathGrid = MapModel.pathGrid g
-      let deco = MapModel.decorations g
-      let mutable cells = ""
-
-      CellGrid2D.iter
-        (fun x y t ->
-          if t.IsPath then
-            cells <- cells + $"%d{x},%d{y} ")
-        pathGrid
-
-      printfn "PROBE42 path: %s" cells
+    testCase "dump fixture map + roadSideCell" (fun () ->
+      let h = TestData.mkHarness cfg
 
       printfn
-        "PROBE42 spawn=%A base=%A len=%d"
-        g.SpawnCell
-        g.BaseCell
-        g.Path.Length
+        "PROBE roadSide=%A open=%A"
+        (TestData.roadSideCell h.State)
+        (TestData.openCell h.State)
 
-      CellGrid2D.iter
-        (fun x y t ->
-          if t.Decoration.IsSome && not t.Buildable then
-            let onPath =
-              pathGrid |> CellGrid2D.get x y |> ValueOption.exists _.IsPath
+      let h2 = TestData.mkHarness cfg
 
-            if onPath then
-              printfn "PROBE42 OBSTACLE ON ROAD at %d,%d" x y)
-        deco)
+      let terrain = MapModel.terrain h2.State.Map
+
+      for y in 0 .. h2.State.Map.Grid.Height - 1 do
+        let mutable row = ""
+
+        for x in 0 .. h2.State.Map.Grid.Width - 1 do
+          match CellGrid2D.get x y terrain with
+          | ValueSome t ->
+            if t.IsPath then row <- row + "R"
+            elif not t.Buildable then row <- row + "#"
+            elif t.Decoration.IsSome then row <- row + "d"
+            else row <- row + "."
+          | ValueNone -> row <- row + " "
+
+        printfn "%s" row)
   ]

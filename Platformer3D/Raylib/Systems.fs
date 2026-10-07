@@ -10,7 +10,8 @@ open Mibo
 open Mibo.Elmish
 open Mibo.Elmish.Graphics3D
 open Mibo.Animation
-open Mibo.Layout3D
+open Mibo.Layout
+open Platformer3D.Constants
 open Platformer3D.Types
 open Platformer3D.Physics
 open Platformer3D.WorldGen
@@ -56,30 +57,41 @@ let private collectMushroomLights
   : PointLight3D[] =
   let lights = ResizeArray<PointLight3D>(8)
 
+  // The 40-unit light radius boxed into the int world window iterVisible
+  // culls with — a superset of the radial test below.
+  let left = int camPos.X - 40
+  let right = int camPos.X + 40
+  let top = int camPos.Z - 40
+  let bottom = int camPos.Z + 40
+
   for KeyValue(struct (_cx, _cz), chunk) in chunks do
     if lights.Count < 8 then
-      let struct (terrainGrid, _) =
-        LayeredGrid3D.getOrAddLayer Layer.Terrain chunk.Grids
+      let origin = chunk.Props.Origin
 
-      CellGridRenderer3D.renderVolume
-        chunk.Bounds
-        terrainGrid
-        (fun worldPos blockType ->
-          if
-            blockType = BlockType.MushroomLight
-            && lights.Count < 8
-            && (worldPos - camPos).LengthSquared() <= 1600.0f
-          then
-            lights.Add {
-              Position = worldPos + Numerics.Vector3(0.0f, 0.5f, 0.0f)
-              Color = Color.rgb 255uy 200uy 120uy
-              Intensity = 1.2f
-              Radius = 8.0f
-              Falloff = 1.2f
-              CastsShadows = false
-              ShadowDirection = ValueNone
-              ShadowBias = ValueNone
-            })
+      chunk.Props
+      |> CellGrid2D.iterVisible left top right bottom (fun x z tile ->
+        if lights.Count < 8 then
+          match tile.Prop with
+          | Decoration GlowMushroom ->
+            let worldPos =
+              Numerics.Vector3(
+                origin.X + float32 x * cellSize,
+                float32 tile.Y * cellSize,
+                origin.Y + float32 z * cellSize
+              )
+
+            if (worldPos - camPos).LengthSquared() <= 1600.0f then
+              lights.Add {
+                Position = worldPos + Numerics.Vector3(0.0f, 0.5f, 0.0f)
+                Color = Color.rgb 255uy 200uy 120uy
+                Intensity = 1.2f
+                Radius = 8.0f
+                Falloff = 1.2f
+                CastsShadows = false
+                ShadowDirection = ValueNone
+                ShadowBias = ValueNone
+              }
+          | _ -> ())
 
   lights.ToArray()
 

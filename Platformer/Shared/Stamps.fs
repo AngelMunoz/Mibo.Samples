@@ -109,15 +109,22 @@ let inline ledge (biome: Biome) (length: int) (section: GridSection2D<Tile>) =
     (Horizontal biome)
     section
 
-/// Vertical wall built on Platformer.pillar (top/middle/bottom).
-/// VerticalTop at the top, VerticalMiddle in between, VerticalBottom at the base.
+/// Vertical wall (top/middle/bottom). VerticalTop at the top,
+/// VerticalMiddle in between, VerticalBottom at the base — painted
+/// with Flow cell styles at the section's first column.
 let inline wall (biome: Biome) (height: int) (section: GridSection2D<Tile>) =
+  if height > 0 then
+    if height = 1 then
+      Flow.cell { X = 0; Y = 0 } (VerticalMiddle biome) section
+    else
+      Flow.cell { X = 0; Y = 0 } (VerticalTop biome) section
+
+      for y = 1 to height - 2 do
+        Flow.cell { X = 0; Y = y } (VerticalMiddle biome) section
+
+      Flow.cell { X = 0; Y = height - 1 } (VerticalBottom biome) section
+
   section
-  |> Platformer.pillar
-    height
-    (VerticalBottom biome)
-    (VerticalMiddle biome)
-    (VerticalTop biome)
 
 /// Closed ground section: top edge + fill rows + bottom edge.
 /// Fully sealed — no entrances or exits. Interior fill uses BlockCenter

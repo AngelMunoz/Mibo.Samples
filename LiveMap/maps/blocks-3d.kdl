@@ -1,0 +1,280 @@
+// blocks-3d.kdl — a block map in two layers, authored in KDL.
+//
+// The ground is a mosaic of the pieces the kit authors, laid at the size
+// each piece was made for: `block-grass-large` covers two cells by two, and
+// its word states that span, so one `set` draws one instance over four
+// cells. Nothing is stretched past the size its bevel was drawn for, so the
+// pieces meet without a rim of floating space around them.
+//
+// Heights come from the words, and only a few of them: the woods floors are
+// half a cell below the fields, the fields are a cell, and the village
+// terrace is a two-cell piece whose top stands a step above everything
+// around it. The relief is drawn, not generated, so no cell of the ground is
+// decided on its own.
+//
+// The second layer is the decorations, and the occasional raised block: the
+// trees, the village, a market plaza, a wall along the terrace, pillars and
+// kerbs. It reads as structures on a surface rather than as more ground.
+//
+// The same map exists beside this file as blocks-3d.xml, and
+//
+//   dotnet run --project LiveMap -- --check
+//
+// compares the two layers, cell for cell.
+
+map 32 20 {
+    // ── the ground: pieces of one, two, and four cells ───────
+    layer ground {
+
+        // the ground is one flow container. The track pattern says how many
+        // pieces stand in a row and every piece states its own size, so no
+        // placement is written down: pieces flow into the tracks in order and
+        // the container wraps them, two cells at a time.
+        plot w=32 h=20 cols="auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto" {
+            // cells y=0..1: the north woods floor, half a cell below the fields
+            grassLowLarge
+            grassLowLarge
+            grassLowLarge
+            grassLowLarge
+            grassLowLarge
+            grassLowLarge
+            grassLowLarge
+            grassLowLarge
+            snowLowLarge
+            snowLowLarge
+            snowLowLarge
+            snowLowLarge
+            snowLowLarge
+            snowLowLarge
+            snowLowLarge
+            snowLowLarge
+
+            // cells y=2..3: the north woods floor, and the drift beside it
+            grassLowLarge
+            grassLowLarge
+            grassLowLarge
+            grassLowLarge
+            grassLowLarge
+            grassLowLarge
+            grassLowLarge
+            grassLowLarge
+            snowLowLarge
+            snowLowLarge
+            snowLowLarge
+            snowLowLarge
+            snowLowLarge
+            snowLowLarge
+            snowLowLarge
+            snowLowLarge
+
+            // cells y=4..5: the west field, the village terrace, and the snow field
+            grassLarge
+            grassLarge
+            grassLarge
+            grassLarge
+            grassLarge
+            grassLarge
+            grassTall
+            grassTall
+            grassTall
+            grassTall
+            grassTall
+            grassTall
+            snowLarge
+            snowLarge
+            snowLarge
+            snowLarge
+
+            // cells y=6..7: the same three regions
+            grassLarge
+            grassLarge
+            grassLarge
+            grassLarge
+            grassLarge
+            grassLarge
+            grassTall
+            grassTall
+            grassTall
+            grassTall
+            grassTall
+            grassTall
+            snowLarge
+            snowLarge
+            snowLarge
+            snowLarge
+
+            // cells y=8..9: the same three regions
+            grassLarge
+            grassLarge
+            grassLarge
+            grassLarge
+            grassLarge
+            grassLarge
+            grassTall
+            grassTall
+            grassTall
+            grassTall
+            grassTall
+            grassTall
+            snowLarge
+            snowLarge
+            snowLarge
+            snowLarge
+
+            // cells y=10..11: the same three regions
+            grassLarge
+            grassLarge
+            grassLarge
+            grassLarge
+            grassLarge
+            grassLarge
+            grassTall
+            grassTall
+            grassTall
+            grassTall
+            grassTall
+            grassTall
+            snowLarge
+            snowLarge
+            snowLarge
+            snowLarge
+
+            // cells y=12..13: the same three regions
+            grassLarge
+            grassLarge
+            grassLarge
+            grassLarge
+            grassLarge
+            grassLarge
+            grassTall
+            grassTall
+            grassTall
+            grassTall
+            grassTall
+            grassTall
+            snowLarge
+            snowLarge
+            snowLarge
+            snowLarge
+
+            // cells y=14..15: the fields below the terrace
+            grassLarge
+            grassLarge
+            grassLarge
+            grassLarge
+            grassLarge
+            grassLarge
+            grassLarge
+            grassLarge
+            grassLarge
+            grassLarge
+            grassLarge
+            grassLarge
+            snowLarge
+            snowLarge
+            snowLarge
+            snowLarge
+
+            // cells y=16..17: the south woods floor, and the fields below it
+            grassLowLarge
+            grassLowLarge
+            grassLowLarge
+            grassLowLarge
+            grassLowLarge
+            grassLowLarge
+            grassLarge
+            grassLarge
+            grassLarge
+            grassLarge
+            grassLarge
+            grassLarge
+            snowLarge
+            snowLarge
+            snowLarge
+            snowLarge
+
+            // cells y=18..19: the south woods floor, and the fields below it
+            grassLowLarge
+            grassLowLarge
+            grassLowLarge
+            grassLowLarge
+            grassLowLarge
+            grassLowLarge
+            grassLarge
+            grassLarge
+            grassLarge
+            grassLarge
+            grassLarge
+            grassLarge
+            snowLarge
+            snowLarge
+            snowLarge
+            snowLarge
+        }
+    }
+
+    // ── the decorations, and the occasional raised ground ────
+    layer decor {
+        // the village on the terrace, from kernels the game baked out of
+        // Flow stamps
+        plot x=13 y=5 w=3 h=3 { generate hut }
+        plot x=16 y=5 w=5 h=5 { generate yard }
+        plot x=20 y=7 w=3 h=3 { generate tower }
+
+        // a market plaza: one flat piece stretched over twenty cells, which
+        // is what a piece with no bevel is good for
+        set 13 11 slab spanX=10 spanZ=2
+
+        // a wall along the terrace edge, one block per cell
+        plot x=12 y=13 w=12 h=1 { fill wall }
+
+        // pillars and kerbs, marking the way up from the field
+        set 13 4 pillar
+        set 22 4 pillar
+        set 2 6 kerb
+        set 2 8 kerb
+        set 2 10 kerb
+
+        // the woods along the north and the south
+        plot x=0 y=0 w=18 h=4 pack=scatter seed=3 {
+            repeat 9 { pine }
+            repeat 4 { tree }
+        }
+
+        plot x=18 y=0 w=14 h=4 pack=scatter seed=4 {
+            repeat 6 { snowTree }
+            repeat 3 { stones }
+        }
+
+        plot x=0 y=16 w=14 h=4 pack=scatter seed=7 {
+            repeat 7 { pine }
+            repeat 3 { tree }
+        }
+
+        plot x=14 y=16 w=18 h=4 pack=scatter seed=8 {
+            repeat 6 { pineSmall }
+            repeat 3 { stones }
+        }
+
+        // what grows in the open field
+        plot x=0 y=4 w=10 h=8 pack=scatter seed=5 {
+            repeat 5 { pineSmall }
+            repeat 4 { stones }
+        }
+
+        plot x=24 y=4 w=8 h=8 pack=scatter seed=6 {
+            repeat 6 { snowTree }
+            repeat 4 { stones }
+        }
+
+        // the props of the village
+        set 12 4 crate
+        set 23 12 barrel
+        set 14 10 fence
+        set 19 10 fence
+        set 17 10 coin
+        set 18 10 coin
+        set 26 15 flag
+        set 27 15 sign
+    }
+}

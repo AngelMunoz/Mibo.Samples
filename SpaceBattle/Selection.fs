@@ -14,14 +14,14 @@ module Selection =
   let private isTerrainPassable
     (units: Map<struct (int * int), SBUnit>)
     (currentPlayerIndex: int)
-    (grid: HexGrid<Tile>)
+    (grid: CellGrid2D<Tile>)
     (c: int)
     (r: int)
     : bool =
     match units |> Map.tryFind struct (c, r) with
     | Some u when u.PlayerIndex <> currentPlayerIndex -> false
     | _ ->
-      match HexGrid.get c r grid with
+      match CellGrid2D.get c r grid with
       | ValueSome Station
       | ValueSome Asteroid1
       | ValueSome Asteroid2 -> false
@@ -32,7 +32,7 @@ module Selection =
     (col: int)
     (row: int)
     (moveRange: int)
-    (grid: HexGrid<Tile>)
+    (grid: CellGrid2D<Tile>)
     (units: Map<struct (int * int), SBUnit>)
     (currentPlayerIndex: int)
     : Set<struct (int * int)> =
@@ -59,11 +59,11 @@ module Selection =
     (col: int)
     (row: int)
     (attackRange: int)
-    (grid: HexGrid<Tile>)
+    (grid: CellGrid2D<Tile>)
     : Set<struct (int * int)> =
     Hex2DSpatial.inRange col row attackRange grid
     |> Array.filter(fun struct (c, r) ->
-      match HexGrid.get c r grid with
+      match CellGrid2D.get c r grid with
       | ValueSome _ -> true
       | ValueNone -> false)
     |> Set.ofArray
@@ -71,7 +71,7 @@ module Selection =
   let computePath
     (from: struct (int * int))
     (dest: struct (int * int))
-    (grid: HexGrid<Tile>)
+    (grid: CellGrid2D<Tile>)
     (units: Map<struct (int * int), SBUnit>)
     (currentPlayerIndex: int)
     : struct (int * int)[] =
@@ -88,7 +88,7 @@ module Selection =
 
   let simplifyPath
     (path: struct (int * int)[])
-    (grid: HexGrid<'T>)
+    (grid: CellGrid2D<'T>)
     : struct (int * int)[] =
     if path.Length <= 2 then
       path
@@ -99,12 +99,12 @@ module Selection =
       let struct (c0, r0) = path[0]
 
       let struct (pq0, pr0, ps0) =
-        Hex2DSpatial.offsetToCube c0 r0 grid.Orientation
+        Hex2DSpatial.offsetToCube c0 r0 (CellGrid2D.hexOrientation grid)
 
       let struct (c1, r1) = path[1]
 
       let struct (pq1, pr1, ps1) =
-        Hex2DSpatial.offsetToCube c1 r1 grid.Orientation
+        Hex2DSpatial.offsetToCube c1 r1 (CellGrid2D.hexOrientation grid)
 
       let mutable prevDq = pq1 - pq0
       let mutable prevDr = pr1 - pr0
@@ -114,12 +114,12 @@ module Selection =
         let struct (ci, ri) = path[i]
 
         let struct (cq, cr, cs) =
-          Hex2DSpatial.offsetToCube ci ri grid.Orientation
+          Hex2DSpatial.offsetToCube ci ri (CellGrid2D.hexOrientation grid)
 
         let struct (pi, riPrev) = path[i - 1]
 
         let struct (pq, pr, ps) =
-          Hex2DSpatial.offsetToCube pi riPrev grid.Orientation
+          Hex2DSpatial.offsetToCube pi riPrev (CellGrid2D.hexOrientation grid)
 
         let dq = cq - pq
         let dr = cr - pr

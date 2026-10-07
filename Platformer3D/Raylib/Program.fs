@@ -256,6 +256,10 @@ let main _ =
           Width = 1280
           Height = 720
           Title = "Mibo 3D Platformer"
+          // Cap the loop: the slab renderer finishes a frame in ~2.5ms, and
+          // with no cap the client spins at 500+ FPS pinning the GPU at
+          // ~97% drawing frames nobody sees.
+          TargetFPS = ValueSome 60
     })
     |> Program.withInput
     |> Program.withSubscription subscribe

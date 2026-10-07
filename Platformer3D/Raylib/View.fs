@@ -12,10 +12,11 @@ open Mibo.Elmish
 open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics3D
 open Mibo.Animation
+open Mibo.Layout
 open Mibo.Layout3D
-open Platformer3D.Types
 open Platformer3D.BlockData
 open Platformer3D.Constants
+open Platformer3D.Types
 open Platformer3D.Raylib.Types
 
 let loadOrGetModel
@@ -44,70 +45,120 @@ let mutable private currentModelCache =
 
 let mutable private currentGameContext = Unchecked.defaultof<GameContext>
 
-let private resolveMeshesAndMaterial(blockType: BlockType) =
-  let name = modelName blockType
-  let path = AssetPaths.modelPath name
+let private resolveMeshesAndMaterial(modelName: string) =
+  match modelName with
+  | "" -> Array.empty
+  | name ->
+    let path = AssetPaths.modelPath name
 
-  match meshMaterialCache.TryGetValue path with
-  | true, cached -> cached
-  | false, _ ->
-    let m = loadOrGetModel currentModelCache path currentGameContext
+    match meshMaterialCache.TryGetValue path with
+    | true, cached -> cached
+    | false, _ ->
+      let m = loadOrGetModel currentModelCache path currentGameContext
 
-    let result =
-      if m.MeshCount > 0 then
-        [|
-          for mi = 0 to m.MeshCount - 1 do
-            let mesh = NativePtr.get m.Meshes mi
-            let matIdx = NativePtr.get m.MeshMaterial mi
-            let raylibMat: Material = NativePtr.get m.Materials matIdx
+      let result =
+        if m.MeshCount > 0 then
+          [|
+            for mi = 0 to m.MeshCount - 1 do
+              let mesh = NativePtr.get m.Meshes mi
+              let matIdx = NativePtr.get m.MeshMaterial mi
+              let raylibMat: Material = NativePtr.get m.Materials matIdx
 
-            let material3d: Material3D = {
-              Material3D.fromRaylibMaterial raylibMat with
-                  Roughness = 0.65f
-            }
+              let material3d: Material3D = {
+                Material3D.fromRaylibMaterial raylibMat with
+                    Roughness = 0.65f
+              }
 
-            struct (mesh, material3d)
-        |]
-      else
-        Array.empty
-
-    meshMaterialCache[path] <- result
-    result
-
-// Persistent context — allocated once, reused every frame.
-let private instancedCtx =
-  InstancedRenderContext<BlockType, string>(
-    getKey = modelName,
-    getMeshesAndMaterial = resolveMeshesAndMaterial,
-    getTransform =
-      fun worldPos blockType ->
-        let info = lookup blockType
-        let rotAngle = info.RotationY * MathF.PI / 180.0f
-        let yOff = info.VerticalOffset
-        // Center multi-cell meshes on their footprint (meshes are centered on
-        // origin; blocks are placed at the cell corner — see BlockData).
-        let cx = info.CenterOffsetX
-        let cz = info.CenterOffsetZ
-
-        if rotAngle = 0.0f && yOff = 0.0f then
-          Raymath.MatrixTranslate(worldPos.X + cx, worldPos.Y, worldPos.Z + cz)
-        elif rotAngle = 0.0f then
-          Raymath.MatrixTranslate(
-            worldPos.X + cx,
-            worldPos.Y + yOff,
-            worldPos.Z + cz
-          )
+              struct (mesh, material3d)
+          |]
         else
-          let rot = Raymath.MatrixRotateY(rotAngle)
+          Array.empty
 
-          let trans =
+      meshMaterialCache[path] <- result
+      result
+
+// -------------------------------------------------------------
+// Instanced rendering — the heightmap contract.
+//
+// The context's transform function receives each column's base position
+// (footprint lifted to y = 0); the vertical axis comes from the tile:
+// `CapTile.BaseY` lifts surface caps, `MassTile.Depth` scales the cliff
+// unit block, `PropTile.Y` lifts everything floating above the ground.
+// One instance per populated cell, one draw per model name per layer.
+// -------------------------------------------------------------
+
+/// Rotation + centering placement shared by caps and props: rotate about Y
+/// (Kenney blocks face +X at yaw 0), then translate to the cell corner
+/// plus the mesh's centering offset.
+let private placeAt
+  (basePos: Vector3)
+  (y: float32)
+  (info: BlockInfo)
+  : Matrix4x4 =
+  let rotAngle = info.RotationY * MathF.PI / 180.0f
+
+  let trans =
+    Raymath.MatrixTranslate(
+      basePos.X + info.CenterOffsetX,
+      y,
+      basePos.Z + info.CenterOffsetZ
+    )
+
+  if rotAngle = 0.0f then
+    trans
+  else
+    Raymath.MatrixMultiply(Raymath.MatrixRotateY rotAngle, trans)
+
+// Persistent contexts — allocated once, reused every frame.
+let private slabCtx =
+  InstancedRenderContext<SlabTile, string>(
+    getKey = (fun tile -> massModel tile.Material),
+    getMeshesAndMaterial =
+      (fun tile -> resolveMeshesAndMaterial(massModel tile.Material)),
+    getTransform =
+      fun basePos tile ->
+        // ONE model scaled to the platform's size: the unit block spans
+        // 1.082 native XZ cells (blockFootprint, BoneProbe), so X/Z scale
+        // divides it out and the instance lands exactly on its W×H×D cell
+        // rectangle; Y is exact (the mesh is 1.0 tall, bottom-anchored).
+        // The whole platform — crust top and dirt body — is one instance.
+        Raymath.MatrixMultiply(
+          Raymath.MatrixScale(
+            float32 tile.W * cellSize / blockFootprint,
+            float32 tile.H * cellSize,
+            float32 tile.D * cellSize / blockFootprint
+          ),
+          Raymath.MatrixTranslate(
+            basePos.X + float32 tile.W * cellSize * 0.5f,
+            0.0f,
+            basePos.Z + float32 tile.D * cellSize * 0.5f
+          )
+        )
+  )
+
+let private propCtx =
+  InstancedRenderContext<PropTile, string>(
+    getKey = (fun tile -> (propInfo tile.Prop).ModelName),
+    getMeshesAndMaterial =
+      (fun tile -> resolveMeshesAndMaterial((propInfo tile.Prop).ModelName)),
+    getTransform =
+      fun basePos tile ->
+        let info = propInfo tile.Prop
+        let y = float32 tile.Y * cellSize + info.VerticalOffset
+
+        match tile.Prop with
+        | Prop.Platform _ ->
+          // One platform object `length` cells long: mesh-space X scale in
+          // front of the placement translation (rotation is 0 for it).
+          Raymath.MatrixMultiply(
+            Raymath.MatrixScale(info.ExtentW, 1.0f, 1.0f),
             Raymath.MatrixTranslate(
-              worldPos.X + cx,
-              worldPos.Y + yOff,
-              worldPos.Z + cz
+              basePos.X + info.CenterOffsetX,
+              y,
+              basePos.Z + info.CenterOffsetZ
             )
-
-          Raymath.MatrixMultiply(rot, trans)
+          )
+        | _ -> placeAt basePos y info
   )
 
 // -------------------------------------------------------------
@@ -116,15 +167,12 @@ let private instancedCtx =
 // Two distinct effects exercise the per-key resolver on two key groups:
 //   * Snow biome (any model name containing "snow") → snow shader — frosty,
 //     crystalline sparkle.
-//   * LargeBlock grass ("block-grass-large") → toon shader — banded cel shading.
+//   * Large grass caps ("block-grass-large", the mega-cap family) → toon
+//     shader — banded cel shading.
 // Everything else falls through to the default PBR instanced path
 // (ValueNone). Both shaders opt into instancing by declaring
-// `in mat4 instanceTransform;` (raylib wires the instance VBO); a shader that
-// doesn't declare it would silently fall back to PBR.
-//
-// The context is keyed by model name (getKey = modelName), so the resolver
-// matches on the bare name. Precedence when a block is both snow AND large
-// (e.g. "block-snow-large"): biome wins — the snow branch is checked first.
+// `in mat4 instanceTransform;` (raylib wires the instance VBO); a shader
+// that doesn't declare it would silently fall back to PBR.
 //
 // The framework's raylib IAssets has no shader loader (unlike MonoGame's
 // Effect), so GLSL lives here as embedded strings and loads via
@@ -350,10 +398,13 @@ let mutable private toonShader: Raylib_cs.Shader voption = ValueNone
 let mutable private snowShader: Raylib_cs.Shader voption = ValueNone
 
 let private shaderForKey(name: string) : Raylib_cs.Shader voption =
-  // Biome wins over shape: a snow LargeBlock is snow first.
-  if name.Contains("snow") then snowShader
-  elif name = KenneyModels.blockGrassLarge then toonShader
-  else ValueNone
+  // Biome wins over shape: a snow mega-cap is snow first.
+  if name.Contains("snow") then
+    snowShader
+  else
+    match name with
+    | n when n.Contains("large") -> toonShader
+    | _ -> ValueNone
 
 let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
   let l = model.Lighting
@@ -368,28 +419,33 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
     )
 
   buffer
-  |> Draw3D.beginCameraWith(
-    Camera3D.render camera
-    |> Camera3D.withClear(Mibo.Color.op_Implicit(l.SkyColor))
-  )
-  |> Draw3D.setAmbientLight {
-    Color = l.AmbientColor
-    Intensity = l.AmbientIntensity
-  }
-  |> Draw3D.addDirectionalLight {
-    Direction = l.LightDirection
-    Color = l.LightColor
-    Intensity = l.LightIntensity
-    CastsShadows = true
-  }
-  |> Draw3D.drop
+    .beginCameraWith(
+      Camera3D.render camera
+      |> Camera3D.withClear(Mibo.Color.op_Implicit(l.SkyColor))
+    )
+    .setAmbientLight(
+      {
+        Color = l.AmbientColor
+        Intensity = l.AmbientIntensity
+      }
+    )
+    .addDirectionalLight(
+      {
+        Direction = l.LightDirection
+        Color = l.LightColor
+        Intensity = l.LightIntensity
+        CastsShadows = true
+      }
+    )
+    .drop()
 
   currentModelCache <- model.ModelCache
   currentGameContext <- ctx
-  instancedCtx.ResetFrameBuffers()
+  slabCtx.ResetFrameBuffers()
+  propCtx.ResetFrameBuffers()
 
-  // Lazy-compile the custom shaders on the first frame (no GL context at module
-  // init). Loaded once, cached in the module-level voptions above.
+  // Lazy-compile the custom shaders on the first frame (no GL context at
+  // module init). Loaded once, cached in the module-level voptions above.
   match toonShader, snowShader with
   | ValueNone, ValueNone ->
     toonShader <- ValueSome(Raylib.LoadShaderFromMemory(toonVs, toonFs))
@@ -397,7 +453,7 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
   | _ -> ()
 
   for light in model.VisibleLights do
-    Draw3D.addPointLight light buffer |> Draw3D.drop
+    buffer.addPointLight(light) |> ignore
 
   let camPos = model.Physics.CameraPosition
   let maxChunkDistSq = 3000.0f
@@ -411,15 +467,40 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
       )
 
     if (chunkCenter - camPos).LengthSquared() <= maxChunkDistSq then
-      let struct (terrainGrid, _) =
-        LayeredGrid3D.getOrAddLayer Layer.Terrain chunk.Grids
+      // The window is the chunk's XZ extent in int world coordinates — the
+      // heightmap replacement for the retired volume cull.
+      let left = int chunk.Bounds.Min.X
+      let top = int chunk.Bounds.Min.Z
+      let right = int chunk.Bounds.Max.X
+      let bottom = int chunk.Bounds.Max.Z
 
-      CellGridRenderer3D.renderVolumeInstancedWithEffect
-        instancedCtx
-        chunk.Bounds
-        terrainGrid
+      slabCtx.RenderWindowInstancedWithEffect(
+        buffer,
+        left,
+        top,
+        right,
+        bottom,
+        chunk.Slabs,
         shaderForKey
-        buffer
+      )
+
+      propCtx.RenderWindowInstanced(
+        buffer,
+        left,
+        top,
+        right,
+        bottom,
+        chunk.Props
+      )
+
+      propCtx.RenderWindowInstanced(
+        buffer,
+        left,
+        top,
+        right,
+        bottom,
+        chunk.Pickups
+      )
 
   let playerTransform =
     let rot = Raymath.MatrixRotateY(model.Physics.Facing)
@@ -436,13 +517,9 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
   let p = model.Particles
 
   for i = 0 to p.Count - 1 do
-    Draw3D.drawBillboard
-      model.ParticleTexture
-      p.Positions[i]
-      p.Sizes[i]
-      (Mibo.Color.op_Implicit(p.Colors[i]))
-      buffer
-    |> Draw3D.drop
+    buffer
+      .billboard(model.ParticleTexture, p.Positions[i], p.Sizes[i], p.Colors[i])
+      .drop()
 
   // GPU skinning path (non-mutating): the pose is evaluated once and shared
   // between the skinned draw and the weapon attachments on both handslot
@@ -469,9 +546,7 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
     // Legacy mutating fallback when no AnimatedMesh is available.
     Animation3DState.applyToModel model.PlayerAnim
 
-    buffer
-    |> Draw3D.drawModel model.PlayerAnim.Model playerTransform
-    |> Draw3D.drop
+    buffer.model(model.PlayerAnim.Model, playerTransform) |> ignore
 
   // Skinned-instancing probe: the whole oozi ring is ONE draw call. Transforms
   // are recomposed around the player each frame (the ring follows), each
@@ -516,4 +591,4 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
     buffer.animatedModelInstanced(am, transforms, poses) |> ignore
   | _ -> ()
 
-  buffer |> Draw3D.endCamera |> Draw3D.drop
+  buffer.endCamera().drop()

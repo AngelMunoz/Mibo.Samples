@@ -4,8 +4,10 @@ open System
 open System.Diagnostics
 open System.Numerics
 open Microsoft.FSharp.NativeInterop
+open Mibo
 open Mibo.Elmish
 open Mibo.Layout
+open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics2D
 open Raylib_cs
 open SpaceBattle.Types
@@ -143,7 +145,7 @@ void main() {
   let render
     (state: FogState)
     (visible: Set<struct (int * int)>)
-    (grid: HexGrid<Tile>)
+    (grid: CellGrid2D<Tile>)
     (camera: Camera2D)
     (vpWidth: float32)
     (vpHeight: float32)
@@ -159,22 +161,27 @@ void main() {
     let bottomRight =
       Raylib.GetScreenToWorld2D(Vector2(vpWidth, vpHeight), camera)
 
-    buffer |> Draw.beginShader 0<RenderLayer> state.Shader |> Draw.drop
+    buffer.beginShader(state.Shader, 0<RenderLayer>).drop()
 
     grid
-    |> HexGrid.iterVisible
-      topLeft.X
-      topLeft.Y
-      bottomRight.X
-      bottomRight.Y
+    |> CellGrid2D.iterVisible
+      (int topLeft.X)
+      (int topLeft.Y)
+      (int bottomRight.X)
+      (int bottomRight.Y)
       (fun col row _tile ->
         if not(visible.Contains(struct (col, row))) then
-          let worldPos = grid |> HexGrid.getWorldPos col row
+          let worldPos = grid |> CellGrid2D.getWorldPos col row
 
           buffer
-          |> Draw.fillPoly
-            (0<RenderLayer>, Color.White)
-            (Vector2(worldPos.X, worldPos.Y), 6, Constants.CellSize, 0f)
-          |> Draw.drop)
+            .fillPoly(
+              Vector2(worldPos.X, worldPos.Y),
+              6,
+              Constants.CellSize,
+              0f,
+              Color.White,
+              0<RenderLayer>
+            )
+            .drop())
 
-    buffer |> Draw.endShader 0<RenderLayer>
+    buffer.endShader(0<RenderLayer>)

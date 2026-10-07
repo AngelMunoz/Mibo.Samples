@@ -2,7 +2,9 @@ namespace SpaceBattle
 
 open System
 open Mibo.Animation
+open Mibo
 open Mibo.Elmish
+open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics2D.Lighting
 open Mibo.Layout
 open Mibo.Elmish.Graphics2D
@@ -11,7 +13,7 @@ open SpaceBattle.Types
 open SpaceBattle.Units
 
 type MapModel = {
-  Grid: HexGrid<Tile>
+  Grid: CellGrid2D<Tile>
   Seed: int
   Reachable: Set<struct (int * int)>
   Visible: Set<struct (int * int)>
@@ -39,32 +41,43 @@ type MapMsg =
 module Map =
   open System.Numerics
 
-  let inline createMap origin width height : HexGrid<Tile> =
-    HexGrid.create width height Constants.CellSize origin FlatTop
+  let inline createMap origin width height : CellGrid2D<Tile> =
+    CellGrid2D.createHex {
+      Orientation = HexOrientation.FlatTop
+      Width = width
+      Height = height
+      Radius = Constants.CellSize
+      Origin = origin
+    }
 
-  let inline asteroidSection (rng: Random) col row =
-    HexLayout.section col row (fun section ->
+  /// The asteroid belt: crates along the rim, asteroids scattered inside.
+  /// One Flow canvas painted in order — the deep-space floor first, the
+  /// scatter styles over it. The seed draws consume the rng in the same
+  /// order the retired HexLayout pipeline did, so a given seed builds the
+  /// same board.
+  let fillMap (rng: Random) (map: CellGrid2D<Tile>) : CellGrid2D<Tile> =
+    let belt =
+      Flow.canvas [
+        Flow.fill DeepSpace
+        Flow.scatterBorder { Count = 5; Seed = rng.Next() } Crate1
 
-      section
-      |> HexLayout.scatterBorder
-        0
-        0
-        section.Width
-        section.Height
-        5
-        (rng.Next())
-        Crate1
-      |> HexLayout.scatter (rng.Next(10)) (rng.Next()) Asteroid1
-      |> HexLayout.scatter (rng.Next(5)) (rng.Next()) Asteroid2)
+        Flow.noise
+          {
+            Count = rng.Next(10)
+            Seed = rng.Next()
+          }
+          Asteroid1
+        Flow.noise
+          {
+            Count = rng.Next(5)
+            Seed = rng.Next()
+          }
+          Asteroid2
+      ]
 
-  let fillMap (rng: Random) (map: HexGrid<Tile>) : HexGrid<Tile> =
-    let asteroids = asteroidSection rng
+    let struct (grid, _) = map |> Flow.run belt
 
-    let filledMap =
-      HexLayout.fill 0 0 map.Width map.Height DeepSpace
-      >> HexLayout.center map.Width map.Height (asteroids 0 0)
-
-    map |> HexLayout.run filledMap
+    grid
 
   let init(seed: int, width: int, height: int) : MapModel =
     let grid = createMap Vector2.Zero width height |> fillMap(Random seed)
@@ -86,7 +99,7 @@ module Map =
     |]
 
     for struct (c, r) in corners do
-      HexGrid.set c r DeepSpace grid
+      CellGrid2D.set c r DeepSpace grid
 
     {
       Grid = grid
@@ -105,12 +118,28 @@ module Map =
   let private pathGradientColor (pathLen: int) (idx: int) =
     let t = float32 idx / float32(pathLen - 1)
     let alpha = 80uy + byte(t * 160f)
-    Color(100uy, 200uy, 255uy, alpha)
+    Color.create 100uy 200uy 255uy alpha
+
+  // Exact raylib palette bytes — the retired pipe module took raylib colors,
+  // and Mibo.Color's presets (Green, Blue, ...) carry different bytes.
+  let private rlRed = Color.rgb 230uy 41uy 55uy
+
+  let private rlViolet = Color.rgb 135uy 60uy 190uy
+
+  let private rlBlue = Color.rgb 0uy 121uy 241uy
+
+  let private rlDarkBlue = Color.rgb 0uy 82uy 172uy
+
+  let private rlGreen = Color.rgb 0uy 228uy 48uy
+
+  let private rlDarkGray = Color.rgb 80uy 80uy 80uy
+
+  let private rlYellow = Color.rgb 253uy 249uy 0uy
 
   let computeVisibleUnits
     (units: Map<struct (int * int), SBUnit>)
     (playerIndex: int)
-    (grid: HexGrid<Tile>)
+    (grid: CellGrid2D<Tile>)
     : Set<struct (int * int)> =
     let mutable visible = Set.empty
 
@@ -232,7 +261,7 @@ module Map =
     (camera: Camera2D)
     (mapModel: MapModel)
     (lightCtx: LightContext2D)
-    buffer
+    (buffer: RenderBuffer2D)
     =
     let model = mapModel.Grid
     let topLeft = Raylib.GetScreenToWorld2D(Vector2.Zero, camera)
@@ -241,13 +270,13 @@ module Map =
       Raylib.GetScreenToWorld2D(Vector2(vpWidth, vpHeight), camera)
 
     model
-    |> HexGrid.iterVisible
-      topLeft.X
-      topLeft.Y
-      bottomRight.X
-      bottomRight.Y
+    |> CellGrid2D.iterVisible
+      (int topLeft.X)
+      (int topLeft.Y)
+      (int bottomRight.X)
+      (int bottomRight.Y)
       (fun col row tile ->
-        let worldPos = model |> HexGrid.getWorldPos col row
+        let worldPos = model |> CellGrid2D.getWorldPos col row
         let hexW = Constants.CellSize * 2.0f
         let hexH = Constants.CellSize * sqrt 3.0f
 
@@ -256,12 +285,12 @@ module Map =
 
         let color =
           match tile with
-          | Asteroid1 -> Color.Red
-          | Asteroid2 -> Color.Violet
-          | Crate1 -> Color.Blue
-          | Crate2 -> Color.DarkBlue
-          | Station -> Color.Green
-          | DeepSpace -> Color.DarkGray
+          | Asteroid1 -> rlRed
+          | Asteroid2 -> rlViolet
+          | Crate1 -> rlBlue
+          | Crate2 -> rlDarkBlue
+          | Station -> rlGreen
+          | DeepSpace -> rlDarkGray
 
         match sprites |> Map.tryFind struct (col, row) with
         | Some animated ->
@@ -269,16 +298,22 @@ module Map =
           let texture = animated.Sheet.Texture
 
           buffer
-          |> LightDraw.litSprite
-            lightCtx
-            (SpriteState.create(texture, targetRect, source))
-          |> Draw.drop
+            .litSprite(
+              lightCtx,
+              SpriteState.create(texture, targetRect, source)
+            )
+            .drop()
         | None ->
           buffer
-          |> Draw.polyOutline
-            (0<RenderLayer>, color, 1f)
-            (Vector2(worldPos.X, worldPos.Y), 6, Constants.CellSize, 0f)
-          |> Draw.drop)
+            .polyOutline(
+              Vector2(worldPos.X, worldPos.Y),
+              6,
+              Constants.CellSize,
+              0f,
+              color,
+              thickness = 1f
+            )
+            .drop())
 
     buffer
 
@@ -288,7 +323,7 @@ module Map =
     (camera: Camera2D)
     (mapModel: MapModel)
     (hoveredOver: struct (int * int) voption)
-    buffer
+    (buffer: RenderBuffer2D)
     =
     let model = mapModel.Grid
     let reachable = mapModel.Reachable
@@ -302,47 +337,64 @@ module Map =
     let pathIdx = pathIndexMap path
 
     model
-    |> HexGrid.iterVisible
-      topLeft.X
-      topLeft.Y
-      bottomRight.X
-      bottomRight.Y
+    |> CellGrid2D.iterVisible
+      (int topLeft.X)
+      (int topLeft.Y)
+      (int bottomRight.X)
+      (int bottomRight.Y)
       (fun col row tile ->
-        let worldPos = model |> HexGrid.getWorldPos col row
+        let worldPos = model |> CellGrid2D.getWorldPos col row
 
         if attackTargets.Contains(struct (col, row)) then
           buffer
-          |> Draw.fillPoly
-            (0<RenderLayer>, Color(255uy, 80uy, 80uy, 120uy))
-            (Vector2(worldPos.X, worldPos.Y), 6, Constants.CellSize, 0f)
-          |> Draw.drop
+            .fillPoly(
+              Vector2(worldPos.X, worldPos.Y),
+              6,
+              Constants.CellSize,
+              0f,
+              Color.create 255uy 80uy 80uy 120uy
+            )
+            .drop()
 
         if reachable.Contains(struct (col, row)) then
           buffer
-          |> Draw.fillPoly
-            (0<RenderLayer>, Color(100uy, 180uy, 255uy, 100uy))
-            (Vector2(worldPos.X, worldPos.Y), 6, Constants.CellSize, 0f)
-          |> Draw.drop
+            .fillPoly(
+              Vector2(worldPos.X, worldPos.Y),
+              6,
+              Constants.CellSize,
+              0f,
+              Color.create 100uy 180uy 255uy 100uy
+            )
+            .drop()
 
         match pathIdx |> Map.tryFind struct (col, row) with
         | Some idx when path.Length > 1 ->
           buffer
-          |> Draw.fillPoly
-            (0<RenderLayer>, pathGradientColor path.Length idx)
-            (Vector2(worldPos.X, worldPos.Y), 6, Constants.CellSize, 0f)
-          |> Draw.drop
+            .fillPoly(
+              Vector2(worldPos.X, worldPos.Y),
+              6,
+              Constants.CellSize,
+              0f,
+              pathGradientColor path.Length idx
+            )
+            .drop()
         | Some _
         | None -> ()
 
         match hoveredOver with
         | ValueSome struct (hCol, hRow) ->
-          let hWorldPos = model |> HexGrid.getWorldPos hCol hRow
+          let hWorldPos = model |> CellGrid2D.getWorldPos hCol hRow
 
           buffer
-          |> Draw.polyOutline
-            (0<RenderLayer>, Color.Yellow, 2.5f)
-            (Vector2(hWorldPos.X, hWorldPos.Y), 6, Constants.CellSize, 0f)
-          |> Draw.drop
+            .polyOutline(
+              Vector2(hWorldPos.X, hWorldPos.Y),
+              6,
+              Constants.CellSize,
+              0f,
+              rlYellow,
+              thickness = 2.5f
+            )
+            .drop()
         | ValueNone -> ())
 
     buffer

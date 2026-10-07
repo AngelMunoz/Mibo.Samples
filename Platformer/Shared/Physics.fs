@@ -228,7 +228,7 @@ module PhysicsSystem =
       match chunks.TryGetValue key with
       | true, chunk ->
         let struct (terrainGrid, _) =
-          LayeredGrid2D.getOrAddLayer Layer.Terrain chunk.Grids
+          LayeredMap.getOrAddLayer Layer.Terrain chunk.Grids
 
         let cellX =
           int((coinRect.X - terrainGrid.Origin.X) / terrainGrid.CellSize.X)

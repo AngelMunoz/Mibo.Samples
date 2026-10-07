@@ -20,13 +20,13 @@ module AI =
   let private hexDist
     (a: struct (int * int))
     (b: struct (int * int))
-    (grid: HexGrid<Tile>)
+    (grid: CellGrid2D<Tile>)
     : float32 =
     let struct (ac, ar) = a
     let struct (bc, br) = b
     float32(Hex2DSpatial.distance ac ar bc br grid)
 
-  let private findCenter(grid: HexGrid<Tile>) : struct (int * int) =
+  let private findCenter(grid: CellGrid2D<Tile>) : struct (int * int) =
     let mutable sumC = 0
     let mutable sumR = 0
     let mutable count = 0
@@ -34,7 +34,7 @@ module AI =
 
     for r in 0 .. grid.Height - 1 do
       for c in 0 .. grid.Width - 1 do
-        match HexGrid.get c r grid with
+        match CellGrid2D.get c r grid with
         | ValueSome _ ->
           sumC <- sumC + c
           sumR <- sumR + r
@@ -74,7 +74,7 @@ module AI =
     (unit: SBUnit)
     (unitCell: struct (int * int))
     (enemies: (struct (int * int) * SBUnit)[])
-    (grid: HexGrid<Tile>)
+    (grid: CellGrid2D<Tile>)
     : (struct (int * int) * SBUnit)[] =
     let attackCells =
       Selection.computeAttackRange
@@ -88,7 +88,7 @@ module AI =
   let private closestEnemy
     (unitCell: struct (int * int))
     (enemies: (struct (int * int) * SBUnit)[])
-    (grid: HexGrid<Tile>)
+    (grid: CellGrid2D<Tile>)
     : (struct (int * int) * SBUnit) voption =
     if enemies.Length = 0 then
       ValueNone
@@ -107,7 +107,7 @@ module AI =
     (unit: SBUnit)
     (unitCell: struct (int * int))
     (targetCell: struct (int * int))
-    (grid: HexGrid<Tile>)
+    (grid: CellGrid2D<Tile>)
     (units: Map<struct (int * int), SBUnit>)
     (playerIndex: int)
     : struct (int * int) voption =
@@ -131,7 +131,7 @@ module AI =
     (unit: SBUnit)
     (unitCell: struct (int * int))
     (threatCell: struct (int * int))
-    (grid: HexGrid<Tile>)
+    (grid: CellGrid2D<Tile>)
     (units: Map<struct (int * int), SBUnit>)
     (playerIndex: int)
     (allies: (struct (int * int) * SBUnit)[])
@@ -167,7 +167,7 @@ module AI =
 
   let private patrolTarget
     (unitCell: struct (int * int))
-    (grid: HexGrid<Tile>)
+    (grid: CellGrid2D<Tile>)
     (knownEnemyPositions: Set<struct (int * int)>)
     (playerIndex: int)
     (turnNumber: int)
@@ -193,7 +193,7 @@ module AI =
       let target = corners[idx]
       let struct (tc, tr) = target
 
-      match HexGrid.get tc tr grid with
+      match CellGrid2D.get tc tr grid with
       | ValueSome _ -> target
       | ValueNone -> center
 
@@ -250,7 +250,7 @@ module AI =
     (unitCell: struct (int * int))
     (units: Map<struct (int * int), SBUnit>)
     (visible: Set<struct (int * int)>)
-    (grid: HexGrid<Tile>)
+    (grid: CellGrid2D<Tile>)
     (turn: Turn)
     : AIAction =
     let weights = classWeights unit.Class
@@ -350,14 +350,14 @@ module AI =
   let computeVisible
     (unit: SBUnit)
     (unitCell: struct (int * int))
-    (grid: HexGrid<Tile>)
+    (grid: CellGrid2D<Tile>)
     : Set<struct (int * int)> =
     let struct (c, r) = unitCell
 
     Hex2DSpatial.inRange c r unit.VisualRange grid
     |> Array.filter(fun cell ->
       match
-        HexGrid.get
+        CellGrid2D.get
           (let struct (c, _) = cell in c)
           (let struct (_, r) = cell in r)
           grid
@@ -369,7 +369,7 @@ module AI =
   let evaluateNextAction
     (units: Map<struct (int * int), SBUnit>)
     (turn: Turn)
-    (grid: HexGrid<Tile>)
+    (grid: CellGrid2D<Tile>)
     : struct (int * int) voption * PhaseMsg * PhaseMsg =
     let playerIndex = turn.CurrentPlayerIndex
 

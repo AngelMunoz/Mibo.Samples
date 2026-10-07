@@ -1,7 +1,9 @@
 module Platformer3D.MonoGame.MinimapView
 
 open Microsoft.Xna.Framework
+open Mibo
 open Mibo.Elmish
+open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics2D
 open Platformer3D.Minimap
 open Platformer3D.MonoGame.Types
@@ -19,40 +21,53 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
 
   if model.MinimapTexReady then
     buffer
-    |> Draw.sprite(
-      SpriteState.create(
-        model.MinimapTexture,
-        Microsoft.Xna.Framework.Rectangle(
-          minimapX,
-          minimapY,
-          int minimapSize,
-          int minimapSize
-        ),
-        Microsoft.Xna.Framework.Rectangle(0, 0, texSize, texSize)
+      .sprite(
+        SpriteState.create(
+          model.MinimapTexture,
+          Microsoft.Xna.Framework.Rectangle(
+            minimapX,
+            minimapY,
+            int minimapSize,
+            int minimapSize
+          ),
+          Microsoft.Xna.Framework.Rectangle(0, 0, texSize, texSize)
+        )
+        |> SpriteState.withLayer 100<RenderLayer>
       )
-      |> SpriteState.withLayer 100<RenderLayer>
-    )
-    |> Draw.drop
+      .drop()
 
   let centerX = float32 minimapX + halfMinimap
   let centerY = float32 minimapY + halfMinimap
   let facingX = sin model.Physics.Facing
   let facingZ = cos model.Physics.Facing
 
+  // XNA palette bytes (XNA Yellow 255,255,0 — Mibo.Color's presets differ)
+  let markerColor = Color.rgb 255uy 255uy 0uy
+
   buffer
-  |> Draw.fillCircle
-    (102<RenderLayer>, Microsoft.Xna.Framework.Color.Yellow)
-    (Vector2(centerX, centerY), 3.0f)
-  |> Draw.lineThick
-    (102<RenderLayer>, Microsoft.Xna.Framework.Color.Yellow, 2.0f)
-    (Vector2(centerX, centerY),
-     Vector2(centerX + facingX * 10.0f, centerY + facingZ * 10.0f))
-  |> Draw.rectOutline
-    (103<RenderLayer>, Microsoft.Xna.Framework.Color.White, 2.0f)
-    (Microsoft.Xna.Framework.Rectangle(
-      minimapX,
-      minimapY,
-      int minimapSize,
-      int minimapSize
-    ))
-  |> Draw.drop
+    .fillCircle(
+      System.Numerics.Vector2(centerX, centerY),
+      3.0f,
+      markerColor,
+      102<RenderLayer>
+    )
+    .lineThick(
+      System.Numerics.Vector2(centerX, centerY),
+      System.Numerics.Vector2(
+        centerX + facingX * 10.0f,
+        centerY + facingZ * 10.0f
+      ),
+      markerColor,
+      thickness = 2.0f,
+      layer = 102<RenderLayer>
+    )
+    .rectOutline(
+      float32 minimapX,
+      float32 minimapY,
+      minimapSize,
+      minimapSize,
+      Color.White,
+      thickness = 2.0f,
+      layer = 103<RenderLayer>
+    )
+    .drop()

@@ -117,6 +117,8 @@ module KenneyModels =
   let blockGrassNarrow = "block-grass-narrow"
   let blockGrassEdge = "block-grass-edge"
   let blockGrassCorner = "block-grass-corner"
+  let blockGrassHexagon = "block-grass-hexagon"
+  let blockGrassOverhang = "block-grass-overhang-large"
 
   let blockSnow = "block-snow"
   let blockSnowLarge = "block-snow-large"
@@ -125,6 +127,10 @@ module KenneyModels =
   let blockSnowLow = "block-snow-low"
   let blockSnowSlope = "block-snow-large-slope"
   let blockSnowNarrow = "block-snow-narrow"
+  let blockSnowEdge = "block-snow-edge"
+  let blockSnowCorner = "block-snow-corner"
+  let blockSnowHexagon = "block-snow-hexagon"
+  let blockSnowOverhang = "block-snow-overhang-large"
 
   let platform = "platform"
   let platformFortified = "platform-fortified"

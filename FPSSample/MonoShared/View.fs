@@ -33,8 +33,17 @@ let mgAssetPath(path: string) =
     .Replace(".mp3", "")
     .Replace(".wav", "")
 
-let private meshMaterialCache =
-  Dictionary<string, struct (PrimitiveMesh * Material3D)[]>()
+/// One content-pipeline mesh part: the part wrapped as a PrimitiveMesh, its
+/// material, and the part's slice of the shared vertex/index buffers.
+[<Struct>]
+type private MeshPartSlice = {
+  Mesh: PrimitiveMesh
+  Material: Material3D
+  VertexOffset: int
+  StartIndex: int
+}
+
+let private meshMaterialCache = Dictionary<string, MeshPartSlice[]>()
 
 let mutable private currentGameContext = Unchecked.defaultof<GameContext>
 
@@ -47,9 +56,7 @@ let inline private wrapPartAsPrimitive(part: ModelMeshPart) : PrimitiveMesh = {
   Bounds = blockBounds
 }
 
-let private resolveMeshesAndMaterial(cell: Level.Cell) =
-  let path = Level.Cell.modelPath cell
-
+let private resolveMeshesAndMaterial(path: string) =
   match meshMaterialCache.TryGetValue path with
   | true, cached -> cached
   | false, _ ->
@@ -66,7 +73,12 @@ let private resolveMeshesAndMaterial(cell: Level.Cell) =
                     Metallic = 0.1f
               }
 
-              struct (wrapPartAsPrimitive part, mat)
+              {
+                Mesh = wrapPartAsPrimitive part
+                Material = mat
+                VertexOffset = part.VertexOffset
+                StartIndex = part.StartIndex
+              }
         |]
       else
         Array.empty
@@ -74,13 +86,13 @@ let private resolveMeshesAndMaterial(cell: Level.Cell) =
     meshMaterialCache[path] <- result
     result
 
-// Persistent instanced context for level geometry.
-let private instancedCtx =
-  InstancedRenderContext<Level.Cell, string>(
-    getKey = Level.Cell.modelPath,
-    getMeshesAndMaterial = resolveMeshesAndMaterial,
-    getTransform = fun worldPos _cell -> Matrix.CreateTranslation(worldPos)
-  )
+// Level geometry: the footprint grid baked into per-path instance
+// groups — one native-size instance per stack level, translate-only
+// (Matrix.CreateTranslation, exactly the retired context's transform;
+// no scaling). Rebuilt only when the level instance changes (restart).
+let mutable private bakedLevel: Level.LevelData voption = ValueNone
+
+let mutable private bakedGroups: LevelBake.Group<Matrix>[] = [||]
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Enemy animation registry.
@@ -364,7 +376,6 @@ let view
 
   // ── Level geometry (instanced) ────────────────────────────────────────────
   currentGameContext <- ctx
-  instancedCtx.ResetFrameBuffers()
 
   let graphicsDevice = GameContext.getService<GraphicsDevice> ctx
 
@@ -382,9 +393,29 @@ let view
       cameraNear
       cameraFar
 
-  buffer
-    .renderCellGridVolumeInstanced(instancedCtx, box, model.Level.Grid)
-    .drop()
+  currentGameContext <- ctx
+
+  match bakedLevel with
+  | ValueSome existing when obj.ReferenceEquals(existing, model.Level) -> ()
+  | _ ->
+    bakedGroups <-
+      LevelBake.bake
+        (fun p -> Matrix.CreateTranslation(p.X, p.Y, p.Z))
+        model.Level
+
+    bakedLevel <- ValueSome model.Level
+
+  for group in bakedGroups do
+    for slice in resolveMeshesAndMaterial group.Path do
+      buffer.AddDrawInstancedSlice(
+        slice.Mesh,
+        group.Transforms,
+        slice.Material,
+        group.Transforms.Length,
+        ValueNone,
+        slice.VertexOffset,
+        slice.StartIndex
+      )
 
   // ── Enemies (animated models) ─────────────────────────────────────────────
   for i = 0 to model.Enemy.Enemies.Length - 1 do
@@ -514,7 +545,7 @@ let view
             Vector3.op_Implicit decal.Normal
           )
 
-        buffer.mesh(plane, tf, mat).drop()
+        buffer.meshSlice(plane, tf, mat).drop()
   | _ -> ()
 
   buffer.endCamera().drop()

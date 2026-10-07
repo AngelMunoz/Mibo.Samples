@@ -374,6 +374,9 @@ let main _ =
           Width = 1280
           Height = 720
           Title = "Mibo MonoGame 3D Platformer"
+          // Fixed-timestep cap (mirrors the raylib client): the slab
+          // renderer finishes a frame in ~2.5ms; uncapped it spins the GPU.
+          TargetFPS = ValueSome 60
     })
     |> Program.withInput
     |> Program.withSubscription subscribe

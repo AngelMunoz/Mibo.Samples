@@ -1,0 +1,65 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Constants.fs" />
+    <Compile Include="Catalog/Types.fs" />
+    <Compile Include="Catalog/Models.fsi" />
+    <Compile Include="Catalog/Models.fs" />
+    <Compile Include="Catalog/Tiles.fs" />
+    <Compile Include="Types.fs" />
+    <Compile Include="Semantics/Bake.fs" />
+    <Compile Include="Semantics/Noise.fs" />
+    <Compile Include="Semantics/Palette.fs" />
+    <Compile Include="Semantics/Terrain.fs" />
+    <Compile Include="Semantics/Settlement.fs" />
+    <Compile Include="Semantics/Flat.fs" />
+    <Compile Include="Semantics/Blocks.fs" />
+    <Compile Include="Semantics/Build.fs" />
+    <Compile Include="Semantics/Volume.fs" />
+    <Compile Include="Document.fs" />
+    <Compile Include="Hover.fs" />
+    <Compile Include="FileWatch.fs" />
+    <Compile Include="Assets.fs" />
+    <Compile Include="Camera.fs" />
+    <Compile Include="Input.fs" />
+    <Compile Include="MapView.fs" />
+    <Compile Include="BlocksView.fs" />
+    <Compile Include="Hud.fs" />
+    <Compile Include="Check.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <!-- The maps are NOT copied to the output: the app watches the files in
+       the checkout, so the document a person edits is the document the
+       game reloads. Assets are referenced from the repo-root shared assets
+       dir — never duplicated. RecursiveDir does not include the anchored
+       subdir, so the Link re-adds it explicitly. -->
+  <ItemGroup>
+    <Content Include="..\assets\kenney_tower-defense-top-down\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\kenney_tower-defense-top-down\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
+    <Content Include="..\assets\kenney_platformer-kit\Models\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\kenney_platformer-kit\Models\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
+    <Content Include="..\assets\Fonts\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>assets\Fonts\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Mibo\src\Mibo.Raylib.Mvu\Mibo.Raylib.Mvu.fsproj" />
+    <ProjectReference Include="..\Mibo\src\Mibo.Markup\Mibo.Markup.fsproj" />
+    <PackageReference Include="FSharp.Control.Reactive" Version="6.1.2" />
+  </ItemGroup>
+
+</Project>

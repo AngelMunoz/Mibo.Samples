@@ -147,6 +147,31 @@ dotnet run --project PingPong/Raylib
 
 Controls: **Mouse Y-axis** to move your assigned paddle (Left or Right).
 
+### LiveMap
+
+A live map editor for authored documents. The map is a text file — the same map
+in KDL and in XML — and the app rebuilds it every time the file is saved: a
+valid edit swaps the map, a broken one keeps the last good map on screen and
+shows the positioned error that came with it. Two modes share the same
+`CellGrid2D` storage: a flat sprite map, and a block map drawn as an instanced
+column field whose heights come from the words. Hovering a cell names what the
+pointer is over and outlines the region of the document that painted it.
+
+[LiveMap/README.md](LiveMap/README.md) documents the document format and the
+vocabulary a map can name.
+
+```bash
+# run it from the repository root: the app watches the files in LiveMap/maps
+dotnet run --project LiveMap
+
+# build every shipped document in both syntaxes, print the result, and exit
+dotnet run --project LiveMap -- --check
+```
+
+Controls: **Arrows** to move, **+/-** to zoom, **Home** to re-frame, **1** square
+2D, **2** blocks 3D, **Tab** swaps KDL/XML, **F1** help, **F11** fullscreen,
+**Esc** quit. No mouse button is bound: the mouse is the hover pointer only.
+
 ### BoneProbe
 
 A CLI diagnostic tool for inspecting glTF/GLB models and verifying bone-palette math. Two modes: raw Assimp scene dump (meshes, bones, animation channels) and Mibo bone-palette verification (bind-pose invariant: `invBind[i] * worldPose[i] ≈ Identity`). Optimized for LLM consumption with compact, line-oriented output and optional verbosity/focus filtering.

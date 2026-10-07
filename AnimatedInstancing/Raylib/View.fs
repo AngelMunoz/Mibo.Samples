@@ -8,6 +8,7 @@ open Mibo.Elmish
 open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics2D
 open Mibo.Elmish.Graphics3D
+open Mibo.Layout
 open Mibo.Layout3D
 open Mibo.Animation
 open AnimatedInstancing
@@ -29,10 +30,15 @@ let private glassCellMaterial = {
 // Unit cube mesh, created on the first Draw (the GL context exists then).
 let mutable private cubeMesh: Raylib_cs.Mesh voption = ValueNone
 
+// World Y of the glass cells (the cubes span 2.5..3.5).
+let private glassLayer = 3
+
 // One context for both cell kinds: the renderer groups by key, so the Ground
 // cells emit one opaque DrawMeshInstanced (inline, casts shadows) and the
 // semi-transparent Glass cells emit their own command — which defers whole to
 // the sorted pass (a transparent material covers every instance of its batch).
+// The vertical position rides in the cell: ground cubes sit at the
+// mannequins' feet, glass cubes float at the glass layer's world Y.
 let private terrainCtx =
   InstancedRenderContext<TerrainCell, TerrainCell>(
     getKey = id
@@ -47,41 +53,45 @@ let private terrainCtx =
           |]
         | ValueNone -> Array.empty
     , getTransform =
-      fun worldPos _ ->
-        // Unit cube scaled to one cell; -0.5 puts the ground layer's top face at
-        // y = 0 (the mannequins' feet) and floats the glass layer above them.
+      fun basePos cell ->
+        // Unit cube scaled to one cell; ground tops land at y = 0 (the
+        // mannequins' feet) and the glass floats at layer 3 (spanning
+        // 2.5..3.5). The vertical is data in the cell kind.
+        let y =
+          match cell with
+          | Ground -> -0.5f
+          | Glass -> float32 glassLayer - 0.5f
+
         Raymath.MatrixMultiply(
           Raymath.MatrixScale(CrowdSpec.spacing, 1.0f, CrowdSpec.spacing),
-          Raymath.MatrixTranslate(worldPos.X, worldPos.Y - 0.5f, worldPos.Z)
+          Raymath.MatrixTranslate(basePos.X, y, basePos.Z)
         )
   )
 
 // Rebuilt only when the crowd tier changes the grid's side length.
 let mutable private terrainSide = -1
-let mutable private terrainGrid = Unchecked.defaultof<CellGrid3D<TerrainCell>>
-
-// Cell layer Y of the glass cells (world Y = 3, so the cubes span 2.5..3.5).
-let private glassLayer = 3
+let mutable private terrainGrid = Unchecked.defaultof<CellGrid2D<TerrainCell>>
 
 let private buildTerrain(side: int) =
   let center = float32(side - 1) * 0.5f
 
+  // Cell size stays 1: the transform scales a unit cube by the crowd
+  // spacing, exactly as the retired voxel grid did.
   let grid =
-    CellGrid3D.create
+    CellGrid2D.create
       side
-      (glassLayer + 1)
       side
-      Vector3.One
-      (Vector3(-center * CrowdSpec.spacing, 0.0f, -center * CrowdSpec.spacing))
+      (Vector2(1f, 1f))
+      (Vector2(-center * CrowdSpec.spacing, -center * CrowdSpec.spacing))
 
   for z = 0 to side - 1 do
     for x = 0 to side - 1 do
-      CellGrid3D.set x 0 z Ground grid
+      CellGrid2D.set x z Ground grid
 
   // Glass cells above the first three mannequins (instances 0, 1, 2 sit at
   // columns 0..2 of row 0).
   for i = 0 to 2 do
-    CellGrid3D.set (i % side) glassLayer (i / side) Glass grid
+    CellGrid2D.set (i % side) (i / side) Glass grid
 
   grid
 
@@ -113,21 +123,27 @@ let view (_ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
     )
 
   buffer
-  |> Draw3D.beginCameraWith(
-    Camera3D.render camera
-    |> Camera3D.withClear(Mibo.Color.op_Implicit(Mibo.Color.rgb 30uy 34uy 40uy))
-  )
-  |> Draw3D.setAmbientLight {
-    Color = Mibo.Color.White
-    Intensity = 0.35f
-  }
-  |> Draw3D.addDirectionalLight {
-    Direction = Vector3(0.6f, -1.0f, 0.35f)
-    Color = Mibo.Color.White
-    Intensity = 1.0f
-    CastsShadows = model.ShadowsOn
-  }
-  |> Draw3D.drop
+    .beginCameraWith(
+      Camera3D.render camera
+      |> Camera3D.withClear(
+        Mibo.Color.op_Implicit(Mibo.Color.rgb 30uy 34uy 40uy)
+      )
+    )
+    .setAmbientLight(
+      {
+        Color = Mibo.Color.White
+        Intensity = 0.35f
+      }
+    )
+    .addDirectionalLight(
+      {
+        Direction = Vector3(0.6f, -1.0f, 0.35f)
+        Color = Mibo.Color.White
+        Intensity = 1.0f
+        CastsShadows = model.ShadowsOn
+      }
+    )
+    .drop()
 
   // Instanced terrain: the floor is a cell grid rendered through the volume
   // renderer (the API voxel terrain uses), plus the glass cells above the
@@ -149,14 +165,18 @@ let view (_ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
   let extent = float32 side * CrowdSpec.spacing + 8.0f
   let half = extent * 0.5f
 
-  let bounds = {
-    Mibo.Layout3D.BoundingBox.Min = Vector3(-half, -1.0f, -half)
-    Max = Vector3(half, 4.0f, half)
-  }
-
   terrainCtx.ResetFrameBuffers()
 
-  terrainCtx.RenderCellGridVolumeInstanced(buffer, bounds, terrainGrid)
+  // The old volume's XZ extent becomes the window, in world units; the
+  // vertical (ground vs glass) is data in the cells now.
+  terrainCtx.RenderWindowInstanced(
+    buffer,
+    int -half,
+    int -half,
+    int half,
+    int half,
+    terrainGrid
+  )
 
   // THE probe: one pose evaluation per instance into the reused pose array,
   // then a single skinned+instanced draw call (one DrawSkinnedMeshInstanced
@@ -201,7 +221,7 @@ let view (_ctx: GameContext) (model: Model) (buffer: RenderBuffer3D) =
     |> ignore
   | _ -> ()
 
-  buffer |> Draw3D.endCamera |> Draw3D.drop
+  buffer.endCamera().drop()
 
 // ─────────────────────────────────────────────────────────────
 // HUD (Renderer2D overlay)
@@ -216,18 +236,20 @@ let viewHud (_ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
   let paused = if crowd.Paused then "PAUSED" else "running"
 
   let inline line (yPos: float32) (text: string) =
-    Draw.text
-      {
-        Font = model.DiagFont
-        Text = text
-        Position = Vector2(10.0f, yPos)
-        FontSize = 20.0f
-        Spacing = 1.0f
-        Color = Color.Yellow
-        Layer = 0<RenderLayer>
-      }
-      buffer
-    |> Draw.drop
+    buffer
+      .text(
+        {
+          Font = model.DiagFont
+          Text = text
+          Position = Vector2(10.0f, yPos)
+          FontSize = 20.0f
+          Spacing = 1.0f
+          Color = Color.Yellow
+          Layer = 0<RenderLayer>
+        }
+        : Command2D.TextState
+      )
+      .drop()
 
   line
     10.0f

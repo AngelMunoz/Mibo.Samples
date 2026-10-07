@@ -1,7 +1,9 @@
 module Platformer.MonoGame.MinimapView
 
 open Microsoft.Xna.Framework
+open Mibo
 open Mibo.Elmish
+open Mibo.Elmish.Graphics
 open Mibo.Elmish.Graphics2D
 
 type Model = Types.Model
@@ -24,28 +26,48 @@ let view (ctx: GameContext) (model: Model) (buffer: RenderBuffer2D) =
 
   if model.MinimapTexReady then
     buffer
-    |> Draw.sprite(
-      SpriteState.create(
-        model.MinimapTexture,
-        Rectangle(int minimapX, int minimapY, int minimapSize, int minimapSize),
-        Rectangle(0, 0, texSize, texSize)
+      .sprite(
+        SpriteState.create(
+          model.MinimapTexture,
+          Rectangle(
+            int minimapX,
+            int minimapY,
+            int minimapSize,
+            int minimapSize
+          ),
+          Rectangle(0, 0, texSize, texSize)
+        )
+        |> SpriteState.withLayer 1010<RenderLayer>
       )
-      |> SpriteState.withLayer 1010<RenderLayer>
-    )
-    |> Draw.drop
+      .drop()
 
   let centerX = minimapX + halfMinimap
   let centerY = minimapY + halfMinimap
 
+  // XNA palette bytes (XNA Yellow 255,255,0 — Mibo.Color's presets differ)
+  let markerColor = Color.rgb 255uy 255uy 0uy
+
   buffer
-  |> Draw.fillCircle
-    (1012<RenderLayer>, Color.Yellow)
-    (Vector2(centerX, centerY), 3.0f)
-  |> Draw.lineThick
-    (1012<RenderLayer>, Color.Yellow, 2.0f)
-    (Vector2(centerX, centerY),
-     Vector2(centerX + model.Physics.Facing * 10.0f, centerY))
-  |> Draw.rectOutline
-    (1013<RenderLayer>, Color.White, 2.0f)
-    (Rectangle(int minimapX, int minimapY, int minimapSize, int minimapSize))
-  |> Draw.drop
+    .fillCircle(
+      System.Numerics.Vector2(centerX, centerY),
+      3.0f,
+      markerColor,
+      1012<RenderLayer>
+    )
+    .lineThick(
+      System.Numerics.Vector2(centerX, centerY),
+      System.Numerics.Vector2(centerX + model.Physics.Facing * 10.0f, centerY),
+      markerColor,
+      thickness = 2.0f,
+      layer = 1012<RenderLayer>
+    )
+    .rectOutline(
+      minimapX,
+      minimapY,
+      minimapSize,
+      minimapSize,
+      Color.White,
+      thickness = 2.0f,
+      layer = 1013<RenderLayer>
+    )
+    .drop()

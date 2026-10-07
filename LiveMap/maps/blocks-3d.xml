@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- blocks-3d.xml — the same map as blocks-3d.kdl, written in XML.
+     A layer names itself with the `name` property, a word states the size
+     of the ground piece it names, and a set may size one with `spanX` and
+     `spanZ`. -->
+<map w="32" h="20">
+  <!-- ── the ground: pieces of one, two, and four cells ───── -->
+  <layer name="ground">
+
+    <!-- the ground is one flow container. The track pattern says how many
+         pieces stand in a row and every piece states its own size, so no
+         placement is written down. -->
+    <plot w="32" h="20" cols="auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto auto">
+      <!-- cells y=0..1: the north woods floor, half a cell below the fields -->
+      <grassLowLarge />
+      <grassLowLarge />
+      <grassLowLarge />
+      <grassLowLarge />
+      <grassLowLarge />
+      <grassLowLarge />
+      <grassLowLarge />
+      <grassLowLarge />
+      <snowLowLarge />
+      <snowLowLarge />
+      <snowLowLarge />
+      <snowLowLarge />
+      <snowLowLarge />
+      <snowLowLarge />
+      <snowLowLarge />
+      <snowLowLarge />
+
+      <!-- cells y=2..3: the north woods floor, and the drift beside it -->
+      <grassLowLarge />
+      <grassLowLarge />
+      <grassLowLarge />
+      <grassLowLarge />
+      <grassLowLarge />
+      <grassLowLarge />
+      <grassLowLarge />
+      <grassLowLarge />
+      <snowLowLarge />
+      <snowLowLarge />
+      <snowLowLarge />
+      <snowLowLarge />
+      <snowLowLarge />
+      <snowLowLarge />
+      <snowLowLarge />
+      <snowLowLarge />
+
+      <!-- cells y=4..5: the west field, the village terrace, and the snow field -->
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassTall />
+      <grassTall />
+      <grassTall />
+      <grassTall />
+      <grassTall />
+      <grassTall />
+      <snowLarge />
+      <snowLarge />
+      <snowLarge />
+      <snowLarge />
+
+      <!-- cells y=6..7: the same three regions -->
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassTall />
+      <grassTall />
+      <grassTall />
+      <grassTall />
+      <grassTall />
+      <grassTall />
+      <snowLarge />
+      <snowLarge />
+      <snowLarge />
+      <snowLarge />
+
+      <!-- cells y=8..9: the same three regions -->
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassTall />
+      <grassTall />
+      <grassTall />
+      <grassTall />
+      <grassTall />
+      <grassTall />
+      <snowLarge />
+      <snowLarge />
+      <snowLarge />
+      <snowLarge />
+
+      <!-- cells y=10..11: the same three regions -->
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassTall />
+      <grassTall />
+      <grassTall />
+      <grassTall />
+      <grassTall />
+      <grassTall />
+      <snowLarge />
+      <snowLarge />
+      <snowLarge />
+      <snowLarge />
+
+      <!-- cells y=12..13: the same three regions -->
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassTall />
+      <grassTall />
+      <grassTall />
+      <grassTall />
+      <grassTall />
+      <grassTall />
+      <snowLarge />
+      <snowLarge />
+      <snowLarge />
+      <snowLarge />
+
+      <!-- cells y=14..15: the fields below the terrace -->
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <snowLarge />
+      <snowLarge />
+      <snowLarge />
+      <snowLarge />
+
+      <!-- cells y=16..17: the south woods floor, and the fields below it -->
+      <grassLowLarge />
+      <grassLowLarge />
+      <grassLowLarge />
+      <grassLowLarge />
+      <grassLowLarge />
+      <grassLowLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <snowLarge />
+      <snowLarge />
+      <snowLarge />
+      <snowLarge />
+
+      <!-- cells y=18..19: the south woods floor, and the fields below it -->
+      <grassLowLarge />
+      <grassLowLarge />
+      <grassLowLarge />
+      <grassLowLarge />
+      <grassLowLarge />
+      <grassLowLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <grassLarge />
+      <snowLarge />
+      <snowLarge />
+      <snowLarge />
+      <snowLarge />
+    </plot>
+  </layer>
+
+  <!-- ── the decorations, and the occasional raised ground ── -->
+  <layer name="decor">
+    <!-- the village on the terrace, from kernels the game baked out of
+         Flow stamps -->
+    <plot x="13" y="5" w="3" h="3"><generate kernel="hut" /></plot>
+    <plot x="16" y="5" w="5" h="5"><generate kernel="yard" /></plot>
+    <plot x="20" y="7" w="3" h="3"><generate kernel="tower" /></plot>
+
+    <!-- a market plaza: one flat piece stretched over twenty cells, which
+         is what a piece with no bevel is good for -->
+    <set x="13" y="11" cell="slab" spanX="10" spanZ="2" />
+
+    <!-- a wall along the terrace edge, one block per cell -->
+    <plot x="12" y="13" w="12" h="1"><fill cell="wall" /></plot>
+
+    <!-- pillars and kerbs, marking the way up from the field -->
+    <set x="13" y="4" cell="pillar" />
+    <set x="22" y="4" cell="pillar" />
+    <set x="2" y="6" cell="kerb" />
+    <set x="2" y="8" cell="kerb" />
+    <set x="2" y="10" cell="kerb" />
+
+    <!-- the woods along the north and the south -->
+    <plot x="0" y="0" w="18" h="4" pack="scatter" seed="3">
+      <repeat count="9"><pine /></repeat>
+      <repeat count="4"><tree /></repeat>
+    </plot>
+
+    <plot x="18" y="0" w="14" h="4" pack="scatter" seed="4">
+      <repeat count="6"><snowTree /></repeat>
+      <repeat count="3"><stones /></repeat>
+    </plot>
+
+    <plot x="0" y="16" w="14" h="4" pack="scatter" seed="7">
+      <repeat count="7"><pine /></repeat>
+      <repeat count="3"><tree /></repeat>
+    </plot>
+
+    <plot x="14" y="16" w="18" h="4" pack="scatter" seed="8">
+      <repeat count="6"><pineSmall /></repeat>
+      <repeat count="3"><stones /></repeat>
+    </plot>
+
+    <!-- what grows in the open field -->
+    <plot x="0" y="4" w="10" h="8" pack="scatter" seed="5">
+      <repeat count="5"><pineSmall /></repeat>
+      <repeat count="4"><stones /></repeat>
+    </plot>
+
+    <plot x="24" y="4" w="8" h="8" pack="scatter" seed="6">
+      <repeat count="6"><snowTree /></repeat>
+      <repeat count="4"><stones /></repeat>
+    </plot>
+
+    <!-- the props of the village -->
+    <set x="12" y="4" cell="crate" />
+    <set x="23" y="12" cell="barrel" />
+    <set x="14" y="10" cell="fence" />
+    <set x="19" y="10" cell="fence" />
+    <set x="17" y="10" cell="coin" />
+    <set x="18" y="10" cell="coin" />
+    <set x="26" y="15" cell="flag" />
+    <set x="27" y="15" cell="sign" />
+  </layer>
+</map>
