@@ -20,7 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="MonoGame.Framework.Native" Version="3.8.5" PrivateAssets="all"/>
+    <PackageReference Include="MonoGame.Framework.Native" Version="3.8.6" PrivateAssets="all"/>
   </ItemGroup>
 
   <!-- The clients build the shared content. A library ships no Content

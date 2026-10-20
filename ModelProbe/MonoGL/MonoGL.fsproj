@@ -18,8 +18,8 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\MonoShared\MonoShared.fsproj" />
-    <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.5" />
-    <PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.5" />
+    <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.6" />
+    <PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.6" />
   </ItemGroup>
   <ItemGroup>
   <!-- One .mgcb, four clients. MGCB writes the colormap it discovers for
